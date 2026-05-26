@@ -24,26 +24,21 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-
   const { pathname } = request.nextUrl
 
-  // Redirect unauthenticated users away from dashboard routes
-  if (!user && pathname.startsWith("/dashboard") ||
-      !user && pathname.startsWith("/leads") ||
-      !user && pathname.startsWith("/meta-ads") ||
-      !user && pathname.startsWith("/whatsapp") ||
-      !user && pathname.startsWith("/properties") ||
-      !user && pathname.startsWith("/employees")) {
-    const loginUrl = request.nextUrl.clone()
-    loginUrl.pathname = "/login"
-    return NextResponse.redirect(loginUrl)
+  const protectedPrefixes = ["/dashboard", "/leads", "/meta-ads", "/whatsapp", "/properties", "/employees"]
+  const isProtected = protectedPrefixes.some(p => pathname.startsWith(p))
+
+  if (!user && isProtected) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/login"
+    return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from login
   if (user && pathname === "/login") {
-    const dashboardUrl = request.nextUrl.clone()
-    dashboardUrl.pathname = "/dashboard"
-    return NextResponse.redirect(dashboardUrl)
+    const url = request.nextUrl.clone()
+    url.pathname = "/dashboard"
+    return NextResponse.redirect(url)
   }
 
   return supabaseResponse

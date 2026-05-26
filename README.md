@@ -8,21 +8,29 @@ This repository is linked to a [v0](https://v0.app) project. You can continue de
 
 [Continue working on v0 →](https://v0.app/chat/projects/prj_qdUG2feV5zRf3skucCmSiwbHrcA0)
 
+## Project Structure
+
+- `frontend/`: Next.js app (UI, routes, API routes).
+- `backend/`: Database assets and backend docs.
+
 ## Getting Started
 
-First, run the development server:
+First, move into the frontend folder and run the development server:
 
 ```bash
+cd frontend
 npm run dev
 # or
+cd frontend
 yarn dev
 # or
+cd frontend
 pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the page by modifying `frontend/app/page.tsx`. The page auto-updates as you edit the file.
 
 ## Learn More
 
