@@ -1,0 +1,673 @@
+"use client"
+
+import * as React from "react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
+import { motion, AnimatePresence } from "framer-motion"
+import {
+  Search, Bell, Plus, ChevronRight, Sparkles, Calendar,
+  MessageSquare, Phone, CheckCircle2, Clock, Users, Eye,
+  Trash2, X, Filter, AlertCircle, ListTodo, UserPlus,
+  PhoneCall, Building2, MapPin, IndianRupee, Send, FileText,
+  ExternalLink, Flame, Star, TrendingUp, Zap
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
+import { ReminderDialog } from "@/components/reminder-dialog"
+import { employees } from "@/lib/data"
+
+const pageNames: Record<string, string> = {
+  "/dashboard": "Dashboard",
+  "/leads": "Lead Management",
+  "/whatsapp": "WhatsApp Hub",
+  "/properties": "Property Explorer",
+  "/smart-matching": "Smart Property Matching",
+  "/site-visits": "Site Visit Management",
+  "/meta-ads": "Meta Ads Analytics",
+  "/ai-control": "AI Control Center",
+  "/bookings": "Bookings & Revenue",
+  "/employees": "Employee Management",
+  "/hni-clients": "HNI Clients",
+  "/scripts": "Calling Scripts",
+  "/reports": "Reports & Analytics",
+  "/pricing": "Pricing & Costing",
+  "/documents": "PDF Documents",
+  "/settings": "Settings"
+}
+
+interface NotificationAction {
+  label: string
+  icon: React.ElementType
+  action: string
+  variant?: "default" | "primary" | "success" | "warning"
+}
+
+interface Notification {
+  id: string
+  title: string
+  message: string
+  time: string
+  type: "lead" | "message" | "call" | "system" | "booking" | "visit"
+  read: boolean
+  priority?: "high" | "normal"
+  actionUrl?: string
+  leadData?: {
+    name: string
+    phone: string
+    email?: string
+    propertyInterest?: string
+    budget?: string
+    location?: string
+    aiScore?: number
+    tags?: string[]
+  }
+  suggestedActions?: NotificationAction[]
+}
+
+const initialNotifications: Notification[] = [
+  {
+    id: "1", title: "New VIP Lead — HOT",
+    message: "Arjun Mehta interested in 10 Cr+ penthouse in Bandra",
+    time: "2 min ago", type: "lead", read: false, priority: "high",
+    actionUrl: "/leads/lead-1",
+    leadData: {
+      name: "Arjun Mehta", phone: "+91 99887 76655", email: "arjun.mehta@gmail.com",
+      propertyInterest: "Penthouse", budget: "5–10 Cr", location: "Bandra West",
+      aiScore: 92, tags: ["vip", "hot"]
+    },
+    suggestedActions: [
+      { label: "Assign to Senior Agent", icon: UserPlus, action: "assign", variant: "primary" },
+      { label: "Call Immediately", icon: PhoneCall, action: "call", variant: "success" },
+      { label: "Send Property Matches", icon: Building2, action: "match", variant: "default" },
+      { label: "View Lead Profile", icon: Eye, action: "view", variant: "default" }
+    ]
+  },
+  {
+    id: "2", title: "WhatsApp — Follow Up Needed",
+    message: "Kavita Desai: Can we schedule a visit this weekend?",
+    time: "15 min ago", type: "message", read: false,
+    actionUrl: "/whatsapp",
+    leadData: {
+      name: "Kavita Desai", phone: "+91 99887 76656",
+      propertyInterest: "Apartment", budget: "3–5 Cr", location: "Worli",
+      aiScore: 88, tags: ["vip"]
+    },
+    suggestedActions: [
+      { label: "Schedule Site Visit", icon: Calendar, action: "schedule", variant: "primary" },
+      { label: "Reply on WhatsApp", icon: Send, action: "whatsapp", variant: "success" },
+      { label: "Call Back", icon: Phone, action: "call", variant: "default" }
+    ]
+  },
+  {
+    id: "3", title: "Missed Call — Callback Required",
+    message: "Rahul Kapoor — BKC Commercial (10–15 Cr)",
+    time: "1 hour ago", type: "call", read: false, priority: "high",
+    actionUrl: "/leads/lead-3",
+    leadData: {
+      name: "Rahul Kapoor", phone: "+91 99887 76657",
+      propertyInterest: "Commercial", budget: "10–20 Cr", location: "BKC", aiScore: 65
+    },
+    suggestedActions: [
+      { label: "Call Back Now", icon: PhoneCall, action: "call", variant: "primary" },
+      { label: "Send WhatsApp", icon: MessageSquare, action: "whatsapp", variant: "default" },
+      { label: "Schedule Callback", icon: Clock, action: "schedule", variant: "default" }
+    ]
+  },
+  {
+    id: "4", title: "Site Visit Completed",
+    message: "Ritu Sharma visited Lower Parel Penthouse — Very Interested",
+    time: "2 hours ago", type: "visit", read: false,
+    leadData: {
+      name: "Ritu Sharma", phone: "+91 99887 76664",
+      propertyInterest: "Penthouse", budget: "6–9 Cr", location: "Lower Parel",
+      aiScore: 90, tags: ["vip", "hot"]
+    },
+    suggestedActions: [
+      { label: "Send Price Proposal", icon: FileText, action: "proposal", variant: "primary" },
+      { label: "Schedule Follow-up", icon: Phone, action: "call", variant: "success" },
+      { label: "Share Similar Properties", icon: Building2, action: "match", variant: "default" }
+    ]
+  },
+  {
+    id: "5", title: "Booking Confirmed",
+    message: "Lower Parel Penthouse — Rs 8.5 Cr deal closed",
+    time: "3 hours ago", type: "booking", read: true, priority: "high",
+    suggestedActions: [
+      { label: "Send Congratulations", icon: MessageSquare, action: "congrats", variant: "success" },
+      { label: "Request Referrals", icon: Users, action: "referral", variant: "primary" }
+    ]
+  },
+  {
+    id: "6", title: "5 New Leads from Meta Ads",
+    message: "Luxury Penthouses campaign — High intent",
+    time: "4 hours ago", type: "lead", read: true, actionUrl: "/meta-ads",
+    suggestedActions: [
+      { label: "Distribute to Team", icon: Users, action: "distribute", variant: "primary" },
+      { label: "Review Quality", icon: Eye, action: "review", variant: "default" }
+    ]
+  },
+  {
+    id: "7", title: "Lead Cooling Down",
+    message: "Rahul Kapoor — no response in 3 days",
+    time: "5 hours ago", type: "system", read: true, priority: "high",
+    leadData: { name: "Rahul Kapoor", phone: "+91 99887 76657", aiScore: 65 },
+    suggestedActions: [
+      { label: "Re-engage Now", icon: PhoneCall, action: "call", variant: "warning" },
+      { label: "Send Special Offer", icon: FileText, action: "offer", variant: "primary" }
+    ]
+  }
+]
+
+function getTypeConfig(type: Notification["type"]) {
+  const configs = {
+    lead:    { icon: Sparkles,     bg: "bg-primary/10",    color: "text-primary" },
+    message: { icon: MessageSquare, bg: "bg-emerald-500/10", color: "text-emerald-600" },
+    call:    { icon: Phone,         bg: "bg-amber-500/10",  color: "text-amber-600" },
+    booking: { icon: CheckCircle2,  bg: "bg-emerald-500/10", color: "text-emerald-600" },
+    visit:   { icon: Calendar,      bg: "bg-primary/10",    color: "text-primary" },
+    system:  { icon: AlertCircle,   bg: "bg-muted",         color: "text-muted-foreground" },
+  }
+  return configs[type]
+}
+
+function ActionButton({
+  action, onClick
+}: {
+  action: NotificationAction
+  onClick: (action: string) => void
+}) {
+  const Icon = action.icon
+  const styles: Record<string, string> = {
+    primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-gold-sm",
+    success: "bg-success/10 text-success border border-success/20 hover:bg-success/20",
+    warning: "bg-warning/10 text-warning-foreground border border-warning/20 hover:bg-warning/20",
+    default: "bg-muted hover:bg-muted/80 text-foreground border border-border",
+  }
+  return (
+    <button
+      onClick={() => onClick(action.action)}
+      className={cn(
+        "flex items-center gap-2 w-full px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
+        styles[action.variant || "default"]
+      )}
+    >
+      <Icon className="w-4 h-4 shrink-0" />
+      {action.label}
+    </button>
+  )
+}
+
+export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => void }) {
+  const pathname = usePathname()
+  const [notifications, setNotifications] = React.useState(initialNotifications)
+  const [showPanel, setShowPanel] = React.useState(false)
+  const [showReminders, setShowReminders] = React.useState(false)
+  const [selected, setSelected] = React.useState<Notification | null>(null)
+  const [typeFilter, setTypeFilter] = React.useState<string>("all")
+  const [readFilter, setReadFilter] = React.useState<"all" | "unread">("all")
+  const [assignedEmployee, setAssignedEmployee] = React.useState("")
+
+  const unreadCount = notifications.filter(n => !n.read).length
+  const filtered = notifications.filter(n => {
+    if (readFilter === "unread" && n.read) return false
+    if (typeFilter !== "all" && n.type !== typeFilter) return false
+    return true
+  })
+  const activeEmployees = employees.filter(e => e.status === "online" || e.status === "busy")
+
+  const breadcrumbs = React.useMemo(() => {
+    return pathname.split("/").filter(Boolean).map((seg, i, arr) => {
+      const path = "/" + arr.slice(0, i + 1).join("/")
+      return { name: pageNames[path] || seg.charAt(0).toUpperCase() + seg.slice(1), path }
+    })
+  }, [pathname])
+
+  const markRead = (id: string) => setNotifications(p => p.map(n => n.id === id ? { ...n, read: true } : n))
+  const markAllRead = () => setNotifications(p => p.map(n => ({ ...n, read: true })))
+  const deleteOne = (id: string) => {
+    setNotifications(p => p.filter(n => n.id !== id))
+    if (selected?.id === id) setSelected(null)
+  }
+  const clearRead = () => setNotifications(p => p.filter(n => !n.read))
+
+  const handleClick = (n: Notification) => {
+    markRead(n.id)
+    setSelected(n)
+    setAssignedEmployee("")
+  }
+
+  const handleAction = (_action: string) => {
+    setSelected(null)
+  }
+
+  const closePanel = () => {
+    setShowPanel(false)
+    setSelected(null)
+  }
+
+  return (
+    <>
+      <motion.header
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className="sticky top-0 z-30 h-[60px] flex items-center justify-between px-6"
+        style={{
+          background: "oklch(0.975 0.006 80 / 0.85)",
+          backdropFilter: "blur(20px) saturate(180%)",
+          borderBottom: "1px solid oklch(0.900 0.012 80 / 0.6)",
+        }}
+      >
+        {/* Breadcrumbs */}
+        <div className="flex items-center gap-1.5">
+          {breadcrumbs.map((crumb, i) => (
+            <React.Fragment key={crumb.path}>
+              {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+              <span className={cn(
+                "text-sm",
+                i === breadcrumbs.length - 1
+                  ? "font-semibold text-foreground"
+                  : "text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              )}>
+                {crumb.name}
+              </span>
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Right actions */}
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <button
+            onClick={onCommandPaletteOpen}
+            className="hidden sm:flex items-center gap-2.5 h-8 w-56 px-3 rounded-lg text-sm transition-all duration-150"
+            style={{
+              background: "oklch(0.958 0.006 80)",
+              border: "1px solid oklch(0.900 0.012 80)",
+              color: "oklch(0.52 0.008 260)",
+            }}
+          >
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <span className="flex-1 text-left text-[13px]">Search anything...</span>
+            <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+              style={{ background: "oklch(0.940 0.010 80)", color: "oklch(0.52 0.008 260)", border: "1px solid oklch(0.900 0.012 80)" }}>
+              ⌘K
+            </kbd>
+          </button>
+
+          {/* Reminders */}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowReminders(true)}>
+            <ListTodo className="w-4 h-4" />
+          </Button>
+
+          {/* Quick Add */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" className="h-8 gap-1.5 px-3 text-[13px] font-medium gold-gradient text-[oklch(0.10_0.010_260)] shadow-gold-sm hover:shadow-gold border-0">
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Quick Add</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44 shadow-luxury-lg">
+              <DropdownMenuLabel className="text-[10px] text-muted-foreground tracking-widest uppercase">
+                Create New
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {[
+                { icon: Sparkles, label: "New Lead", color: "text-primary" },
+                { icon: Calendar, label: "Schedule Visit", color: "text-emerald-600" },
+                { icon: MessageSquare, label: "Send Message", color: "text-blue-600" },
+                { icon: Clock, label: "Add Reminder", color: "text-amber-600", onClick: () => setShowReminders(true) },
+              ].map(({ icon: Icon, label, color, onClick }) => (
+                <DropdownMenuItem key={label} className="gap-2 cursor-pointer text-sm" onClick={onClick}>
+                  <Icon className={cn("w-3.5 h-3.5", color)} />{label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Notifications */}
+          <button
+            onClick={() => setShowPanel(true)}
+            className="relative h-8 w-8 flex items-center justify-center rounded-lg transition-colors hover:bg-muted"
+          >
+            <Bell className="w-4 h-4 text-muted-foreground" />
+            <AnimatePresence>
+              {unreadCount > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                  className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                  style={{ background: "oklch(0.550 0.210 25)" }}
+                >
+                  {unreadCount}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+        </div>
+      </motion.header>
+
+      {/* ── Notifications Panel ─────────────────────────── */}
+      <AnimatePresence>
+        {showPanel && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+              onClick={closePanel}
+            />
+
+            {/* Panel */}
+            <motion.div
+              key="panel"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 40 }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
+              className="fixed right-0 top-0 z-50 h-screen flex"
+              style={{ width: selected ? 840 : 420 }}
+            >
+              {/* Left: Notification List */}
+              <div className="w-[420px] h-full flex flex-col"
+                style={{ background: "var(--color-card)", borderLeft: "1px solid var(--color-border)" }}>
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-4 shrink-0"
+                  style={{ borderBottom: "1px solid var(--color-border)" }}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg gold-gradient flex items-center justify-center">
+                      <Bell className="w-4 h-4 text-[oklch(0.10_0.010_260)]" />
+                    </div>
+                    <div>
+                      <h2 className="text-[15px] font-semibold leading-tight">Notifications</h2>
+                      {unreadCount > 0 && (
+                        <p className="text-[11px] text-muted-foreground">{unreadCount} unread</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="ghost" size="sm" className="h-7 text-[11px] text-muted-foreground" onClick={markAllRead}>
+                      <CheckCircle2 className="w-3 h-3 mr-1" />All read
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-[11px] text-muted-foreground" onClick={clearRead}>
+                      <Trash2 className="w-3 h-3 mr-1" />Clear
+                    </Button>
+                    <button onClick={closePanel}
+                      className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter bar */}
+                <div className="px-4 py-2.5 flex items-center gap-2 shrink-0"
+                  style={{ borderBottom: "1px solid var(--color-border)" }}>
+                  <Tabs value={readFilter} onValueChange={v => setReadFilter(v as "all" | "unread")}>
+                    <TabsList className="h-7 gap-0.5">
+                      <TabsTrigger value="all" className="text-[11px] h-6 px-2.5">All</TabsTrigger>
+                      <TabsTrigger value="unread" className="text-[11px] h-6 px-2.5">Unread</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px] ml-auto">
+                        <Filter className="w-3 h-3" />
+                        {typeFilter === "all" ? "All types" : typeFilter}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-36 shadow-luxury">
+                      {["all", "lead", "message", "call", "booking", "visit", "system"].map(t => (
+                        <DropdownMenuItem key={t} onClick={() => setTypeFilter(t)} className="text-xs capitalize">
+                          {t === "all" ? "All Types" : t}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* List */}
+                <ScrollArea className="flex-1">
+                  <div className="py-2 px-2 space-y-0.5">
+                    <AnimatePresence mode="popLayout">
+                      {filtered.length > 0 ? filtered.map((n, idx) => {
+                        const config = getTypeConfig(n.type)
+                        const Icon = config.icon
+                        const isSelected = selected?.id === n.id
+                        return (
+                          <motion.div
+                            key={n.id}
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.97 }}
+                            transition={{ delay: idx * 0.015 }}
+                            onClick={() => handleClick(n)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(n) } }}
+                            role="button"
+                            tabIndex={0}
+                            className={cn(
+                              "w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all duration-150 group",
+                              isSelected
+                                ? "bg-primary/8 border border-primary/20"
+                                : !n.read
+                                  ? "bg-primary/5 hover:bg-primary/8 border border-primary/10"
+                                  : "hover:bg-muted/50 border border-transparent"
+                            )}
+                          >
+                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", config.bg)}>
+                              <Icon className={cn("w-4 h-4", config.color)} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className={cn("text-[13px] truncate leading-snug",
+                                  !n.read ? "font-semibold text-foreground" : "font-medium text-foreground/80")}>
+                                  {n.title}
+                                </p>
+                                {n.priority === "high" && (
+                                  <span className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive">
+                                    Urgent
+                                  </span>
+                                )}
+                                {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                              </div>
+                              <p className="text-[11px] text-muted-foreground line-clamp-1">{n.message}</p>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="text-[10px] text-muted-foreground/60">{n.time}</span>
+                                {n.suggestedActions && (
+                                  <span className="flex items-center gap-0.5 text-[9px] text-primary font-medium">
+                                    <Zap className="w-2.5 h-2.5" />
+                                    {n.suggestedActions.length} actions
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={e => { e.stopPropagation(); deleteOne(n.id) }}
+                              className="opacity-0 group-hover:opacity-100 h-6 w-6 flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all shrink-0">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </motion.div>
+                        )
+                      }) : (
+                        <div className="text-center py-16">
+                          <div className="w-12 h-12 rounded-xl bg-muted mx-auto flex items-center justify-center mb-3">
+                            <Bell className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                          <p className="text-sm font-medium text-foreground/60">All caught up</p>
+                          <p className="text-xs text-muted-foreground mt-1">No notifications to show</p>
+                        </div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Right: Action Panel */}
+              <AnimatePresence>
+                {selected && (
+                  <motion.div
+                    key="action-panel"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                    className="w-[420px] h-full flex flex-col"
+                    style={{
+                      background: "var(--color-background)",
+                      borderLeft: "1px solid var(--color-border)"
+                    }}
+                  >
+                    {/* Action Panel Header */}
+                    <div className="flex items-center justify-between px-5 py-4 shrink-0"
+                      style={{ borderBottom: "1px solid var(--color-border)" }}>
+                      <div>
+                        <h3 className="text-[15px] font-semibold">Quick Actions</h3>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Take action on this notification</p>
+                      </div>
+                      <button onClick={() => setSelected(null)}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted transition-colors">
+                        <X className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </div>
+
+                    <ScrollArea className="flex-1">
+                      <div className="p-5 space-y-5">
+
+                        {/* Lead Card */}
+                        {selected.leadData && (
+                          <div className="rounded-xl p-4 space-y-3"
+                            style={{
+                              background: "linear-gradient(135deg, oklch(0.660 0.120 75 / 0.06) 0%, transparent 100%)",
+                              border: "1px solid oklch(0.660 0.120 75 / 0.15)"
+                            }}>
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-11 w-11 shrink-0" style={{ border: "2px solid oklch(0.660 0.120 75 / 0.3)" }}>
+                                <AvatarFallback className="text-[13px] font-bold"
+                                  style={{ background: "oklch(0.660 0.120 75 / 0.1)", color: "oklch(0.56 0.105 72)" }}>
+                                  {selected.leadData.name.split(" ").map(n => n[0]).join("")}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <h4 className="text-[15px] font-bold leading-tight">{selected.leadData.name}</h4>
+                                  {selected.leadData.tags?.includes("vip") && (
+                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                      style={{ background: "oklch(0.760 0.145 65 / 0.15)", color: "oklch(0.62 0.115 68)" }}>
+                                      VIP
+                                    </span>
+                                  )}
+                                  {selected.leadData.tags?.includes("hot") && (
+                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                      style={{ background: "oklch(0.550 0.210 25 / 0.12)", color: "oklch(0.50 0.195 22)" }}>
+                                      HOT
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[12px] text-muted-foreground">{selected.leadData.phone}</p>
+                              </div>
+                              {selected.leadData.aiScore && (
+                                <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl shrink-0"
+                                  style={{ background: "oklch(0.660 0.120 75 / 0.1)", border: "1px solid oklch(0.660 0.120 75 / 0.2)" }}>
+                                  <span className="text-[17px] font-bold leading-none gold-text">{selected.leadData.aiScore}</span>
+                                  <span className="text-[8px] text-muted-foreground mt-0.5">AI Score</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { icon: Building2, label: selected.leadData.propertyInterest, color: "text-primary" },
+                                { icon: IndianRupee, label: selected.leadData.budget, color: "text-emerald-600" },
+                                { icon: MapPin, label: selected.leadData.location, color: "text-rose-500" },
+                              ].filter(i => i.label).map(({ icon: Icon, label, color }) => (
+                                <div key={label} className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                                  <Icon className={cn("w-3.5 h-3.5 shrink-0", color)} />
+                                  <span>{label}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Assign Employee */}
+                        {selected.suggestedActions?.some(a => a.action === "assign") && (
+                          <div className="space-y-2">
+                            <p className="text-[13px] font-semibold">Assign to Employee</p>
+                            <Select value={assignedEmployee} onValueChange={setAssignedEmployee}>
+                              <SelectTrigger className="h-9 text-sm">
+                                <SelectValue placeholder="Select employee..." />
+                              </SelectTrigger>
+                              <SelectContent className="shadow-luxury-lg">
+                                {activeEmployees.map(emp => (
+                                  <SelectItem key={emp.id} value={emp.id}>
+                                    <div className="flex items-center gap-2">
+                                      <Avatar className="h-5 w-5">
+                                        <AvatarImage src={emp.avatar} />
+                                        <AvatarFallback className="text-[8px]">
+                                          {emp.name.split(" ").map(n => n[0]).join("")}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-[13px]">{emp.name}</span>
+                                      <span className="text-[10px] text-muted-foreground capitalize">{emp.role.replace('_', ' ')}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {/* Suggested Actions */}
+                        {selected.suggestedActions && selected.suggestedActions.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-[13px] font-semibold">Suggested Actions</p>
+                            <div className="space-y-1.5">
+                              {selected.suggestedActions.map((action, i) => (
+                                <motion.div key={i}
+                                  initial={{ opacity: 0, y: 4 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: i * 0.04 }}>
+                                  <ActionButton action={action} onClick={handleAction} />
+                                </motion.div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* View Lead link */}
+                        {selected.actionUrl && (
+                          <Link href={selected.actionUrl}
+                            onClick={closePanel}
+                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-[13px] font-medium border border-border hover:bg-muted/50 transition-colors">
+                            <ExternalLink className="w-4 h-4" />
+                            Open Full Profile
+                          </Link>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <ReminderDialog open={showReminders} onOpenChange={setShowReminders} />
+    </>
+  )
+}
+
+
