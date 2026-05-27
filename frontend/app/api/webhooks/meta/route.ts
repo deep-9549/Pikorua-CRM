@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const inserts: Promise<unknown>[] = []
+  const inserts: PromiseLike<unknown>[] = []
 
   for (const entry of body.entry ?? []) {
     for (const change of entry.changes ?? []) {

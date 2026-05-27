@@ -20,6 +20,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# SQL
+*.sql
+
 # Runtime data
 *.pid
 *.seed

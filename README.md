@@ -32,6 +32,29 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `frontend/app/page.tsx`. The page auto-updates as you edit the file.
 
+## Local Team Testing
+
+This app uses Supabase authentication and persisted lead data. Before inviting team members to test:
+
+1. Apply `backend/supabase-setup.sql` for a new project. For an existing project, apply the files in `backend/migrations/` in filename order through the Supabase SQL Editor.
+2. Create the first login in Supabase Authentication, then promote that profile to an admin in the SQL Editor:
+
+```sql
+update user_profiles
+set role = 'super_admin', full_name = 'Admin Name'
+where id = '<auth-user-id>';
+```
+
+3. Confirm `frontend/.env` or `frontend/.env.local` contains your Supabase URL, anon key, and service-role key. Keep the service-role key server-side and never share the env file.
+4. For testing from trusted devices on the same network, run:
+
+```bash
+cd frontend
+npm run dev -- --hostname 0.0.0.0
+```
+
+Open `http://<your-local-ip>:3000` on those devices. Use dummy lead/customer data only while validating admin creation, lead assignment, executive visibility, and user removal behavior. Do not publicly expose this development server.
+
 ## Learn More
 
 To learn more, take a look at the following resources:

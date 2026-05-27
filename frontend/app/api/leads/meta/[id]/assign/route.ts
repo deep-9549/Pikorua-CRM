@@ -24,11 +24,32 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const body = await request.json()
-  const { assigned_to } = body
+  let body: Record<string, unknown>
+  try {
+    body = await request.json() as Record<string, unknown>
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+  }
+
+  const assigned_to = typeof body.assigned_to === "string" ? body.assigned_to.trim() : ""
 
   if (!assigned_to) {
     return NextResponse.json({ error: "assigned_to is required" }, { status: 400 })
+  }
+
+  const { data: executive, error: executiveError } = await supabase
+    .from("user_profiles")
+    .select("id")
+    .eq("id", assigned_to)
+    .eq("role", "sales_executive")
+    .maybeSingle()
+
+  if (executiveError) {
+    return NextResponse.json({ error: executiveError.message }, { status: 500 })
+  }
+
+  if (!executive) {
+    return NextResponse.json({ error: "Lead can only be assigned to a sales executive" }, { status: 400 })
   }
 
   const { data, error } = await supabase
