@@ -67,7 +67,7 @@ export default function CallingScriptsPage() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-amber-500/20">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-orange-600/20">
             <FileText className="h-6 w-6 text-primary" />
           </div>
           <div>
@@ -75,7 +75,7 @@ export default function CallingScriptsPage() {
             <p className="text-muted-foreground">Pre-written scripts for different sales scenarios</p>
           </div>
         </div>
-        <Button className="bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90">
+        <Button className="bg-gradient-to-r from-primary to-orange-700 hover:from-primary/90 hover:to-orange-700/90">
           <Plus className="h-4 w-4 mr-2" />
           Add Script
         </Button>
@@ -91,8 +91,8 @@ export default function CallingScriptsPage() {
         {[
           { label: "Total Scripts", value: callingScripts.length, icon: FileText, color: "text-primary" },
           { label: "Categories", value: categories.length - 1, icon: BookOpen, color: "text-blue-600" },
-          { label: "Most Used", value: "Cold Call", icon: Phone, color: "text-green-600" },
-          { label: "Success Rate", value: "78%", icon: Star, color: "text-amber-600" },
+          { label: "Most Used", value: "None", icon: Phone, color: "text-green-600" },
+          { label: "Success Rate", value: "0%", icon: Star, color: "text-primary" },
         ].map((stat) => (
           <Card key={stat.label} className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4">
@@ -260,15 +260,15 @@ export default function CallingScriptsPage() {
                     </div>
 
                     {selectedScript.tips && selectedScript.tips.length > 0 && (
-                      <div className="mt-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                      <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
                         <h4 className="font-medium text-foreground flex items-center gap-2 mb-3">
-                          <Sparkles className="h-4 w-4 text-amber-500" />
+                          <Sparkles className="h-4 w-4 text-primary" />
                           Pro Tips
                         </h4>
                         <ul className="space-y-2">
                           {selectedScript.tips.map((tip, index) => (
                             <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                              <span className="text-amber-500 mt-1">•</span>
+                              <span className="text-primary mt-1">•</span>
                               {tip}
                             </li>
                           ))}

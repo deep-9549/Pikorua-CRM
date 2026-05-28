@@ -60,13 +60,13 @@ const CONFIGURATIONS = ["3 BHK", "4 BHK", "Penthouse", "Villa", "Plot", "Other"]
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>{label}</Label>
+      <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>{label}</Label>
       <input
         type="date"
         value={value}
         onChange={e => onChange(e.target.value)}
         className="flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm transition-colors bg-transparent"
-        style={{ borderColor: "var(--color-border)", color: "oklch(0.88 0.006 80)" }}
+        style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
       />
     </div>
   )
@@ -145,7 +145,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: "oklch(0.700 0.130 75)" }} />
+        <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--color-primary)" }} />
       </div>
     )
   }
@@ -153,7 +153,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (!lead) {
     return (
       <div className="text-center py-20">
-        <p className="text-sm" style={{ color: "oklch(0.55 0.006 260)" }}>Lead not found</p>
+        <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Lead not found</p>
         <Button variant="outline" size="sm" className="mt-4" onClick={() => router.back()}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
@@ -174,15 +174,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* ── Section A: Meta lead info (read-only) ── */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="shadow-card" style={{ borderColor: "oklch(0.700 0.130 75 / 0.3)" }}>
+        <Card className="shadow-card" style={{ borderColor: "rgb(194 65 12 / 0.3)" }}>
           <CardHeader className="pb-3">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl gold-gradient flex items-center justify-center text-base font-bold shrink-0"
-                style={{ color: "oklch(0.10 0.010 260)" }}>
+                style={{ color: "var(--color-primary-foreground)" }}>
                 {(lead.full_name ?? "?").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)}
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold" style={{ color: "oklch(0.92 0.006 80)" }}>
+                <h2 className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>
                   {lead.full_name ?? "Unknown"}
                 </h2>
                 {lead.campaign_name && (
@@ -197,31 +197,31 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <a href={`tel:${lead.phone}`}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-white/5"
                   style={{ border: "1px solid var(--color-border)" }}>
-                  <Phone className="w-4 h-4 shrink-0" style={{ color: "oklch(0.700 0.130 75)" }} />
-                  <span className="text-sm" style={{ color: "oklch(0.88 0.006 80)" }}>{lead.phone}</span>
+                  <Phone className="w-4 h-4 shrink-0" style={{ color: "var(--color-primary)" }} />
+                  <span className="text-sm" style={{ color: "var(--color-foreground)" }}>{lead.phone}</span>
                 </a>
               )}
               {lead.email && (
                 <a href={`mailto:${lead.email}`}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors hover:bg-white/5"
                   style={{ border: "1px solid var(--color-border)" }}>
-                  <Mail className="w-4 h-4 shrink-0" style={{ color: "oklch(0.700 0.130 75)" }} />
-                  <span className="text-sm truncate" style={{ color: "oklch(0.88 0.006 80)" }}>{lead.email}</span>
+                  <Mail className="w-4 h-4 shrink-0" style={{ color: "var(--color-primary)" }} />
+                  <span className="text-sm truncate" style={{ color: "var(--color-foreground)" }}>{lead.email}</span>
                 </a>
               )}
             </div>
             <div className="flex flex-wrap gap-3 pt-1">
               {lead.city && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.55 0.006 260)" }}>
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
                   <MapPin className="w-3.5 h-3.5" />{lead.city}
                 </span>
               )}
-              <span className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.55 0.006 260)" }}>
+              <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
                 <Calendar className="w-3.5 h-3.5" />
                 Received {new Date(lead.received_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               </span>
               {lead.assigned_to_profile && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.55 0.006 260)" }}>
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
                   <User className="w-3.5 h-3.5" />{lead.assigned_to_profile.full_name}
                 </span>
               )}
@@ -254,7 +254,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
             {/* Call status */}
             <div className="space-y-1.5">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Call Status</Label>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Call Status</Label>
               <Select
                 value={crm.call_status ?? ""}
                 onValueChange={v => setCrm(p => ({
@@ -284,7 +284,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 className="space-y-4"
               >
                 <div className="space-y-1.5">
-                  <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Site Visit Status</Label>
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Site Visit Status</Label>
                   <Select
                     value={crm.site_visit_status ?? ""}
                     onValueChange={v => setCrm(p => ({
@@ -330,7 +330,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
             {/* Buying status */}
             <div className="space-y-1.5">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Buying Status</Label>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Buying Status</Label>
               <Select
                 value={crm.buying_status ?? ""}
                 onValueChange={v => setCrm(p => ({ ...p, buying_status: v || null }))}
@@ -349,7 +349,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
             {/* Budget */}
             <div className="space-y-2">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Budget Range</Label>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Budget Range</Label>
               <div className="flex flex-wrap gap-2">
                 {BUDGET_RANGES.map(range => (
                   <button
@@ -358,13 +358,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     onClick={() => setCrm(p => ({ ...p, budget_range: p.budget_range === range ? null : range }))}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
                     style={crm.budget_range === range ? {
-                      background: "oklch(0.700 0.130 75 / 0.2)",
-                      color: "oklch(0.700 0.130 75)",
-                      border: "1px solid oklch(0.700 0.130 75 / 0.5)",
+                      background: "rgb(194 65 12 / 0.2)",
+                      color: "var(--color-primary)",
+                      border: "1px solid rgb(194 65 12 / 0.5)",
                     } : {
-                      background: "oklch(0.185 0.015 260)",
-                      color: "oklch(0.65 0.006 260)",
-                      border: "1px solid oklch(0.250 0.014 260)",
+                      background: "var(--color-muted)",
+                      color: "var(--color-muted-foreground)",
+                      border: "1px solid var(--color-border)",
                     }}
                   >
                     {range}
@@ -375,7 +375,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
             {/* Configuration */}
             <div className="space-y-2">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Configuration Needed</Label>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Configuration Needed</Label>
               <div className="flex flex-wrap gap-2">
                 {CONFIGURATIONS.map(cfg => {
                   const selected = (crm.configuration ?? []).includes(cfg)
@@ -386,13 +386,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       onClick={() => toggleConfig(cfg)}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
                       style={selected ? {
-                        background: "oklch(0.65 0.15 145 / 0.15)",
-                        color: "oklch(0.65 0.15 145)",
-                        border: "1px solid oklch(0.65 0.15 145 / 0.4)",
+                        background: "rgb(21 128 61 / 0.15)",
+                        color: "var(--color-success)",
+                        border: "1px solid rgb(21 128 61 / 0.4)",
                       } : {
-                        background: "oklch(0.185 0.015 260)",
-                        color: "oklch(0.65 0.006 260)",
-                        border: "1px solid oklch(0.250 0.014 260)",
+                        background: "var(--color-muted)",
+                        color: "var(--color-muted-foreground)",
+                        border: "1px solid var(--color-border)",
                       }}
                     >
                       {cfg}
@@ -411,12 +411,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
             {/* HWC */}
             <div className="space-y-2">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>HWC Rating</Label>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>HWC Rating</Label>
               <div className="flex gap-3">
                 {[
-                  { value: "hot", label: "Hot", icon: Flame, color: "oklch(0.75 0.18 35)", bg: "oklch(0.75 0.18 35 / 0.15)", border: "oklch(0.75 0.18 35 / 0.4)" },
-                  { value: "warm", label: "Warm", icon: Thermometer, color: "oklch(0.78 0.15 65)", bg: "oklch(0.78 0.15 65 / 0.15)", border: "oklch(0.78 0.15 65 / 0.4)" },
-                  { value: "cold", label: "Cold", icon: Snowflake, color: "oklch(0.65 0.15 250)", bg: "oklch(0.65 0.15 250 / 0.15)", border: "oklch(0.65 0.15 250 / 0.4)" },
+                  { value: "hot", label: "Hot", icon: Flame, color: "var(--color-destructive)", bg: "rgb(185 28 28 / 0.15)", border: "rgb(185 28 28 / 0.4)" },
+                  { value: "warm", label: "Warm", icon: Thermometer, color: "var(--color-warning)", bg: "rgb(217 119 6 / 0.15)", border: "rgb(217 119 6 / 0.4)" },
+                  { value: "cold", label: "Cold", icon: Snowflake, color: "var(--color-muted-foreground)", bg: "rgb(154 52 18 / 0.15)", border: "rgb(154 52 18 / 0.4)" },
                 ].map(({ value, label, icon: Icon, color, bg, border }) => {
                   const active = crm.hwc === value
                   return (
@@ -426,9 +426,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       onClick={() => setCrm(p => ({ ...p, hwc: p.hwc === value ? null : value }))}
                       className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
                       style={active ? { background: bg, color, border: `1px solid ${border}` } : {
-                        background: "oklch(0.185 0.015 260)",
-                        color: "oklch(0.50 0.008 260)",
-                        border: "1px solid oklch(0.250 0.014 260)",
+                        background: "var(--color-muted)",
+                        color: "var(--color-muted-foreground)",
+                        border: "1px solid var(--color-border)",
                       }}
                     >
                       <Icon className="w-4 h-4" />
@@ -441,7 +441,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
             {/* Remarks */}
             <div className="space-y-1.5">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Qualitative Remarks</Label>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Qualitative Remarks</Label>
               <Textarea
                 placeholder="Notes about this client..."
                 value={crm.remarks ?? ""}
@@ -455,7 +455,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               onClick={handleSave}
               disabled={saving}
               className="w-full h-10 font-semibold gold-gradient shadow-gold-sm"
-              style={{ color: "oklch(0.10 0.010 260)" }}
+              style={{ color: "var(--color-primary-foreground)" }}
             >
               {saving ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>

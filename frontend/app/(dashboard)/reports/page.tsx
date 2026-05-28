@@ -46,44 +46,21 @@ import {
   Legend
 } from "recharts"
 
-const monthlyData = [
-  { month: "Jan", leads: 145, conversions: 23, revenue: 12500000 },
-  { month: "Feb", leads: 178, conversions: 31, revenue: 18000000 },
-  { month: "Mar", leads: 203, conversions: 38, revenue: 22500000 },
-  { month: "Apr", leads: 189, conversions: 29, revenue: 19000000 },
-  { month: "May", leads: 234, conversions: 45, revenue: 28500000 },
-  { month: "Jun", leads: 267, conversions: 52, revenue: 32000000 },
-]
+const monthlyData: { month: string; leads: number; conversions: number; revenue: number }[] = []
 
-const sourceData = [
-  { name: "Meta Ads", value: 45, color: "#1877F2" },
-  { name: "Google Ads", value: 25, color: "#34A853" },
-  { name: "Referrals", value: 18, color: "hsl(var(--primary))" },
-  { name: "Direct", value: 12, color: "#8B5CF6" },
-]
+const sourceData: { name: string; value: number; color: string }[] = []
 
-const employeePerformance = [
-  { name: "Raj", leads: 45, conversions: 12 },
-  { name: "Priya", leads: 38, conversions: 10 },
-  { name: "Amit", leads: 32, conversions: 8 },
-  { name: "Neha", leads: 28, conversions: 7 },
-  { name: "Jitendra p.", leads: 24, conversions: 5 },
-]
+const employeePerformance: { name: string; leads: number; conversions: number }[] = []
 
-const propertyTypeData = [
-  { type: "Luxury Villa", count: 34, value: 45000000 },
-  { type: "Premium Apt", count: 56, value: 32000000 },
-  { type: "Penthouse", count: 12, value: 28000000 },
-  { type: "Commercial", count: 23, value: 18000000 },
-]
+const propertyTypeData: { type: string; count: number; value: number }[] = []
 
 export default function ReportsPage() {
   const [dateRange, setDateRange] = useState("6m")
 
   const formatValue = (value: number) => {
-    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)} Cr`
-    if (value >= 100000) return `₹${(value / 100000).toFixed(0)} L`
-    return `₹${value.toLocaleString()}`
+    if (value >= 10000000) return `Rs ${(value / 10000000).toFixed(1)} Cr`
+    if (value >= 100000) return `Rs ${(value / 100000).toFixed(0)} L`
+    return `Rs ${value.toLocaleString()}`
   }
 
   return (
@@ -95,7 +72,7 @@ export default function ReportsPage() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-amber-500/20">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-orange-600/20">
             <BarChart3 className="h-6 w-6 text-primary" />
           </div>
           <div>
@@ -130,10 +107,10 @@ export default function ReportsPage() {
         className="grid grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {[
-          { label: "Total Revenue", value: "₹1.32 Cr", change: "+18.5%", trend: "up", icon: DollarSign, color: "text-green-600" },
-          { label: "Total Leads", value: "1,216", change: "+24.2%", trend: "up", icon: Users, color: "text-blue-600" },
-          { label: "Conversions", value: "218", change: "+15.8%", trend: "up", icon: Target, color: "text-primary" },
-          { label: "Conversion Rate", value: "17.9%", change: "-2.1%", trend: "down", icon: TrendingUp, color: "text-amber-600" },
+          { label: "Total Revenue", value: "Rs 0", change: "0%", trend: "up", icon: DollarSign, color: "text-green-600" },
+          { label: "Total Leads", value: "0", change: "0%", trend: "up", icon: Users, color: "text-blue-600" },
+          { label: "Conversions", value: "0", change: "0%", trend: "up", icon: Target, color: "text-primary" },
+          { label: "Conversion Rate", value: "0%", change: "0%", trend: "up", icon: TrendingUp, color: "text-primary" },
         ].map((kpi) => (
           <Card key={kpi.label} className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4">
@@ -191,7 +168,7 @@ export default function ReportsPage() {
                     <YAxis 
                       stroke="hsl(var(--muted-foreground))" 
                       fontSize={12}
-                      tickFormatter={(value) => `₹${(value / 10000000).toFixed(1)}Cr`}
+                      tickFormatter={(value) => `ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${(value / 10000000).toFixed(1)}Cr`}
                     />
                     <Tooltip 
                       contentStyle={{ 

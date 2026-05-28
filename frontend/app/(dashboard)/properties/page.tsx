@@ -286,22 +286,11 @@ function PropertyDetailModal({
   const callScript = propertyCallScripts.find(s => s.propertyId === property.id)
   const appreciation = propertyAppreciations.find(a => a.propertyId === property.id)
   
-  // Generate default appreciation if none exists
   const defaultAppreciation = {
-    historicalRates: [
-      { year: 2020, rate: 6 },
-      { year: 2021, rate: 7.5 },
-      { year: 2022, rate: 8.5 },
-      { year: 2023, rate: 9.5 }
-    ],
-    projectedRates: [
-      { years: 3, estimatedValue: property.price * 1.25, appreciationPercent: 25 },
-      { years: 5, estimatedValue: property.price * 1.45, appreciationPercent: 45 },
-      { years: 10, estimatedValue: property.price * 2, appreciationPercent: 100 },
-      { years: 15, estimatedValue: property.price * 2.8, appreciationPercent: 180 }
-    ],
-    locationFactors: ['Prime location', 'Growing infrastructure', 'High demand area'],
-    investmentScore: 75 + Math.floor(Math.random() * 20)
+    historicalRates: [],
+    projectedRates: [],
+    locationFactors: [],
+    investmentScore: 0
   }
 
   const appreciationData = appreciation || defaultAppreciation
@@ -485,7 +474,7 @@ function PropertyDetailModal({
 
             <TabsContent value="appreciation" className="mt-4 space-y-6 data-[state=inactive]:hidden">
               {/* Investment Score */}
-              <div className="flex items-center gap-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-amber-500/10 border border-primary/20">
+              <div className="flex items-center gap-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-orange-600/10 border border-primary/20">
                 <div className="text-center">
                   <div className="text-4xl font-bold text-primary">{appreciationData.investmentScore}</div>
                   <div className="text-sm text-muted-foreground">Investment Score</div>
@@ -496,7 +485,7 @@ function PropertyDetailModal({
                   </p>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div 
-                      className="bg-gradient-to-r from-primary to-amber-500 h-2 rounded-full transition-all"
+                      className="bg-gradient-to-r from-primary to-orange-600 h-2 rounded-full transition-all"
                       style={{ width: `${appreciationData.investmentScore}%` }}
                     />
                   </div>
@@ -625,7 +614,7 @@ function PropertyDetailModal({
               </div>
 
               {/* Special Features */}
-              <div className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-amber-500/5 border border-primary/10">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-orange-600/5 border border-primary/10">
                 <h4 className="font-semibold mb-3">Why This Property Stands Out</h4>
                 <ul className="space-y-2">
                   <li className="flex items-start gap-2">
@@ -661,7 +650,7 @@ function PropertyDetailModal({
                   {/* Key Highlights */}
                   <div className="space-y-3">
                     <h3 className="font-semibold flex items-center gap-2">
-                      <Star className="w-4 h-4 text-amber-500" />
+                      <Star className="w-4 h-4 text-primary" />
                       Key Highlights to Mention
                     </h3>
                     <div className="space-y-2">

@@ -29,18 +29,11 @@ import {
 } from "recharts"
 import { bookings, leads, properties, employees } from "@/lib/data"
 
-const revenueData = [
-  { month: "Jan", revenue: 12500000, bookings: 8 },
-  { month: "Feb", revenue: 18000000, bookings: 12 },
-  { month: "Mar", revenue: 22500000, bookings: 15 },
-  { month: "Apr", revenue: 19000000, bookings: 13 },
-  { month: "May", revenue: 28500000, bookings: 19 },
-  { month: "Jun", revenue: 32000000, bookings: 22 },
-]
+const revenueData: { month: string; revenue: number; bookings: number }[] = []
 
 const statusConfig: Record<string, { color: string; icon: typeof CheckCircle2 }> = {
   confirmed: { color: "bg-green-500/10 text-green-600 border-green-500/20", icon: CheckCircle2 },
-  pending: { color: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: AlertCircle },
+  pending: { color: "bg-primary/10 text-primary border-primary/20", icon: AlertCircle },
   cancelled: { color: "bg-red-500/10 text-red-600 border-red-500/20", icon: XCircle },
 }
 
@@ -88,7 +81,7 @@ export default function BookingsPage() {
               <DialogHeader><DialogTitle>Create New Booking</DialogTitle><DialogDescription>Record a new property booking</DialogDescription></DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2"><Label>Select Lead</Label><Select><SelectTrigger><SelectValue placeholder="Choose a lead" /></SelectTrigger><SelectContent>{leads.map(lead => (<SelectItem key={lead.id} value={lead.id}>{lead.name} - {lead.phone}</SelectItem>))}</SelectContent></Select></div>
-                <div className="grid gap-2"><Label>Select Property</Label><Select><SelectTrigger><SelectValue placeholder="Choose a property" /></SelectTrigger><SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{p.name} - ₹{formatPrice(p.price)}</SelectItem>))}</SelectContent></Select></div>
+                <div className="grid gap-2"><Label>Select Property</Label><Select><SelectTrigger><SelectValue placeholder="Choose a property" /></SelectTrigger><SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{p.name} - Ã¢â€šÂ¹{formatPrice(p.price)}</SelectItem>))}</SelectContent></Select></div>
                 <div className="grid grid-cols-2 gap-4"><div className="grid gap-2"><Label>Booking Amount</Label><Input type="number" placeholder="Enter amount" /></div><div className="grid gap-2"><Label>Commission %</Label><Input type="number" placeholder="2.5" defaultValue="2.5" /></div></div>
                 <div className="grid gap-2"><Label>Payment Mode</Label><Select><SelectTrigger><SelectValue placeholder="Select payment mode" /></SelectTrigger><SelectContent><SelectItem value="bank">Bank Transfer</SelectItem><SelectItem value="cheque">Cheque</SelectItem><SelectItem value="cash">Cash</SelectItem></SelectContent></Select></div>
               </div>
@@ -101,10 +94,10 @@ export default function BookingsPage() {
       {/* Stats */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Revenue", value: `₹${formatPrice(totalRevenue)}`, icon: IndianRupee, color: "text-green-600", change: "+18.5%" },
-          { label: "Commission Earned", value: `₹${formatPrice(totalCommission)}`, icon: Percent, color: "text-primary", change: "+22.3%" },
-          { label: "Confirmed Bookings", value: confirmedBookings, icon: CheckCircle2, color: "text-blue-600", change: "+12%" },
-          { label: "Pending", value: pendingBookings, icon: Clock, color: "text-amber-600", change: "-5%" },
+          { label: "Total Revenue", value: `Rs ${formatPrice(totalRevenue)}`, icon: IndianRupee, color: "text-green-600", change: "0%" },
+          { label: "Commission Earned", value: `Rs ${formatPrice(totalCommission)}`, icon: Percent, color: "text-primary", change: "0%" },
+          { label: "Confirmed Bookings", value: confirmedBookings, icon: CheckCircle2, color: "text-blue-600", change: "0%" },
+          { label: "Pending", value: pendingBookings, icon: Clock, color: "text-primary", change: "0%" },
         ].map((stat) => (
           <Card key={stat.label} className="border-0 shadow-card bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4">
@@ -127,8 +120,8 @@ export default function BookingsPage() {
                   <defs><linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/><stop offset="95%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `₹${(v / 10000000).toFixed(1)}Cr`} />
-                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} formatter={(value: number) => [`₹${formatPrice(value)}`, "Revenue"]} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `Ã¢â€šÂ¹${(v / 10000000).toFixed(1)}Cr`} />
+                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} formatter={(value: number) => [`Ã¢â€šÂ¹${formatPrice(value)}`, "Revenue"]} />
                   <Area type="monotone" dataKey="revenue" stroke="#22c55e" fill="url(#colorRevenue)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -170,7 +163,7 @@ export default function BookingsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
-                          <div className="text-right"><p className="text-lg font-bold text-foreground">₹{formatPrice(booking.amount)}</p><p className="text-sm text-green-600">Commission: ₹{formatPrice(booking.commission)}</p></div>
+                          <div className="text-right"><p className="text-lg font-bold text-foreground">Ã¢â€šÂ¹{formatPrice(booking.amount)}</p><p className="text-sm text-green-600">Commission: Ã¢â€šÂ¹{formatPrice(booking.commission)}</p></div>
                           <Button variant="outline" size="sm" onClick={() => setDetailBooking(booking)}>Details<ChevronRight className="h-4 w-4 ml-1" /></Button>
                         </div>
                       </div>
@@ -208,8 +201,8 @@ export default function BookingsPage() {
                   <div className="p-6 space-y-6">
                     {/* Financial Summary */}
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 rounded-xl bg-green-500/5 border border-green-500/20 text-center"><p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Booking Amount</p><p className="text-2xl font-bold text-green-600">₹{formatPrice(detailBooking.amount)}</p></div>
-                      <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center"><p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Commission ({commissionPct}%)</p><p className="text-2xl font-bold text-primary">₹{formatPrice(detailBooking.commission)}</p></div>
+                      <div className="p-4 rounded-xl bg-green-500/5 border border-green-500/20 text-center"><p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Booking Amount</p><p className="text-2xl font-bold text-green-600">Ã¢â€šÂ¹{formatPrice(detailBooking.amount)}</p></div>
+                      <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center"><p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Commission ({commissionPct}%)</p><p className="text-2xl font-bold text-primary">Ã¢â€šÂ¹{formatPrice(detailBooking.commission)}</p></div>
                       <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center"><p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Booking Date</p><p className="text-2xl font-bold">{new Date(detailBooking.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p></div>
                     </div>
 
@@ -220,7 +213,7 @@ export default function BookingsPage() {
                         <CardContent className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div><p className="text-xs text-muted-foreground mb-1">Type</p><p className="font-medium capitalize">{property.type}</p></div>
-                            <div><p className="text-xs text-muted-foreground mb-1">Price per sqft</p><p className="font-medium">₹{property.pricePerSqft.toLocaleString()}</p></div>
+                            <div><p className="text-xs text-muted-foreground mb-1">Price per sqft</p><p className="font-medium">Ã¢â€šÂ¹{property.pricePerSqft.toLocaleString()}</p></div>
                             <div><p className="text-xs text-muted-foreground mb-1">Developer</p><p className="font-medium">{property.developer}</p></div>
                             <div><p className="text-xs text-muted-foreground mb-1">Completion</p><p className="font-medium">{property.completionDate}</p></div>
                           </div>
@@ -264,9 +257,9 @@ export default function BookingsPage() {
                           <div className="space-y-4">
                             {[
                               { label: "Booking Initiated", date: detailBooking.date, icon: FileText, color: "bg-blue-500/10 text-blue-600", detail: "Client expressed intent to book" },
-                              { label: "Token Amount Received", date: detailBooking.date, icon: IndianRupee, color: "bg-green-500/10 text-green-600", detail: `₹${formatPrice(detailBooking.amount * 0.1)} token received` },
+                              { label: "Token Amount Received", date: detailBooking.date, icon: IndianRupee, color: "bg-green-500/10 text-green-600", detail: `Ã¢â€šÂ¹${formatPrice(detailBooking.amount * 0.1)} token received` },
                               { label: "Agreement Signed", date: detailBooking.date, icon: FileText, color: "bg-purple-500/10 text-purple-600", detail: "Sale agreement executed" },
-                              { label: detailBooking.status === "confirmed" ? "Booking Confirmed" : detailBooking.status === "pending" ? "Awaiting Confirmation" : "Booking Cancelled", date: detailBooking.date, icon: detailBooking.status === "confirmed" ? CheckCircle2 : detailBooking.status === "pending" ? Clock : XCircle, color: detailBooking.status === "confirmed" ? "bg-green-500/10 text-green-600" : detailBooking.status === "pending" ? "bg-amber-500/10 text-amber-600" : "bg-red-500/10 text-red-600", detail: detailBooking.status === "confirmed" ? "Full payment completed" : detailBooking.status === "pending" ? "Awaiting remaining payment" : "Booking was cancelled" },
+                              { label: detailBooking.status === "confirmed" ? "Booking Confirmed" : detailBooking.status === "pending" ? "Awaiting Confirmation" : "Booking Cancelled", date: detailBooking.date, icon: detailBooking.status === "confirmed" ? CheckCircle2 : detailBooking.status === "pending" ? Clock : XCircle, color: detailBooking.status === "confirmed" ? "bg-green-500/10 text-green-600" : detailBooking.status === "pending" ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-600", detail: detailBooking.status === "confirmed" ? "Full payment completed" : detailBooking.status === "pending" ? "Awaiting remaining payment" : "Booking was cancelled" },
                             ].map((event, idx) => {
                               const Icon = event.icon
                               return (

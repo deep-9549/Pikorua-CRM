@@ -21,7 +21,7 @@ import {
   XAxis, YAxis, Tooltip, CartesianGrid
 } from "recharts"
 
-/* ── Animation variants ──────────────────────────────── */
+/* â”€â”€ Animation variants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const fade = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.06 } }
@@ -31,7 +31,7 @@ const rise = {
   show:   { opacity: 1, y: 0, transition: { duration: 0.45 } }
 }
 
-/* ── Stat Card ─────────────────────────────────────────── */
+/* â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 interface StatCardProps {
   title: string
   value: string
@@ -77,7 +77,7 @@ function StatCard({ title, value, change, trend, icon: Icon, iconBg, iconColor, 
   )
 }
 
-/* ── Revenue Chart ─────────────────────────────────────── */
+/* â”€â”€ Revenue Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function RevenueChart() {
   return (
     <motion.div variants={rise}>
@@ -97,15 +97,15 @@ function RevenueChart() {
               <AreaChart data={revenueData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.660 0.120 75)" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="oklch(0.660 0.120 75)" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.900 0.012 80)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                 <XAxis dataKey="month" axisLine={false} tickLine={false}
-                  tick={{ fill: "oklch(0.52 0.008 260)", fontSize: 11 }} />
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
                 <YAxis axisLine={false} tickLine={false}
-                  tick={{ fill: "oklch(0.52 0.008 260)", fontSize: 11 }}
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
                   tickFormatter={v => `${(v / 10000000).toFixed(0)}Cr`} />
                 <Tooltip content={({ active, payload }) => {
                   if (!active || !payload?.length) return null
@@ -118,7 +118,7 @@ function RevenueChart() {
                   )
                 }} />
                 <Area type="monotone" dataKey="revenue"
-                  stroke="oklch(0.660 0.120 75)" strokeWidth={2.5}
+                  stroke="var(--color-primary)" strokeWidth={2.5}
                   fill="url(#revGrad)" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
@@ -129,7 +129,7 @@ function RevenueChart() {
   )
 }
 
-/* ── Leads Chart ───────────────────────────────────────── */
+/* â”€â”€ Leads Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function LeadsChart() {
   return (
     <motion.div variants={rise}>
@@ -146,15 +146,15 @@ function LeadsChart() {
               <AreaChart data={revenueData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="oklch(0.580 0.130 180)" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="oklch(0.580 0.130 180)" stopOpacity={0.0}/>
+                    <stop offset="5%" stopColor="var(--color-muted-foreground)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--color-muted-foreground)" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.900 0.012 80)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                 <XAxis dataKey="month" axisLine={false} tickLine={false}
-                  tick={{ fill: "oklch(0.52 0.008 260)", fontSize: 11 }} />
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
                 <YAxis axisLine={false} tickLine={false}
-                  tick={{ fill: "oklch(0.52 0.008 260)", fontSize: 11 }} />
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
                 <Tooltip content={({ active, payload }) => {
                   if (!active || !payload?.length) return null
                   return (
@@ -164,7 +164,7 @@ function LeadsChart() {
                     </div>
                   )
                 }} />
-                <Area type="monotone" dataKey="leads" stroke="oklch(0.580 0.130 180)" fill="url(#colorLeads)" strokeWidth={2} />
+                <Area type="monotone" dataKey="leads" stroke="var(--color-muted-foreground)" fill="url(#colorLeads)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -174,7 +174,7 @@ function LeadsChart() {
   )
 }
 
-/* ── Recent Leads ─────────────────────────────────────── */
+/* â”€â”€ Recent Leads â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function RecentLeads() {
   const recent = leads.slice(0, 5)
   return (
@@ -208,7 +208,7 @@ function RecentLeads() {
                     </span>
                   </div>
                   <p className="text-[11px] text-muted-foreground truncate">
-                    {lead.propertyInterest.join(", ")} · {lead.location}
+                    {lead.propertyInterest.join(", ")} Â· {lead.location}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -227,7 +227,7 @@ function RecentLeads() {
   )
 }
 
-/* ── Team Leaderboard ─────────────────────────────────── */
+/* â”€â”€ Team Leaderboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function TeamLeaderboard() {
   const sorted = [...employees].sort((a, b) => b.revenue - a.revenue).slice(0, 5)
   const medals = ["gold-text", "text-platinum", "text-chart-5", "text-muted-foreground", "text-muted-foreground"]
@@ -272,7 +272,7 @@ function TeamLeaderboard() {
   )
 }
 
-/* ── Upcoming Visits ──────────────────────────────────── */
+/* â”€â”€ Upcoming Visits â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function UpcomingVisits() {
   const visits = siteVisits.filter(v => v.status === "scheduled").slice(0, 4)
   return (
@@ -292,11 +292,11 @@ function UpcomingVisits() {
             <div key={v.id}
               className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer">
               <div className="w-11 h-11 rounded-xl flex flex-col items-center justify-center shrink-0"
-                style={{ background: "oklch(0.660 0.120 75 / 0.08)", border: "1px solid oklch(0.660 0.120 75 / 0.15)" }}>
-                <span className="text-[16px] font-bold leading-none" style={{ color: "oklch(0.660 0.120 75)" }}>
+                style={{ background: "rgb(194 65 12 / 0.08)", border: "1px solid rgb(194 65 12 / 0.15)" }}>
+                <span className="text-[16px] font-bold leading-none" style={{ color: "var(--color-primary)" }}>
                   {v.scheduledDate.getDate()}
                 </span>
-                <span className="text-[9px] uppercase tracking-wide" style={{ color: "oklch(0.660 0.120 75)" }}>
+                <span className="text-[9px] uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
                   {v.scheduledDate.toLocaleDateString("en-US", { month: "short" })}
                 </span>
               </div>
@@ -315,25 +315,9 @@ function UpcomingVisits() {
   )
 }
 
-/* ── AI Insights ──────────────────────────────────────── */
+/* â”€â”€ AI Insights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function AIInsights() {
-  const insights = [
-    {
-      title: "Hot Lead Alert",
-      body: "Arjun Mehta shows 92% conversion probability. Recommend immediate follow-up.",
-      type: "hot", Icon: Flame
-    },
-    {
-      title: "Revenue Forecast",
-      body: "Projected ₹3.2 Cr additional revenue this quarter based on pipeline depth.",
-      type: "up", Icon: TrendingUp
-    },
-    {
-      title: "Engagement Gap",
-      body: "5 leads haven't been contacted in 7+ days. Schedule follow-ups now.",
-      type: "warn", Icon: Clock
-    }
-  ]
+  const insights: { title: string; body: string; type: "hot" | "up" | "warn"; Icon: typeof Flame }[] = []
   const colors: Record<string, { bg: string; color: string }> = {
     hot:  { bg: "bg-destructive/8",  color: "text-destructive" },
     up:   { bg: "bg-success/8",      color: "text-success" },
@@ -343,10 +327,10 @@ function AIInsights() {
   return (
     <motion.div variants={rise}>
       <Card className="shadow-card border-0"
-        style={{ background: "linear-gradient(160deg, oklch(0.660 0.120 75 / 0.04) 0%, transparent 60%)" }}>
+        style={{ background: "linear-gradient(160deg, rgb(194 65 12 / 0.04) 0%, transparent 60%)" }}>
         <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-5 px-5">
           <div className="w-8 h-8 rounded-xl gold-gradient flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4 text-[oklch(0.10_0.010_260)]" />
+            <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
           <div>
             <CardTitle className="text-[15px] font-semibold tracking-tight">AI Insights</CardTitle>
@@ -354,6 +338,11 @@ function AIInsights() {
           </div>
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-1 space-y-1.5">
+          {insights.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+              Insights will appear here once real CRM activity is available.
+            </div>
+          )}
           {insights.map((ins, i) => {
             const c = colors[ins.type]
             return (
@@ -375,7 +364,7 @@ function AIInsights() {
   )
 }
 
-/* ── Page ─────────────────────────────────────────────── */
+/* â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function DashboardPage() {
   const now = new Date()
   const hour = now.getHours()
@@ -391,7 +380,7 @@ export default function DashboardPage() {
             {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </p>
           <h1 className="text-[28px] font-bold tracking-tight text-balance">
-            {greeting}, Jitendra p.
+            {greeting}
           </h1>
           <p className="text-[13px] text-muted-foreground mt-1">
             Here&apos;s your portfolio snapshot for today.
@@ -400,9 +389,9 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2 mt-1">
           <Button variant="outline" size="sm" className="h-8 gap-2 text-[13px]">
             <Calendar className="w-3.5 h-3.5" />
-            Jan 2024
+            Today
           </Button>
-          <Button size="sm" className="h-8 gap-2 text-[13px] gold-gradient text-[oklch(0.10_0.010_260)] border-0 shadow-gold-sm font-semibold">
+          <Button size="sm" className="h-8 gap-2 text-[13px] gold-gradient text-primary-foreground border-0 shadow-gold-sm font-semibold">
             <Target className="w-3.5 h-3.5" />
             View Targets
           </Button>

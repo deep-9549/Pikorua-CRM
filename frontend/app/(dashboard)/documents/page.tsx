@@ -77,143 +77,11 @@ interface Document {
   description?: string
 }
 
-const mockDocuments: Document[] = [
-  {
-    id: "doc-1",
-    name: "Azure Heights Penthouse - Brochure.pdf",
-    type: "pdf",
-    category: "brochure",
-    size: "12.4 MB",
-    uploadedBy: "Rajesh Sharma",
-    uploadedAt: new Date("2024-01-10"),
-    lastModified: new Date("2024-01-14"),
-    tags: ["penthouse", "bandra", "luxury"],
-    starred: true,
-    linkedProperty: "Azure Heights Penthouse",
-    description: "Premium brochure for Azure Heights featuring floor plans, amenities, and pricing."
-  },
-  {
-    id: "doc-2",
-    name: "Worli Residency - Sale Agreement Draft.docx",
-    type: "doc",
-    category: "agreement",
-    size: "2.1 MB",
-    uploadedBy: "Priya Patel",
-    uploadedAt: new Date("2024-01-12"),
-    lastModified: new Date("2024-01-15"),
-    tags: ["agreement", "worli", "draft"],
-    starred: false,
-    linkedProperty: "Worli Sea Face Residency",
-    linkedLead: "Kavita Desai"
-  },
-  {
-    id: "doc-3",
-    name: "Q4 2023 Revenue Report.xlsx",
-    type: "spreadsheet",
-    category: "report",
-    size: "5.8 MB",
-    uploadedBy: "Jitendra p.",
-    uploadedAt: new Date("2024-01-05"),
-    lastModified: new Date("2024-01-05"),
-    tags: ["quarterly", "revenue", "analytics"],
-    starred: true,
-    description: "Comprehensive quarterly revenue breakdown with projections."
-  },
-  {
-    id: "doc-4",
-    name: "Juhu Villa - Virtual Tour.mp4",
-    type: "video",
-    category: "marketing",
-    size: "145 MB",
-    uploadedBy: "Ananya Gupta",
-    uploadedAt: new Date("2024-01-08"),
-    lastModified: new Date("2024-01-08"),
-    tags: ["virtual-tour", "juhu", "villa"],
-    starred: false,
-    linkedProperty: "Juhu Beach Villa"
-  },
-  {
-    id: "doc-5",
-    name: "HNI Client Portfolio Analysis.pdf",
-    type: "pdf",
-    category: "report",
-    size: "8.3 MB",
-    uploadedBy: "Jitendra p.",
-    uploadedAt: new Date("2024-01-13"),
-    lastModified: new Date("2024-01-15"),
-    tags: ["hni", "portfolio", "analysis"],
-    starred: true,
-    description: "Detailed analysis of HNI client portfolios and investment patterns."
-  },
-  {
-    id: "doc-6",
-    name: "Property Tax Invoice - Jan 2024.pdf",
-    type: "pdf",
-    category: "invoice",
-    size: "1.2 MB",
-    uploadedBy: "Sneha Reddy",
-    uploadedAt: new Date("2024-01-02"),
-    lastModified: new Date("2024-01-02"),
-    tags: ["invoice", "tax", "monthly"],
-    starred: false
-  },
-  {
-    id: "doc-7",
-    name: "Meta Ads Campaign Strategy 2024.pptx",
-    type: "doc",
-    category: "presentation",
-    size: "18.5 MB",
-    uploadedBy: "Amit Kumar",
-    uploadedAt: new Date("2024-01-11"),
-    lastModified: new Date("2024-01-14"),
-    tags: ["meta-ads", "strategy", "2024"],
-    starred: false,
-    description: "Annual digital marketing strategy and campaign plan."
-  },
-  {
-    id: "doc-8",
-    name: "RERA Compliance Checklist.pdf",
-    type: "pdf",
-    category: "legal",
-    size: "3.4 MB",
-    uploadedBy: "Rajesh Sharma",
-    uploadedAt: new Date("2024-01-09"),
-    lastModified: new Date("2024-01-09"),
-    tags: ["rera", "compliance", "legal"],
-    starred: true,
-    description: "Updated RERA compliance requirements and checklist for all properties."
-  },
-  {
-    id: "doc-9",
-    name: "Alibaug Farmhouse - Site Photos.zip",
-    type: "image",
-    category: "marketing",
-    size: "67 MB",
-    uploadedBy: "Rajesh Sharma",
-    uploadedAt: new Date("2024-01-14"),
-    lastModified: new Date("2024-01-14"),
-    tags: ["photos", "alibaug", "farmhouse"],
-    starred: false,
-    linkedProperty: "Alibaug Luxury Farmhouse"
-  },
-  {
-    id: "doc-10",
-    name: "Commission Structure - Updated.xlsx",
-    type: "spreadsheet",
-    category: "legal",
-    size: "890 KB",
-    uploadedBy: "Jitendra p.",
-    uploadedAt: new Date("2024-01-07"),
-    lastModified: new Date("2024-01-12"),
-    tags: ["commission", "structure", "policy"],
-    starred: false,
-    description: "Updated commission structure for all team members."
-  }
-]
+const initialDocuments: Document[] = []
 
 const categoryConfig: Record<string, { color: string; label: string }> = {
   brochure:     { color: "bg-blue-500/10 text-blue-600 border-blue-500/20", label: "Brochure" },
-  agreement:    { color: "bg-amber-500/10 text-amber-600 border-amber-500/20", label: "Agreement" },
+  agreement:    { color: "bg-primary/10 text-primary border-primary/20", label: "Agreement" },
   invoice:      { color: "bg-green-500/10 text-green-600 border-green-500/20", label: "Invoice" },
   report:       { color: "bg-purple-500/10 text-purple-600 border-purple-500/20", label: "Report" },
   presentation: { color: "bg-pink-500/10 text-pink-600 border-pink-500/20", label: "Presentation" },
@@ -248,7 +116,7 @@ export default function DocumentsPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null)
-  const [docs, setDocs] = useState(mockDocuments)
+  const [docs, setDocs] = useState(initialDocuments)
 
   const toggleStar = (id: string) => {
     setDocs(docs.map(d => d.id === id ? { ...d, starred: !d.starred } : d))
@@ -275,7 +143,7 @@ export default function DocumentsPage() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-amber-500/20">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-orange-600/20">
             <FileSpreadsheet className="h-6 w-6 text-primary" />
           </div>
           <div>
@@ -290,7 +158,7 @@ export default function DocumentsPage() {
           </Button>
           <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 shadow-gold-sm border-0">
+              <Button className="bg-gradient-to-r from-primary to-orange-700 hover:from-primary/90 hover:to-orange-700/90 shadow-gold-sm border-0">
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Document
               </Button>
@@ -339,7 +207,7 @@ export default function DocumentsPage() {
                   Cancel
                 </Button>
                 <Button
-                  className="bg-gradient-to-r from-primary to-amber-600 border-0"
+                  className="bg-gradient-to-r from-primary to-orange-700 border-0"
                   onClick={() => setUploadDialogOpen(false)}
                 >
                   <Upload className="w-4 h-4 mr-2" />
@@ -360,9 +228,9 @@ export default function DocumentsPage() {
       >
         {[
           { label: "Total Documents", value: docs.length, icon: FileText, color: "text-primary" },
-          { label: "Starred", value: starredCount, icon: Star, color: "text-amber-500" },
+          { label: "Starred", value: starredCount, icon: Star, color: "text-primary" },
           { label: "Storage Used", value: totalSize, icon: FolderOpen, color: "text-blue-600" },
-          { label: "Recent Uploads", value: 4, icon: Clock, color: "text-green-600" },
+          { label: "Recent Uploads", value: 0, icon: Clock, color: "text-green-600" },
         ].map((stat) => (
           <Card key={stat.label} className="border-border/50 bg-card/50 backdrop-blur-sm shadow-card border-0">
             <CardContent className="p-4">
@@ -484,7 +352,7 @@ export default function DocumentsPage() {
                               onClick={() => toggleStar(doc.id)}
                             >
                               {doc.starred
-                                ? <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                                ? <Star className="h-4 w-4 text-primary fill-primary" />
                                 : <StarOff className="h-4 w-4 text-muted-foreground" />
                               }
                             </Button>
@@ -552,7 +420,7 @@ export default function DocumentsPage() {
                   </div>
                   <div>
                     <DialogTitle className="text-lg">{previewDoc.name}</DialogTitle>
-                    <DialogDescription>{previewDoc.size} · {previewDoc.type.toUpperCase()}</DialogDescription>
+                    <DialogDescription>{previewDoc.size} Â· {previewDoc.type.toUpperCase()}</DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
@@ -605,7 +473,7 @@ export default function DocumentsPage() {
                 <Button variant="outline" className="flex-1">
                   <Share2 className="w-4 h-4 mr-2" /> Share
                 </Button>
-                <Button className="flex-1 bg-gradient-to-r from-primary to-amber-600 border-0">
+                <Button className="flex-1 bg-gradient-to-r from-primary to-orange-700 border-0">
                   <Download className="w-4 h-4 mr-2" /> Download
                 </Button>
               </div>

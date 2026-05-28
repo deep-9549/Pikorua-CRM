@@ -30,7 +30,7 @@ import {
 function sentimentMeta(s: "hot" | "warm" | "neutral" | "cold") {
   return {
     hot:     { label: "Hot",     icon: Flame,        bg: "bg-rose-500/10",   text: "text-rose-500",   bar: "85%" },
-    warm:    { label: "Warm",    icon: ThermometerSun, bg: "bg-amber-500/10", text: "text-amber-500",  bar: "65%" },
+    warm:    { label: "Warm",    icon: ThermometerSun, bg: "bg-primary/10", text: "text-primary",  bar: "65%" },
     neutral: { label: "Neutral", icon: Minus,         bg: "bg-muted",        text: "text-muted-foreground", bar: "40%" },
     cold:    { label: "Cold",    icon: Snowflake,     bg: "bg-blue-500/10",  text: "text-blue-500",   bar: "15%" },
   }[s]
@@ -40,7 +40,7 @@ function trendMeta(t: string) {
   const m: Record<string, { icon: React.ElementType; color: string; label: string }> = {
     heating_up:   { icon: TrendingUp,    color: "text-emerald-500", label: "Heating Up" },
     cooling_down: { icon: TrendingDown,  color: "text-rose-500",    label: "Cooling Down" },
-    critical:     { icon: AlertTriangle, color: "text-amber-500",   label: "Critical" },
+    critical:     { icon: AlertTriangle, color: "text-primary",   label: "Critical" },
     stable:       { icon: Minus,         color: "text-muted-foreground", label: "Stable" },
   }
   return m[t] ?? m.stable
@@ -92,7 +92,7 @@ export default function WhatsAppHubPage() {
             style={{ borderBottom: "1px solid var(--color-border)" }}>
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl gold-gradient flex items-center justify-center shadow-gold-sm shrink-0">
-                <span className="text-[11px] font-bold" style={{ color: "oklch(0.10 0.010 260)" }}>PR</span>
+                <span className="text-[11px] font-bold" style={{ color: "var(--color-primary-foreground)" }}>PR</span>
               </div>
               <div>
                 <p className="text-[13px] font-semibold leading-tight">Pikorua Realty</p>
@@ -122,7 +122,7 @@ export default function WhatsAppHubPage() {
 
           {/* Filter pills */}
           <div className="px-3 py-2 flex gap-1.5 shrink-0">
-            <button className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all gold-gradient text-[oklch(0.10_0.010_260)]">
+            <button className="px-3 py-1 rounded-full text-[11px] font-semibold transition-all gold-gradient text-primary-foreground">
               All
             </button>
             <button className="px-3 py-1 rounded-full text-[11px] font-medium border border-border text-muted-foreground hover:bg-muted transition-all">
@@ -271,15 +271,15 @@ export default function WhatsAppHubPage() {
             {/* Messages area */}
             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-luxury px-[6%] py-5 space-y-1"
               style={{
-                background: "oklch(0.965 0.008 80)",
+                background: "var(--color-muted)",
                 backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c8b89a' fill-opacity='0.12'%3E%3Cpath d='M20 18v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-18V0h-2v2h-4v2h4v4h2V4h4V2h-4zM0 18v-4H-2v4h-4v2h4v4h2v-4h4v-2H0zM0 0v2h2V0H0z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
               }}>
 
               {/* Date pill */}
               <div className="flex justify-center mb-4">
                 <span className="text-[11px] font-medium px-3 py-1 rounded-full shadow-sm"
-                  style={{ background: "var(--color-card)", color: "oklch(0.52 0.008 260)" }}>
-                  January 15, 2024
+                  style={{ background: "var(--color-card)", color: "var(--color-muted-foreground)" }}>
+                  Conversation history
                 </span>
               </div>
 
@@ -297,7 +297,7 @@ export default function WhatsAppHubPage() {
                       {showJoin && emp && (
                         <div className="flex justify-center my-2">
                           <span className="text-[11px] px-3 py-1 rounded-full font-medium shadow-sm"
-                            style={{ background: "oklch(0.700 0.120 75 / 0.12)", color: "oklch(0.580 0.105 72)" }}>
+                            style={{ background: "rgb(194 65 12 / 0.12)", color: "var(--color-primary)" }}>
                             {emp.name} is handling this conversation
                           </span>
                         </div>
@@ -316,13 +316,13 @@ export default function WhatsAppHubPage() {
                         )}
                           style={{
                             background: isOut
-                              ? "oklch(0.910 0.035 130)"  /* light sage green */
+                              ? "rgb(21 128 61 / 0.10)"  /* light sage green */
                               : "var(--color-card)",
                           }}>
                           {/* Employee name */}
                           {isOut && emp && (
                             <p className="text-[11px] font-semibold mb-0.5"
-                              style={{ color: "oklch(0.50 0.095 72)" }}>
+                              style={{ color: "var(--color-primary)" }}>
                               {emp.name}
                             </p>
                           )}
@@ -330,7 +330,7 @@ export default function WhatsAppHubPage() {
                           {/* Content */}
                           {msg.type === "document" ? (
                             <div className="flex items-center gap-2.5 rounded-xl p-2.5 mb-1"
-                              style={{ background: "oklch(0.95 0.006 80)" }}>
+                              style={{ background: "var(--color-muted)" }}>
                               <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                                 <FileText className="w-4.5 h-4.5 text-primary" style={{ width: 18, height: 18 }} />
                               </div>
@@ -347,7 +347,7 @@ export default function WhatsAppHubPage() {
 
                           {/* Timestamp + status */}
                           <div className={cn("flex items-center justify-end gap-1 mt-1",
-                            isOut ? "text-[oklch(0.52_0.020_130)]" : "text-muted-foreground")}>
+                            isOut ? "text-success" : "text-muted-foreground")}>
                             <span className="text-[10px]">
                               {msg.timestamp.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                             </span>
@@ -399,7 +399,7 @@ export default function WhatsAppHubPage() {
               }}>
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-luxury pb-0.5">
                 <div className="flex items-center gap-1 px-2.5 py-1 rounded-full shrink-0"
-                  style={{ background: "oklch(0.660 0.120 75 / 0.08)", color: "oklch(0.580 0.105 72)" }}>
+                  style={{ background: "rgb(194 65 12 / 0.08)", color: "var(--color-primary)" }}>
                   <Sparkles className="w-3 h-3" />
                   <span className="text-[10px] font-semibold">AI</span>
                 </div>
@@ -417,7 +417,7 @@ export default function WhatsAppHubPage() {
             <div className="flex items-center gap-2 px-4 py-3 shrink-0"
               style={{
                 background: "var(--color-card)",
-                borderTop: "1px solid oklch(0.900 0.012 80 / 0.5)"
+                borderTop: "1px solid rgb(222 217 211 / 0.5)"
               }}>
               <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
                 <Smile className="w-5 h-5 text-muted-foreground" />
@@ -434,7 +434,7 @@ export default function WhatsAppHubPage() {
               />
               <Button size="icon"
                 className={cn("h-9 w-9 rounded-xl shrink-0 transition-all border-0",
-                  message ? "gold-gradient shadow-gold-sm text-[oklch(0.10_0.010_260)]" : "bg-muted text-muted-foreground"
+                  message ? "gold-gradient shadow-gold-sm text-primary-foreground" : "bg-muted text-muted-foreground"
                 )}>
                 {message ? <Send className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
               </Button>
@@ -444,10 +444,10 @@ export default function WhatsAppHubPage() {
         ) : (
           /* Empty state */
           <div className="flex-1 hidden md:flex flex-col items-center justify-center"
-            style={{ background: "oklch(0.965 0.008 80)" }}>
+            style={{ background: "var(--color-muted)" }}>
             <div className="text-center max-w-xs">
               <div className="w-16 h-16 rounded-2xl gold-gradient mx-auto mb-5 flex items-center justify-center shadow-gold">
-                <Bot className="w-8 h-8 text-[oklch(0.10_0.010_260)]" />
+                <Bot className="w-8 h-8 text-primary-foreground" />
               </div>
               <h2 className="text-[22px] font-bold tracking-tight mb-2">WhatsApp Hub</h2>
               <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">
@@ -472,7 +472,7 @@ export default function WhatsAppHubPage() {
             <div className="px-4 py-3.5 shrink-0 flex items-center gap-2.5"
               style={{ borderBottom: "1px solid var(--color-border)" }}>
               <div className="w-7 h-7 rounded-lg gold-gradient flex items-center justify-center">
-                <Bot className="w-3.5 h-3.5 text-[oklch(0.10_0.010_260)]" />
+                <Bot className="w-3.5 h-3.5 text-primary-foreground" />
               </div>
               <p className="text-[13px] font-semibold">AI Insights</p>
             </div>
@@ -490,7 +490,7 @@ export default function WhatsAppHubPage() {
                         Lead Temperature
                       </p>
                       <div className="relative h-2 rounded-full mb-2.5 overflow-hidden"
-                        style={{ background: "linear-gradient(90deg, oklch(0.620 0.130 240) 0%, oklch(0.760 0.145 65) 40%, oklch(0.590 0.180 25) 100%)" }}>
+                        style={{ background: "linear-gradient(90deg, var(--color-muted-foreground) 0%, var(--color-warning) 40%, var(--color-destructive) 100%)" }}>
                         <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-card border-2 border-primary shadow-gold-sm transition-all duration-500"
                           style={{ left: sm.bar }} />
                       </div>
@@ -601,7 +601,7 @@ export default function WhatsAppHubPage() {
             style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}
           >
             <div className="w-6 h-6 rounded-full gold-gradient flex items-center justify-center shrink-0">
-              <Check className="w-3 h-3 text-[oklch(0.10_0.010_260)]" />
+              <Check className="w-3 h-3 text-primary-foreground" />
             </div>
             <span className="text-[13px] font-medium">{actionFeedback}</span>
           </motion.div>

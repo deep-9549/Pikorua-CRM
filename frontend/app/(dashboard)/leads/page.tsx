@@ -52,9 +52,9 @@ function timeAgo(dateStr: string) {
 function HWCBadge({ hwc }: { hwc: string | null }) {
   if (!hwc) return null
   const map = {
-    hot: { label: "Hot", icon: Flame, color: "oklch(0.75 0.18 35)", bg: "oklch(0.75 0.18 35 / 0.12)", border: "oklch(0.75 0.18 35 / 0.3)" },
-    warm: { label: "Warm", icon: Thermometer, color: "oklch(0.78 0.15 65)", bg: "oklch(0.78 0.15 65 / 0.12)", border: "oklch(0.78 0.15 65 / 0.3)" },
-    cold: { label: "Cold", icon: Snowflake, color: "oklch(0.65 0.15 250)", bg: "oklch(0.65 0.15 250 / 0.12)", border: "oklch(0.65 0.15 250 / 0.3)" },
+    hot: { label: "Hot", icon: Flame, color: "var(--color-destructive)", bg: "rgb(185 28 28 / 0.12)", border: "rgb(185 28 28 / 0.3)" },
+    warm: { label: "Warm", icon: Thermometer, color: "var(--color-warning)", bg: "rgb(217 119 6 / 0.12)", border: "rgb(217 119 6 / 0.3)" },
+    cold: { label: "Cold", icon: Snowflake, color: "var(--color-muted-foreground)", bg: "rgb(154 52 18 / 0.12)", border: "rgb(154 52 18 / 0.3)" },
   }
   const m = map[hwc as keyof typeof map]
   if (!m) return null
@@ -70,9 +70,9 @@ function HWCBadge({ hwc }: { hwc: string | null }) {
 function CallStatusBadge({ status }: { status: string | null }) {
   if (!status) return null
   const map: Record<string, { label: string; color: string }> = {
-    spoken: { label: "Spoken", color: "oklch(0.65 0.15 145)" },
-    not_spoken: { label: "Not Spoken", color: "oklch(0.60 0.10 30)" },
-    call_back_later: { label: "Call Back", color: "oklch(0.70 0.130 75)" },
+    spoken: { label: "Spoken", color: "var(--color-success)" },
+    not_spoken: { label: "Not Spoken", color: "var(--color-destructive)" },
+    call_back_later: { label: "Call Back", color: "var(--color-primary)" },
   }
   const m = map[status]
   if (!m) return null
@@ -125,10 +125,10 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "oklch(0.92 0.006 80)" }}>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--color-primary)" }}>
             My Leads
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: "oklch(0.55 0.006 260)" }}>
+          <p className="text-sm mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
             {leads.length} lead{leads.length !== 1 ? "s" : ""} assigned to you
           </p>
         </div>
@@ -141,13 +141,13 @@ export default function LeadsPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Total", value: leads.length, color: "oklch(0.700 0.130 75)" },
-          { label: "Follow-up Today", value: dueToday.length, color: "oklch(0.78 0.15 65)" },
-          { label: "Overdue", value: overdue.length, color: "oklch(0.75 0.18 35)" },
+          { label: "Total", value: leads.length, color: "var(--color-primary)" },
+          { label: "Follow-up Today", value: dueToday.length, color: "var(--color-warning)" },
+          { label: "Overdue", value: overdue.length, color: "var(--color-destructive)" },
         ].map(({ label, value, color }) => (
           <Card key={label} className="shadow-card">
             <CardContent className="p-4">
-              <p className="text-xs font-medium mb-1" style={{ color: "oklch(0.55 0.006 260)" }}>{label}</p>
+              <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>{label}</p>
               <p className="text-2xl font-bold" style={{ color }}>{value}</p>
             </CardContent>
           </Card>
@@ -156,7 +156,7 @@ export default function LeadsPage() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "oklch(0.45 0.008 260)" }} />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--color-muted-foreground)" }} />
         <Input
           placeholder="Search leads..."
           value={search}
@@ -168,7 +168,7 @@ export default function LeadsPage() {
       {/* Error */}
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm"
-          style={{ background: "oklch(0.35 0.12 20 / 0.12)", color: "oklch(0.75 0.12 20)", border: "1px solid oklch(0.35 0.12 20 / 0.25)" }}>
+          style={{ background: "rgb(185 28 28 / 0.12)", color: "var(--color-destructive)", border: "1px solid rgb(185 28 28 / 0.25)" }}>
           <AlertCircle className="w-4 h-4 shrink-0" />{error}
         </div>
       )}
@@ -176,12 +176,12 @@ export default function LeadsPage() {
       {/* List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin" style={{ color: "oklch(0.700 0.130 75)" }} />
+          <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--color-primary)" }} />
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 space-y-2">
           <Users className="w-10 h-10 mx-auto opacity-20" />
-          <p className="text-sm" style={{ color: "oklch(0.50 0.006 260)" }}>
+          <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
             {search ? "No leads match your search" : "No leads assigned yet"}
           </p>
         </div>
@@ -189,15 +189,15 @@ export default function LeadsPage() {
         <div className="space-y-6">
           {/* Overdue */}
           {overdue.length > 0 && (
-            <Section title="Overdue Follow-ups" accentColor="oklch(0.75 0.18 35)" leads={overdue} />
+            <Section title="Overdue Follow-ups" accentColor="var(--color-destructive)" leads={overdue} />
           )}
           {/* Due today */}
           {dueToday.length > 0 && (
-            <Section title="Follow up Today" accentColor="oklch(0.78 0.15 65)" leads={dueToday} />
+            <Section title="Follow up Today" accentColor="var(--color-warning)" leads={dueToday} />
           )}
           {/* Rest */}
           {rest.length > 0 && (
-            <Section title={overdue.length + dueToday.length > 0 ? "Others" : "All Leads"} accentColor="oklch(0.700 0.130 75)" leads={rest} />
+            <Section title={overdue.length + dueToday.length > 0 ? "Others" : "All Leads"} accentColor="var(--color-primary)" leads={rest} />
           )}
         </div>
       )}
@@ -224,7 +224,7 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                 style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
                 {/* Avatar */}
                 <Avatar className="h-10 w-10 shrink-0">
-                  <AvatarFallback className="text-xs gold-gradient" style={{ color: "oklch(0.10 0.010 260)" }}>
+                  <AvatarFallback className="text-xs gold-gradient" style={{ color: "var(--color-primary-foreground)" }}>
                     {initials(lead.full_name)}
                   </AvatarFallback>
                 </Avatar>
@@ -232,24 +232,24 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-sm font-semibold truncate" style={{ color: "oklch(0.90 0.006 80)" }}>
+                    <p className="text-sm font-semibold truncate" style={{ color: "var(--color-foreground)" }}>
                       {lead.full_name ?? "Unknown"}
                     </p>
                     <HWCBadge hwc={lead.crm?.hwc ?? null} />
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     {lead.phone && (
-                      <span className="flex items-center gap-1 text-[11px]" style={{ color: "oklch(0.55 0.006 260)" }}>
+                      <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
                         <Phone className="w-3 h-3" />{lead.phone}
                       </span>
                     )}
                     {lead.city && (
-                      <span className="flex items-center gap-1 text-[11px]" style={{ color: "oklch(0.55 0.006 260)" }}>
+                      <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
                         <MapPin className="w-3 h-3" />{lead.city}
                       </span>
                     )}
                     {lead.campaign_name && (
-                      <span className="text-[11px] truncate" style={{ color: "oklch(0.700 0.130 75)" }}>
+                      <span className="text-[11px] truncate" style={{ color: "var(--color-primary)" }}>
                         {lead.campaign_name}
                       </span>
                     )}
@@ -260,19 +260,19 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                 <div className="shrink-0 text-right space-y-1">
                   <CallStatusBadge status={lead.crm?.call_status ?? null} />
                   {lead.crm?.follow_up_date && (
-                    <p className="flex items-center justify-end gap-1 text-[10px]" style={{ color: "oklch(0.55 0.006 260)" }}>
+                    <p className="flex items-center justify-end gap-1 text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
                       <Calendar className="w-3 h-3" />
                       {new Date(lead.crm.follow_up_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </p>
                   )}
                   {!lead.crm?.call_status && (
-                    <p className="text-[10px]" style={{ color: "oklch(0.45 0.008 260)" }}>
+                    <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
                       {timeAgo(lead.received_at)}
                     </p>
                   )}
                 </div>
 
-                <ChevronRight className="w-4 h-4 shrink-0" style={{ color: "oklch(0.40 0.008 260)" }} />
+                <ChevronRight className="w-4 h-4 shrink-0" style={{ color: "var(--color-muted-foreground)" }} />
               </div>
             </Link>
           </motion.div>

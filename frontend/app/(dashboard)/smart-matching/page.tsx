@@ -117,7 +117,7 @@ export default function SmartMatchingPage() {
         className="flex flex-col gap-2"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-amber-500/20">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-orange-600/20">
             <Sparkles className="h-6 w-6 text-primary" />
           </div>
           <div>
@@ -134,7 +134,7 @@ export default function SmartMatchingPage() {
         transition={{ delay: 0.1 }}
       >
         <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
-          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-amber-500/5">
+          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-orange-600/5">
             <CardTitle className="flex items-center gap-2 text-lg">
               <SlidersHorizontal className="h-5 w-5 text-primary" />
               Smart Filters
@@ -327,7 +327,7 @@ export default function SmartMatchingPage() {
                 </Button>
                 <Button 
                   onClick={() => setShowResults(true)}
-                  className="bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90"
+                  className="bg-gradient-to-r from-primary to-orange-700 hover:from-primary/90 hover:to-orange-700/90"
                 >
                   <Zap className="h-4 w-4 mr-2" />
                   Find Matches

@@ -75,105 +75,13 @@ interface Notification {
   suggestedActions?: NotificationAction[]
 }
 
-const initialNotifications: Notification[] = [
-  {
-    id: "1", title: "New VIP Lead — HOT",
-    message: "Arjun Mehta interested in 10 Cr+ penthouse in Bandra",
-    time: "2 min ago", type: "lead", read: false, priority: "high",
-    actionUrl: "/leads/lead-1",
-    leadData: {
-      name: "Arjun Mehta", phone: "+91 99887 76655", email: "arjun.mehta@gmail.com",
-      propertyInterest: "Penthouse", budget: "5–10 Cr", location: "Bandra West",
-      aiScore: 92, tags: ["vip", "hot"]
-    },
-    suggestedActions: [
-      { label: "Assign to Senior Agent", icon: UserPlus, action: "assign", variant: "primary" },
-      { label: "Call Immediately", icon: PhoneCall, action: "call", variant: "success" },
-      { label: "Send Property Matches", icon: Building2, action: "match", variant: "default" },
-      { label: "View Lead Profile", icon: Eye, action: "view", variant: "default" }
-    ]
-  },
-  {
-    id: "2", title: "WhatsApp — Follow Up Needed",
-    message: "Kavita Desai: Can we schedule a visit this weekend?",
-    time: "15 min ago", type: "message", read: false,
-    actionUrl: "/whatsapp",
-    leadData: {
-      name: "Kavita Desai", phone: "+91 99887 76656",
-      propertyInterest: "Apartment", budget: "3–5 Cr", location: "Worli",
-      aiScore: 88, tags: ["vip"]
-    },
-    suggestedActions: [
-      { label: "Schedule Site Visit", icon: Calendar, action: "schedule", variant: "primary" },
-      { label: "Reply on WhatsApp", icon: Send, action: "whatsapp", variant: "success" },
-      { label: "Call Back", icon: Phone, action: "call", variant: "default" }
-    ]
-  },
-  {
-    id: "3", title: "Missed Call — Callback Required",
-    message: "Rahul Kapoor — BKC Commercial (10–15 Cr)",
-    time: "1 hour ago", type: "call", read: false, priority: "high",
-    actionUrl: "/leads/lead-3",
-    leadData: {
-      name: "Rahul Kapoor", phone: "+91 99887 76657",
-      propertyInterest: "Commercial", budget: "10–20 Cr", location: "BKC", aiScore: 65
-    },
-    suggestedActions: [
-      { label: "Call Back Now", icon: PhoneCall, action: "call", variant: "primary" },
-      { label: "Send WhatsApp", icon: MessageSquare, action: "whatsapp", variant: "default" },
-      { label: "Schedule Callback", icon: Clock, action: "schedule", variant: "default" }
-    ]
-  },
-  {
-    id: "4", title: "Site Visit Completed",
-    message: "Ritu Sharma visited Lower Parel Penthouse — Very Interested",
-    time: "2 hours ago", type: "visit", read: false,
-    leadData: {
-      name: "Ritu Sharma", phone: "+91 99887 76664",
-      propertyInterest: "Penthouse", budget: "6–9 Cr", location: "Lower Parel",
-      aiScore: 90, tags: ["vip", "hot"]
-    },
-    suggestedActions: [
-      { label: "Send Price Proposal", icon: FileText, action: "proposal", variant: "primary" },
-      { label: "Schedule Follow-up", icon: Phone, action: "call", variant: "success" },
-      { label: "Share Similar Properties", icon: Building2, action: "match", variant: "default" }
-    ]
-  },
-  {
-    id: "5", title: "Booking Confirmed",
-    message: "Lower Parel Penthouse — Rs 8.5 Cr deal closed",
-    time: "3 hours ago", type: "booking", read: true, priority: "high",
-    suggestedActions: [
-      { label: "Send Congratulations", icon: MessageSquare, action: "congrats", variant: "success" },
-      { label: "Request Referrals", icon: Users, action: "referral", variant: "primary" }
-    ]
-  },
-  {
-    id: "6", title: "5 New Leads from Meta Ads",
-    message: "Luxury Penthouses campaign — High intent",
-    time: "4 hours ago", type: "lead", read: true, actionUrl: "/meta-ads",
-    suggestedActions: [
-      { label: "Distribute to Team", icon: Users, action: "distribute", variant: "primary" },
-      { label: "Review Quality", icon: Eye, action: "review", variant: "default" }
-    ]
-  },
-  {
-    id: "7", title: "Lead Cooling Down",
-    message: "Rahul Kapoor — no response in 3 days",
-    time: "5 hours ago", type: "system", read: true, priority: "high",
-    leadData: { name: "Rahul Kapoor", phone: "+91 99887 76657", aiScore: 65 },
-    suggestedActions: [
-      { label: "Re-engage Now", icon: PhoneCall, action: "call", variant: "warning" },
-      { label: "Send Special Offer", icon: FileText, action: "offer", variant: "primary" }
-    ]
-  }
-]
+const initialNotifications: Notification[] = []
 
 function getTypeConfig(type: Notification["type"]) {
   const configs = {
     lead:    { icon: Sparkles,     bg: "bg-primary/10",    color: "text-primary" },
     message: { icon: MessageSquare, bg: "bg-emerald-500/10", color: "text-emerald-600" },
-    call:    { icon: Phone,         bg: "bg-amber-500/10",  color: "text-amber-600" },
+    call:    { icon: Phone,         bg: "bg-primary/10",  color: "text-primary" },
     booking: { icon: CheckCircle2,  bg: "bg-emerald-500/10", color: "text-emerald-600" },
     visit:   { icon: Calendar,      bg: "bg-primary/10",    color: "text-primary" },
     system:  { icon: AlertCircle,   bg: "bg-muted",         color: "text-muted-foreground" },
@@ -264,9 +172,9 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
         transition={{ duration: 0.25, ease: "easeOut" }}
         className="sticky top-0 z-30 h-[60px] flex items-center justify-between px-6"
         style={{
-          background: "oklch(0.975 0.006 80 / 0.85)",
+          background: "rgb(254 249 242 / 0.88)",
           backdropFilter: "blur(20px) saturate(180%)",
-          borderBottom: "1px solid oklch(0.900 0.012 80 / 0.6)",
+          borderBottom: "1px solid rgb(222 217 211 / 0.7)",
         }}
       >
         {/* Breadcrumbs */}
@@ -293,16 +201,16 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
             onClick={onCommandPaletteOpen}
             className="hidden sm:flex items-center gap-2.5 h-8 w-56 px-3 rounded-lg text-sm transition-all duration-150"
             style={{
-              background: "oklch(0.958 0.006 80)",
-              border: "1px solid oklch(0.900 0.012 80)",
-              color: "oklch(0.52 0.008 260)",
+              background: "var(--color-muted)",
+              border: "1px solid var(--color-border)",
+              color: "var(--color-muted-foreground)",
             }}
           >
             <Search className="w-3.5 h-3.5 shrink-0" />
             <span className="flex-1 text-left text-[13px]">Search anything...</span>
             <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-              style={{ background: "oklch(0.940 0.010 80)", color: "oklch(0.52 0.008 260)", border: "1px solid oklch(0.900 0.012 80)" }}>
-              ⌘K
+              style={{ background: "var(--color-card)", color: "var(--color-muted-foreground)", border: "1px solid var(--color-border)" }}>
+              âŒ˜K
             </kbd>
           </button>
 
@@ -314,7 +222,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
           {/* Quick Add */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" className="h-8 gap-1.5 px-3 text-[13px] font-medium gold-gradient text-[oklch(0.10_0.010_260)] shadow-gold-sm hover:shadow-gold border-0">
+              <Button size="sm" className="h-8 gap-1.5 px-3 text-[13px] font-medium gold-gradient text-primary-foreground shadow-gold-sm hover:shadow-gold border-0">
                 <Plus className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Quick Add</span>
               </Button>
@@ -328,7 +236,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
                 { icon: Sparkles, label: "New Lead", color: "text-primary" },
                 { icon: Calendar, label: "Schedule Visit", color: "text-emerald-600" },
                 { icon: MessageSquare, label: "Send Message", color: "text-blue-600" },
-                { icon: Clock, label: "Add Reminder", color: "text-amber-600", onClick: () => setShowReminders(true) },
+                { icon: Clock, label: "Add Reminder", color: "text-primary", onClick: () => setShowReminders(true) },
               ].map(({ icon: Icon, label, color, onClick }) => (
                 <DropdownMenuItem key={label} className="gap-2 cursor-pointer text-sm" onClick={onClick}>
                   <Icon className={cn("w-3.5 h-3.5", color)} />{label}
@@ -348,7 +256,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
                 <motion.span
                   initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
                   className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
-                  style={{ background: "oklch(0.550 0.210 25)" }}
+                  style={{ background: "var(--color-destructive)" }}
                 >
                   {unreadCount}
                 </motion.span>
@@ -358,7 +266,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
         </div>
       </motion.header>
 
-      {/* ── Notifications Panel ─────────────────────────── */}
+      {/* â”€â”€ Notifications Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <AnimatePresence>
         {showPanel && (
           <>
@@ -389,7 +297,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
                   style={{ borderBottom: "1px solid var(--color-border)" }}>
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg gold-gradient flex items-center justify-center">
-                      <Bell className="w-4 h-4 text-[oklch(0.10_0.010_260)]" />
+                      <Bell className="w-4 h-4 text-primary-foreground" />
                     </div>
                     <div>
                       <h2 className="text-[15px] font-semibold leading-tight">Notifications</h2>
@@ -549,13 +457,13 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
                         {selected.leadData && (
                           <div className="rounded-xl p-4 space-y-3"
                             style={{
-                              background: "linear-gradient(135deg, oklch(0.660 0.120 75 / 0.06) 0%, transparent 100%)",
-                              border: "1px solid oklch(0.660 0.120 75 / 0.15)"
+                              background: "linear-gradient(135deg, rgb(194 65 12 / 0.08) 0%, transparent 100%)",
+                              border: "1px solid rgb(194 65 12 / 0.18)"
                             }}>
                             <div className="flex items-start gap-3">
-                              <Avatar className="h-11 w-11 shrink-0" style={{ border: "2px solid oklch(0.660 0.120 75 / 0.3)" }}>
+                              <Avatar className="h-11 w-11 shrink-0" style={{ border: "2px solid rgb(194 65 12 / 0.28)" }}>
                                 <AvatarFallback className="text-[13px] font-bold"
-                                  style={{ background: "oklch(0.660 0.120 75 / 0.1)", color: "oklch(0.56 0.105 72)" }}>
+                                  style={{ background: "rgb(194 65 12 / 0.10)", color: "var(--color-primary)" }}>
                                   {selected.leadData.name.split(" ").map(n => n[0]).join("")}
                                 </AvatarFallback>
                               </Avatar>
@@ -564,13 +472,13 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
                                   <h4 className="text-[15px] font-bold leading-tight">{selected.leadData.name}</h4>
                                   {selected.leadData.tags?.includes("vip") && (
                                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                      style={{ background: "oklch(0.760 0.145 65 / 0.15)", color: "oklch(0.62 0.115 68)" }}>
+                                      style={{ background: "rgb(217 119 6 / 0.14)", color: "var(--color-warning)" }}>
                                       VIP
                                     </span>
                                   )}
                                   {selected.leadData.tags?.includes("hot") && (
                                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                                      style={{ background: "oklch(0.550 0.210 25 / 0.12)", color: "oklch(0.50 0.195 22)" }}>
+                                      style={{ background: "rgb(185 28 28 / 0.10)", color: "var(--color-destructive)" }}>
                                       HOT
                                     </span>
                                   )}
@@ -579,7 +487,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
                               </div>
                               {selected.leadData.aiScore && (
                                 <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl shrink-0"
-                                  style={{ background: "oklch(0.660 0.120 75 / 0.1)", border: "1px solid oklch(0.660 0.120 75 / 0.2)" }}>
+                                  style={{ background: "rgb(194 65 12 / 0.10)", border: "1px solid rgb(194 65 12 / 0.20)" }}>
                                   <span className="text-[17px] font-bold leading-none gold-text">{selected.leadData.aiScore}</span>
                                   <span className="text-[8px] text-muted-foreground mt-0.5">AI Score</span>
                                 </div>

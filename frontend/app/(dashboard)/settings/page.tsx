@@ -169,7 +169,7 @@ export default function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-3"
       >
-        <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-amber-500/20">
+        <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-orange-600/20">
           <Settings className="h-6 w-6 text-primary" />
         </div>
         <div>
@@ -223,7 +223,7 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-6">
                     <Avatar className="h-20 w-20 border-2 border-primary/20">
                       <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
-                        JP
+                        --
                       </AvatarFallback>
                     </Avatar>
                     <div>
@@ -237,19 +237,19 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>First Name</Label>
-                      <Input defaultValue="Jitendra p." />
+                      <Input placeholder="First name" />
                     </div>
                     <div className="space-y-2">
                       <Label>Last Name</Label>
-                      <Input defaultValue="Singh" />
+                      <Input placeholder="Last name" />
                     </div>
                     <div className="space-y-2">
                       <Label>Email</Label>
-                      <Input type="email" defaultValue="jitendra@pikoruarealty.com" />
+                      <Input type="email" placeholder="you@company.com" />
                     </div>
                     <div className="space-y-2">
                       <Label>Phone</Label>
-                      <Input type="tel" defaultValue="+91 98765 43214" />
+                      <Input type="tel" placeholder="Phone number" />
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label>Role</Label>
@@ -258,7 +258,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button className="bg-gradient-to-r from-primary to-amber-600">
+                    <Button className="bg-gradient-to-r from-primary to-orange-700">
                       <Save className="h-4 w-4 mr-2" />
                       Save Changes
                     </Button>
@@ -278,7 +278,7 @@ export default function SettingsPage() {
                   <p className="text-muted-foreground">Add, edit, and manage employee accounts</p>
                 </div>
                 <Button 
-                  className="bg-gradient-to-r from-primary to-amber-600"
+                  className="bg-gradient-to-r from-primary to-orange-700"
                   onClick={() => setShowAddEmployee(true)}
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
@@ -508,7 +508,7 @@ export default function SettingsPage() {
                     <Label>Confirm New Password</Label>
                     <Input type="password" />
                   </div>
-                  <Button className="bg-gradient-to-r from-primary to-amber-600">
+                  <Button className="bg-gradient-to-r from-primary to-orange-700">
                     Update Password
                   </Button>
                 </CardContent>
@@ -549,7 +549,7 @@ export default function SettingsPage() {
                   { name: "WhatsApp Business API", status: "connected", color: "text-green-600" },
                   { name: "Meta Ads Manager", status: "connected", color: "text-green-600" },
                   { name: "Google Calendar", status: "connected", color: "text-green-600" },
-                  { name: "Razorpay", status: "pending", color: "text-amber-600" },
+                  { name: "Razorpay", status: "pending", color: "text-primary" },
                   { name: "Zoho CRM", status: "disconnected", color: "text-muted-foreground" },
                 ].map((integration) => (
                   <div key={integration.name} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
@@ -608,7 +608,7 @@ export default function SettingsPage() {
               <Label>Email</Label>
               <Input 
                 type="email" 
-                placeholder="john@pikoruarealty.com"
+                placeholder="user@company.com"
                 value={newEmployee.email}
                 onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
               />
@@ -617,7 +617,7 @@ export default function SettingsPage() {
               <Label>Phone</Label>
               <Input 
                 type="tel" 
-                placeholder="+91 98765 43210"
+                placeholder="Phone number"
                 value={newEmployee.phone}
                 onChange={(e) => setNewEmployee({...newEmployee, phone: e.target.value})}
               />
@@ -697,7 +697,7 @@ export default function SettingsPage() {
               Cancel
             </Button>
             <Button 
-              className="bg-gradient-to-r from-primary to-amber-600"
+              className="bg-gradient-to-r from-primary to-orange-700"
               onClick={handleAddEmployee}
             >
               <UserPlus className="h-4 w-4 mr-2" />
@@ -813,7 +813,7 @@ export default function SettingsPage() {
               Cancel
             </Button>
             <Button 
-              className="bg-gradient-to-r from-primary to-amber-600"
+              className="bg-gradient-to-r from-primary to-orange-700"
               onClick={handleUpdateEmployee}
             >
               <Save className="h-4 w-4 mr-2" />
@@ -858,7 +858,7 @@ export default function SettingsPage() {
               Cancel
             </Button>
             <Button 
-              className="bg-gradient-to-r from-primary to-amber-600"
+              className="bg-gradient-to-r from-primary to-orange-700"
               onClick={() => setShowResetPassword(false)}
             >
               <Lock className="h-4 w-4 mr-2" />

@@ -23,19 +23,19 @@ import { hniClients } from "@/lib/data"
 
 const tierConfig = {
   platinum: { color: "text-slate-300", bgColor: "bg-gradient-to-r from-slate-400 to-slate-600", icon: Gem },
-  gold: { color: "text-amber-500", bgColor: "bg-gradient-to-r from-amber-400 to-amber-600", icon: Crown },
+  gold: { color: "text-primary", bgColor: "bg-gradient-to-r from-orange-400 to-orange-700", icon: Crown },
   silver: { color: "text-slate-400", bgColor: "bg-gradient-to-r from-slate-300 to-slate-500", icon: Star },
 }
 
-function getClientTimeline(client: typeof hniClients[0]) {
-  return [
-    { id: 1, label: `Relationship Initiated`, date: `${client.since}`, icon: User, color: "bg-blue-500/10 text-blue-600", detail: `First contact and onboarding as ${client.tier} tier client` },
-    { id: 2, label: "First Property Acquired", date: `${client.since}`, icon: Building2, color: "bg-green-500/10 text-green-600", detail: "Purchased first property through Pikorua Realty" },
-    { id: 3, label: "Portfolio Expansion", date: `${parseInt(client.since) + 1}`, icon: TrendingUp, color: "bg-primary/10 text-primary", detail: `Expanded portfolio to ${Math.ceil(client.propertiesOwned / 2)} properties` },
-    { id: 4, label: "Tier Upgrade", date: `${parseInt(client.since) + 1}`, icon: Award, color: "bg-amber-500/10 text-amber-600", detail: `Upgraded to ${client.tier} tier based on portfolio value` },
-    { id: 5, label: "Latest Interaction", date: "2024", icon: MessageSquare, color: "bg-emerald-500/10 text-emerald-600", detail: "Discussed new investment opportunities" },
-    { id: 6, label: `Current Portfolio: ${client.propertiesOwned} Properties`, date: "Present", icon: Crown, color: "bg-gold/10 text-gold", detail: `Active HNI client with total portfolio value` },
-  ]
+function getClientTimeline(_client: typeof hniClients[0]) {
+  return [] as {
+    id: number
+    label: string
+    date: string
+    icon: typeof User
+    color: string
+    detail: string
+  }[]
 }
 
 export default function HNIClientsPage() {
@@ -47,9 +47,9 @@ export default function HNIClientsPage() {
   )
 
   const formatValue = (value: number) => {
-    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)} Cr`
-    if (value >= 100000) return `₹${(value / 100000).toFixed(0)} L`
-    return `₹${value.toLocaleString()}`
+    if (value >= 10000000) return `â‚¹${(value / 10000000).toFixed(1)} Cr`
+    if (value >= 100000) return `â‚¹${(value / 100000).toFixed(0)} L`
+    return `â‚¹${value.toLocaleString()}`
   }
 
   const totalPortfolioValue = hniClients.reduce((acc, c) => acc + c.portfolioValue, 0)
@@ -62,8 +62,8 @@ export default function HNIClientsPage() {
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-yellow-500/20">
-            <Crown className="h-6 w-6 text-amber-500" />
+          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-orange-200/20">
+            <Crown className="h-6 w-6 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-foreground">HNI Clients</h1>
@@ -76,9 +76,9 @@ export default function HNIClientsPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total HNI Clients", value: hniClients.length, icon: Crown, color: "text-amber-500" },
+          { label: "Total HNI Clients", value: hniClients.length, icon: Crown, color: "text-primary" },
           { label: "Platinum Tier", value: platinumClients, icon: Gem, color: "text-slate-300" },
-          { label: "Gold Tier", value: goldClients, icon: Star, color: "text-amber-400" },
+          { label: "Gold Tier", value: goldClients, icon: Star, color: "text-primary" },
           { label: "Portfolio Value", value: formatValue(totalPortfolioValue), icon: DollarSign, color: "text-green-600" },
         ].map((stat) => (
           <Card key={stat.label} className="border-border/50 bg-card/50 backdrop-blur-sm shadow-card border-0">
@@ -118,8 +118,8 @@ export default function HNIClientsPage() {
                 <div className={`h-1.5 ${tierConfig[client.tier]?.bgColor}`} />
                 <CardContent className="p-5">
                   <div className="flex items-start gap-4">
-                    <Avatar className="h-16 w-16 border-2 border-amber-500/30">
-                      <AvatarFallback className="bg-gradient-to-br from-amber-500/20 to-yellow-500/20 text-amber-600 text-lg font-semibold">
+                    <Avatar className="h-16 w-16 border-2 border-primary/30">
+                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-orange-200/20 text-primary text-lg font-semibold">
                         {client.name.split(" ").map(n => n[0]).join("")}
                       </AvatarFallback>
                     </Avatar>
@@ -147,7 +147,7 @@ export default function HNIClientsPage() {
                       <div className="flex items-center gap-2 mt-4">
                         <Button variant="outline" size="sm" className="flex-1"><Phone className="h-4 w-4 mr-2" />Call</Button>
                         <Button variant="outline" size="sm" className="flex-1"><MessageSquare className="h-4 w-4 mr-2" />Message</Button>
-                        <Button size="sm" className="flex-1 bg-gradient-to-r from-primary to-amber-600 border-0" onClick={() => setDetailClient(client)}>
+                        <Button size="sm" className="flex-1 bg-gradient-to-r from-primary to-orange-700 border-0" onClick={() => setDetailClient(client)}>
                           View Profile<ChevronRight className="h-4 w-4 ml-1" />
                         </Button>
                       </div>
@@ -169,11 +169,11 @@ export default function HNIClientsPage() {
             return (
               <div className="flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="p-6 border-b bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-amber-500/5">
+                <div className="p-6 border-b bg-gradient-to-r from-primary/5 via-orange-200/5 to-orange-600/5">
                   <DialogHeader>
                     <div className="flex items-center gap-4">
-                      <Avatar className="h-16 w-16 border-3 border-amber-500/30">
-                        <AvatarFallback className="bg-gradient-to-br from-amber-500/20 to-yellow-500/20 text-amber-600 text-xl font-bold">
+                      <Avatar className="h-16 w-16 border-3 border-primary/30">
+                        <AvatarFallback className="bg-gradient-to-br from-primary/20 to-orange-200/20 text-primary text-xl font-bold">
                           {detailClient.name.split(" ").map(n => n[0]).join("")}
                         </AvatarFallback>
                       </Avatar>
@@ -206,9 +206,9 @@ export default function HNIClientsPage() {
                       <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-medium">Since</p>
                       <p className="text-xl font-bold text-blue-600">{detailClient.since}</p>
                     </div>
-                    <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 text-center">
+                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center">
                       <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-medium">Avg. Value</p>
-                      <p className="text-xl font-bold text-amber-600">{formatValue(detailClient.portfolioValue / detailClient.propertiesOwned)}</p>
+                      <p className="text-xl font-bold text-primary">{formatValue(detailClient.portfolioValue / detailClient.propertiesOwned)}</p>
                     </div>
                   </div>
 
@@ -276,7 +276,7 @@ export default function HNIClientsPage() {
                     <Button variant="outline" size="sm" className="gap-2"><Phone className="w-4 h-4" />Call</Button>
                     <Button variant="outline" size="sm" className="gap-2"><MessageSquare className="w-4 h-4" />WhatsApp</Button>
                   </div>
-                  <Button className="gap-2 bg-gradient-to-r from-primary to-amber-600 border-0 shadow-gold-sm"><FileText className="w-4 h-4" />Generate Report</Button>
+                  <Button className="gap-2 bg-gradient-to-r from-primary to-orange-700 border-0 shadow-gold-sm"><FileText className="w-4 h-4" />Generate Report</Button>
                 </div>
               </div>
             )

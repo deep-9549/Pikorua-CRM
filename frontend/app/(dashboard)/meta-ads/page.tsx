@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Types Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 interface MetaLead {
   id: string
@@ -51,7 +51,7 @@ interface Employee {
   phone: string | null
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -68,7 +68,7 @@ function initials(name: string | null) {
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
 }
 
-// ─── Add Lead Dialog ──────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Add Lead Dialog Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function AddLeadDialog({
   open,
@@ -119,7 +119,7 @@ function AddLeadDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <PenLine className="w-4 h-4" style={{ color: "oklch(0.700 0.130 75)" }} />
+            <PenLine className="w-4 h-4" style={{ color: "var(--color-primary)" }} />
             Add Lead Manually
           </DialogTitle>
           <DialogDescription>
@@ -130,11 +130,11 @@ function AddLeadDialog({
         <form onSubmit={handleSubmit} className="space-y-4 mt-1">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>
-                Full Name <span style={{ color: "oklch(0.75 0.18 35)" }}>*</span>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
+                Full Name <span style={{ color: "var(--color-primary)" }}>*</span>
               </Label>
               <Input
-                placeholder="e.g. Arjun Mehta"
+                placeholder="e.g. Lead Name"
                 value={form.full_name}
                 onChange={e => set("full_name", e.target.value)}
                 required
@@ -143,12 +143,12 @@ function AddLeadDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>
-                Phone <span style={{ color: "oklch(0.75 0.18 35)" }}>*</span>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
+                Phone <span style={{ color: "var(--color-primary)" }}>*</span>
               </Label>
               <Input
                 type="tel"
-                placeholder="+91 98765 43210"
+                placeholder="Phone number"
                 value={form.phone}
                 onChange={e => set("phone", e.target.value)}
                 required
@@ -157,7 +157,7 @@ function AddLeadDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>City</Label>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>City</Label>
               <Input
                 placeholder="e.g. Mumbai"
                 value={form.city}
@@ -167,10 +167,10 @@ function AddLeadDialog({
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Email</Label>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Email</Label>
               <Input
                 type="email"
-                placeholder="arjun@example.com"
+                placeholder="lead@example.com"
                 value={form.email}
                 onChange={e => set("email", e.target.value)}
                 className="h-9 text-sm"
@@ -178,7 +178,7 @@ function AddLeadDialog({
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
                 Source / Campaign
               </Label>
               <Input
@@ -190,7 +190,7 @@ function AddLeadDialog({
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Notes</Label>
+              <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Notes</Label>
               <Textarea
                 placeholder="Any additional info about this lead..."
                 value={form.notes}
@@ -202,7 +202,7 @@ function AddLeadDialog({
 
           {error && (
             <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs"
-              style={{ background: "oklch(0.35 0.12 20 / 0.12)", color: "oklch(0.75 0.12 20)", border: "1px solid oklch(0.35 0.12 20 / 0.3)" }}>
+              style={{ background: "rgb(185 28 28 / 0.10)", color: "var(--color-destructive)", border: "1px solid rgb(185 28 28 / 0.24)" }}>
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               {error}
             </div>
@@ -216,7 +216,7 @@ function AddLeadDialog({
               type="submit"
               disabled={loading}
               className="flex-1 h-9 gold-gradient font-semibold shadow-gold-sm"
-              style={{ color: "oklch(0.10 0.010 260)" }}
+              style={{ color: "var(--color-primary-foreground)" }}
             >
               {loading
                 ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Adding...</>
@@ -229,7 +229,7 @@ function AddLeadDialog({
   )
 }
 
-// ─── Lead Row ─────────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Lead Row Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function LeadRow({
   lead,
@@ -253,7 +253,7 @@ function LeadRow({
     >
       {/* Avatar */}
       <Avatar className="h-9 w-9 shrink-0">
-        <AvatarFallback className="text-xs gold-gradient" style={{ color: "oklch(0.10 0.010 260)" }}>
+        <AvatarFallback className="text-xs gold-gradient" style={{ color: "var(--color-primary-foreground)" }}>
           {initials(lead.full_name)}
         </AvatarFallback>
       </Avatar>
@@ -261,29 +261,29 @@ function LeadRow({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <p className="text-sm font-medium truncate" style={{ color: "oklch(0.90 0.006 80)" }}>
+          <p className="text-sm font-medium truncate" style={{ color: "var(--color-foreground)" }}>
             {lead.full_name ?? "Unknown"}
           </p>
           {lead.source === "manual" && (
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-              style={{ background: "oklch(0.65 0.15 250 / 0.15)", color: "oklch(0.65 0.15 250)" }}>
+              style={{ background: "rgb(194 65 12 / 0.10)", color: "var(--color-primary)" }}>
               MANUAL
             </span>
           )}
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
           {lead.phone && (
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "oklch(0.55 0.006 260)" }}>
+            <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
               <Phone className="w-3 h-3" />{lead.phone}
             </span>
           )}
           {lead.email && (
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "oklch(0.55 0.006 260)" }}>
+            <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
               <Mail className="w-3 h-3" />{lead.email}
             </span>
           )}
           {lead.city && (
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "oklch(0.55 0.006 260)" }}>
+            <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
               <MapPin className="w-3 h-3" />{lead.city}
             </span>
           )}
@@ -297,7 +297,7 @@ function LeadRow({
             {lead.campaign_name}
           </Badge>
         )}
-        <p className="text-[11px] mt-1" style={{ color: "oklch(0.45 0.008 260)" }}>
+        <p className="text-[11px] mt-1" style={{ color: "var(--color-muted-foreground)" }}>
           {timeAgo(lead.received_at)}
         </p>
       </div>
@@ -307,14 +307,14 @@ function LeadRow({
         <div className="flex items-center gap-2 shrink-0">
           <Avatar className="h-6 w-6">
             <AvatarFallback className="text-[9px]"
-              style={{ background: "oklch(0.65 0.15 145 / 0.2)", color: "oklch(0.65 0.15 145)" }}>
+              style={{ background: "rgb(21 128 61 / 0.12)", color: "var(--color-success)" }}>
               {initials(lead.assigned_to_profile.full_name)}
             </AvatarFallback>
           </Avatar>
-          <span className="text-xs hidden md:block" style={{ color: "oklch(0.65 0.15 145)" }}>
+          <span className="text-xs hidden md:block" style={{ color: "var(--color-success)" }}>
             {lead.assigned_to_profile.full_name}
           </span>
-          <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "oklch(0.65 0.15 145)" }} />
+          <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-success)" }} />
         </div>
       ) : (
         <DropdownMenu>
@@ -322,7 +322,7 @@ function LeadRow({
             <Button
               size="sm"
               className="shrink-0 h-8 gap-1.5 gold-gradient text-[11px] font-semibold shadow-gold-sm"
-              style={{ color: "oklch(0.10 0.010 260)" }}
+              style={{ color: "var(--color-primary-foreground)" }}
               disabled={assigningId === lead.id}
             >
               {assigningId === lead.id
@@ -348,7 +348,7 @@ function LeadRow({
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Page Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 export default function MetaAdsPage() {
   const [leads, setLeads] = useState<MetaLead[]>([])
@@ -418,7 +418,7 @@ export default function MetaAdsPage() {
   }
 
   function handleLeadAdded(lead: MetaLead) {
-    // New leads are unassigned — add to top of list if on unassigned/all tab
+    // New leads are unassigned Ã¢â‚¬â€ add to top of list if on unassigned/all tab
     if (activeTab === "unassigned" || activeTab === "all") {
       setLeads(prev => [lead, ...prev])
     }
@@ -432,11 +432,11 @@ export default function MetaAdsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "oklch(0.92 0.006 80)" }}>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--color-primary)" }}>
             Leads
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: "oklch(0.55 0.006 260)" }}>
-            Meta Ads · Manual entries — assign to your sales team
+          <p className="text-sm mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
+            Meta Ads Ã‚Â· Manual entries Ã¢â‚¬â€ assign to your sales team
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -453,7 +453,7 @@ export default function MetaAdsPage() {
           <Button
             size="sm"
             className="gap-2 gold-gradient font-semibold shadow-gold-sm"
-            style={{ color: "oklch(0.10 0.010 260)" }}
+            style={{ color: "var(--color-primary-foreground)" }}
             onClick={() => setAddOpen(true)}
           >
             <Plus className="w-4 h-4" />
@@ -465,18 +465,18 @@ export default function MetaAdsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: "Total",        value: leads.length,                                    icon: Users,     color: "oklch(0.700 0.130 75)" },
-          { label: "Unassigned",   value: leads.filter(l => l.status === "unassigned").length, icon: Clock, color: "oklch(0.75 0.12 50)" },
-          { label: "From Meta",    value: metaCount,                                        icon: BarChart3, color: "oklch(0.65 0.15 250)" },
-          { label: "Manual",       value: manualCount,                                      icon: PenLine,   color: "oklch(0.65 0.15 145)" },
+          { label: "Total",        value: leads.length,                                    icon: Users,     color: "var(--color-primary)" },
+          { label: "Unassigned",   value: leads.filter(l => l.status === "unassigned").length, icon: Clock, color: "var(--color-warning)" },
+          { label: "From Meta",    value: metaCount,                                        icon: BarChart3, color: "var(--color-muted-foreground)" },
+          { label: "Manual",       value: manualCount,                                      icon: PenLine,   color: "var(--color-primary)" },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="shadow-card">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium" style={{ color: "oklch(0.55 0.006 260)" }}>{label}</p>
+                <p className="text-xs font-medium" style={{ color: "var(--color-muted-foreground)" }}>{label}</p>
                 <Icon className="w-4 h-4" style={{ color }} />
               </div>
-              <p className="text-2xl font-bold" style={{ color: "oklch(0.92 0.006 80)" }}>{value}</p>
+              <p className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>{value}</p>
             </CardContent>
           </Card>
         ))}
@@ -486,7 +486,7 @@ export default function MetaAdsPage() {
       <Card className="shadow-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <UserPlus className="w-4 h-4" style={{ color: "oklch(0.700 0.130 75)" }} />
+            <UserPlus className="w-4 h-4" style={{ color: "var(--color-primary)" }} />
             Lead Queue
           </CardTitle>
         </CardHeader>
@@ -500,7 +500,7 @@ export default function MetaAdsPage() {
 
             {error && (
               <div className="flex items-center gap-2 px-4 py-3 rounded-lg mb-4 text-sm"
-                style={{ background: "oklch(0.35 0.12 20 / 0.12)", color: "oklch(0.75 0.12 20)", border: "1px solid oklch(0.35 0.12 20 / 0.25)" }}>
+                style={{ background: "rgb(185 28 28 / 0.10)", color: "var(--color-destructive)", border: "1px solid rgb(185 28 28 / 0.24)" }}>
                 <AlertCircle className="w-4 h-4 shrink-0" />{error}
               </div>
             )}
@@ -508,12 +508,12 @@ export default function MetaAdsPage() {
             <TabsContent value={activeTab} className="mt-0">
               {loading ? (
                 <div className="flex items-center justify-center py-16">
-                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: "oklch(0.700 0.130 75)" }} />
+                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--color-primary)" }} />
                 </div>
               ) : leads.length === 0 ? (
                 <div className="text-center py-16 space-y-3">
                   <Users className="w-8 h-8 mx-auto opacity-30" />
-                  <p className="text-sm" style={{ color: "oklch(0.50 0.006 260)" }}>
+                  <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
                     No {activeTab !== "all" ? activeTab : ""} leads
                   </p>
                   {activeTab === "unassigned" && (

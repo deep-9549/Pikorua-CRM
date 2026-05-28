@@ -84,7 +84,7 @@ function getCategoryColor(category: Reminder["category"]) {
   switch (category) {
     case "call": return "bg-success/10 text-success"
     case "meeting": return "bg-primary/10 text-primary"
-    case "follow_up": return "bg-amber-500/10 text-amber-600"
+    case "follow_up": return "bg-primary/10 text-primary"
     case "task": return "bg-blue-500/10 text-blue-600"
     case "personal": return "bg-purple-500/10 text-purple-600"
     default: return "bg-muted text-muted-foreground"
@@ -177,7 +177,7 @@ export function ReminderDialog({ open, onOpenChange }: ReminderDialogProps) {
                   </DialogDescription>
                 </div>
                 <Button 
-                  className="bg-gradient-to-r from-primary to-amber-600"
+                  className="bg-gradient-to-r from-primary to-orange-700"
                   onClick={() => setShowAddReminder(true)}
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -545,7 +545,7 @@ export function ReminderDialog({ open, onOpenChange }: ReminderDialogProps) {
                       Cancel
                     </Button>
                     <Button 
-                      className="bg-gradient-to-r from-primary to-amber-600"
+                      className="bg-gradient-to-r from-primary to-orange-700"
                       onClick={handleAddReminder}
                       disabled={!newReminder.title || !newReminder.dueDate}
                     >

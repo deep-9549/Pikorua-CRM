@@ -44,8 +44,8 @@ const aiModules = [
     description: "Automatically score and prioritize leads based on behavior",
     icon: Target,
     status: "active",
-    accuracy: 92,
-    processed: 1247,
+    accuracy: 0,
+    processed: 0,
     color: "text-green-600",
     bgColor: "bg-green-500/10"
   },
@@ -55,8 +55,8 @@ const aiModules = [
     description: "AI-powered WhatsApp response recommendations",
     icon: MessageSquare,
     status: "active",
-    accuracy: 88,
-    processed: 3421,
+    accuracy: 0,
+    processed: 0,
     color: "text-blue-600",
     bgColor: "bg-blue-500/10"
   },
@@ -66,8 +66,8 @@ const aiModules = [
     description: "Match clients with ideal properties using preferences",
     icon: Sparkles,
     status: "active",
-    accuracy: 85,
-    processed: 892,
+    accuracy: 0,
+    processed: 0,
     color: "text-purple-600",
     bgColor: "bg-purple-500/10"
   },
@@ -77,10 +77,10 @@ const aiModules = [
     description: "Schedule and send automated follow-up messages",
     icon: Clock,
     status: "paused",
-    accuracy: 79,
-    processed: 2156,
-    color: "text-amber-600",
-    bgColor: "bg-amber-500/10"
+    accuracy: 0,
+    processed: 0,
+    color: "text-primary",
+    bgColor: "bg-primary/10"
   },
   {
     id: "sentiment",
@@ -88,8 +88,8 @@ const aiModules = [
     description: "Analyze client communication sentiment",
     icon: Brain,
     status: "active",
-    accuracy: 91,
-    processed: 4532,
+    accuracy: 0,
+    processed: 0,
     color: "text-pink-600",
     bgColor: "bg-pink-500/10"
   },
@@ -99,20 +99,14 @@ const aiModules = [
     description: "Identify duplicate leads and merge records",
     icon: Workflow,
     status: "active",
-    accuracy: 97,
-    processed: 156,
+    accuracy: 0,
+    processed: 0,
     color: "text-cyan-600",
     bgColor: "bg-cyan-500/10"
   },
 ]
 
-const recentActions = [
-  { action: "Lead scored", details: "Rajesh Kumar - Score: 85/100", time: "2 min ago", type: "success" },
-  { action: "Smart reply suggested", details: "Property inquiry response", time: "5 min ago", type: "info" },
-  { action: "Duplicate detected", details: "Priya Sharma (merged 2 records)", time: "12 min ago", type: "warning" },
-  { action: "Property matched", details: "3 properties for Amit Patel", time: "18 min ago", type: "success" },
-  { action: "Follow-up scheduled", details: "Site visit reminder sent", time: "25 min ago", type: "info" },
-]
+const recentActions: { action: string; details: string; time: string; type: "success" | "info" | "warning" }[] = []
 
 export default function AIControlPage() {
   const [modules, setModules] = useState(aiModules)
@@ -170,7 +164,7 @@ export default function AIControlPage() {
           { label: "Active Modules", value: `${activeModules}/${modules.length}`, icon: Cpu, color: "text-green-600" },
           { label: "Total Processed", value: totalProcessed.toLocaleString(), icon: Activity, color: "text-blue-600" },
           { label: "Avg Accuracy", value: `${avgAccuracy}%`, icon: Target, color: "text-purple-600" },
-          { label: "Time Saved", value: "142 hrs", icon: Clock, color: "text-amber-600" },
+          { label: "Time Saved", value: "0 hrs", icon: Clock, color: "text-primary" },
         ].map((stat) => (
           <Card key={stat.label} className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4">
@@ -233,7 +227,7 @@ export default function AIControlPage() {
                       <Badge className={
                         module.status === "active"
                           ? "bg-green-500/10 text-green-600 border-green-500/20"
-                          : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                          : "bg-primary/10 text-primary border-primary/20"
                       }>
                         {module.status}
                       </Badge>
@@ -320,13 +314,13 @@ export default function AIControlPage() {
                   >
                     <div className={`p-1.5 rounded-full shrink-0 ${
                       action.type === "success" ? "bg-green-500/10" :
-                      action.type === "warning" ? "bg-amber-500/10" :
+                      action.type === "warning" ? "bg-primary/10" :
                       "bg-blue-500/10"
                     }`}>
                       {action.type === "success" ? (
                         <CheckCircle2 className="h-3 w-3 text-green-600" />
                       ) : action.type === "warning" ? (
-                        <AlertCircle className="h-3 w-3 text-amber-600" />
+                        <AlertCircle className="h-3 w-3 text-primary" />
                       ) : (
                         <Sparkles className="h-3 w-3 text-blue-600" />
                       )}

@@ -28,26 +28,25 @@ const statusConfig: Record<string, { color: string; icon: typeof Clock }> = {
   scheduled: { color: "bg-blue-500/10 text-blue-600 border-blue-500/20", icon: Clock },
   completed: { color: "bg-green-500/10 text-green-600 border-green-500/20", icon: CheckCircle2 },
   cancelled: { color: "bg-red-500/10 text-red-600 border-red-500/20", icon: XCircle },
-  no_show: { color: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: AlertCircle },
+  no_show: { color: "bg-primary/10 text-primary border-primary/20", icon: AlertCircle },
 }
 
 function formatCurrency(amount: number) {
-  if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1)} Cr`
-  if (amount >= 100000) return `₹${(amount / 100000).toFixed(0)} L`
-  return `₹${amount.toLocaleString('en-IN')}`
+  if (amount >= 10000000) return `â‚¹${(amount / 10000000).toFixed(1)} Cr`
+  if (amount >= 100000) return `â‚¹${(amount / 100000).toFixed(0)} L`
+  return `â‚¹${amount.toLocaleString('en-IN')}`
 }
 
-// Timeline data for the detail dialog
-function getLeadTimeline(leadId: string, visitDate: Date) {
-  return [
-    { id: 1, type: "first_contact", label: "First Contact via Meta Ad", date: new Date(visitDate.getTime() - 12 * 86400000), icon: MessageSquare, color: "bg-blue-500/10 text-blue-600", detail: "Lead submitted interest form via Facebook campaign" },
-    { id: 2, type: "call", label: "Initial Discovery Call", date: new Date(visitDate.getTime() - 10 * 86400000), icon: Phone, color: "bg-green-500/10 text-green-600", detail: "15 min call — discussed budget, preferences, timeline" },
-    { id: 3, type: "whatsapp", label: "Brochure Shared on WhatsApp", date: new Date(visitDate.getTime() - 8 * 86400000), icon: MessageSquare, color: "bg-emerald-500/10 text-emerald-600", detail: "Sent property brochure and floor plans" },
-    { id: 4, type: "email", label: "Detailed Proposal Emailed", date: new Date(visitDate.getTime() - 6 * 86400000), icon: Mail, color: "bg-purple-500/10 text-purple-600", detail: "Comprehensive investment analysis with ROI projections" },
-    { id: 5, type: "follow_up", label: "Follow-up Call", date: new Date(visitDate.getTime() - 4 * 86400000), icon: Phone, color: "bg-amber-500/10 text-amber-600", detail: "Addressed pricing queries, client interested in site visit" },
-    { id: 6, type: "visit_scheduled", label: "Site Visit Scheduled", date: new Date(visitDate.getTime() - 2 * 86400000), icon: Calendar, color: "bg-primary/10 text-primary", detail: "Confirmed date and time for property viewing" },
-    { id: 7, type: "visit", label: "Site Visit", date: visitDate, icon: Building2, color: "bg-gold/10 text-gold", detail: "Property walkthrough with client" },
-  ]
+function getLeadTimeline(_leadId: string, _visitDate: Date) {
+  return [] as {
+    id: number
+    type: string
+    label: string
+    date: Date
+    icon: typeof Calendar
+    color: string
+    detail: string
+  }[]
 }
 
 export default function SiteVisitsPage() {
@@ -74,7 +73,7 @@ export default function SiteVisitsPage() {
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-amber-500/20">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-orange-600/20">
             <Calendar className="h-6 w-6 text-primary" />
           </div>
           <div>
@@ -84,7 +83,7 @@ export default function SiteVisitsPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 border-0 shadow-gold-sm">
+            <Button className="bg-gradient-to-r from-primary to-orange-700 hover:from-primary/90 hover:to-orange-700/90 border-0 shadow-gold-sm">
               <Plus className="h-4 w-4 mr-2" /> Schedule Visit
             </Button>
           </DialogTrigger>
@@ -114,7 +113,7 @@ export default function SiteVisitsPage() {
             </div>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button className="bg-gradient-to-r from-primary to-amber-600 border-0" onClick={() => setDialogOpen(false)}>Schedule Visit</Button>
+              <Button className="bg-gradient-to-r from-primary to-orange-700 border-0" onClick={() => setDialogOpen(false)}>Schedule Visit</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -123,10 +122,10 @@ export default function SiteVisitsPage() {
       {/* Stats */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Today", value: 5, icon: Calendar, color: "text-blue-600" },
-          { label: "This Week", value: 23, icon: Clock, color: "text-primary" },
-          { label: "Completed", value: 156, icon: CheckCircle2, color: "text-green-600" },
-          { label: "Conversion", value: "34%", icon: Building2, color: "text-amber-600" },
+          { label: "Today", value: upcomingVisits.length, icon: Calendar, color: "text-blue-600" },
+          { label: "This Week", value: upcomingVisits.length, icon: Clock, color: "text-primary" },
+          { label: "Completed", value: completedVisits.length, icon: CheckCircle2, color: "text-green-600" },
+          { label: "Conversion", value: "0%", icon: Building2, color: "text-primary" },
         ].map((stat) => (
           <Card key={stat.label} className="border-0 shadow-card bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4">
@@ -210,12 +209,12 @@ export default function SiteVisitsPage() {
             return (
               <div className="flex flex-col max-h-[90vh]">
                 {/* Header */}
-                <div className="p-6 border-b bg-gradient-to-r from-primary/5 via-amber-500/5 to-primary/5">
+                <div className="p-6 border-b bg-gradient-to-r from-primary/5 via-orange-600/5 to-primary/5">
                   <DialogHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-3 rounded-xl gold-gradient shadow-gold-sm">
-                          <Calendar className="h-6 w-6 text-[oklch(0.10_0.010_260)]" />
+                          <Calendar className="h-6 w-6 text-primary-foreground" />
                         </div>
                         <div>
                           <DialogTitle className="text-xl">{property?.name}</DialogTitle>
@@ -242,7 +241,7 @@ export default function SiteVisitsPage() {
                       <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
                         <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-medium">Property Value</p>
                         <p className="font-semibold text-primary">{property ? formatCurrency(property.price) : 'N/A'}</p>
-                        <p className="text-sm text-muted-foreground">{property ? `₹${property.pricePerSqft.toLocaleString()}/sqft` : ''}</p>
+                        <p className="text-sm text-muted-foreground">{property ? `â‚¹${property.pricePerSqft.toLocaleString()}/sqft` : ''}</p>
                       </div>
                       <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
                         <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-medium">ROI</p>
@@ -294,10 +293,10 @@ export default function SiteVisitsPage() {
                       )}
                       {employee && (
                         <Card className="border-border/50 shadow-card border-0">
-                          <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Star className="w-5 h-5 text-amber-500" />Assigned Employee</CardTitle></CardHeader>
+                          <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Star className="w-5 h-5 text-primary" />Assigned Employee</CardTitle></CardHeader>
                           <CardContent>
                             <div className="flex items-center gap-3 mb-4">
-                              <Avatar className="h-12 w-12 border-2 border-amber-500/20"><AvatarFallback className="bg-amber-500/10 text-amber-600 font-semibold">{employee.name.split(" ").map(n => n[0]).join("")}</AvatarFallback></Avatar>
+                              <Avatar className="h-12 w-12 border-2 border-primary/20"><AvatarFallback className="bg-primary/10 text-primary font-semibold">{employee.name.split(" ").map(n => n[0]).join("")}</AvatarFallback></Avatar>
                               <div><p className="font-semibold">{employee.name}</p><p className="text-sm text-muted-foreground capitalize">{employee.role.replace(/_/g, ' ')}</p></div>
                             </div>
                             <div className="space-y-2">
@@ -352,7 +351,7 @@ export default function SiteVisitsPage() {
                               {detailVisit.rating && (
                                 <div className="flex items-center gap-1 mt-2">
                                   {Array.from({ length: 5 }).map((_, i) => (
-                                    <Star key={i} className={`w-4 h-4 ${i < detailVisit.rating! ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/30'}`} />
+                                    <Star key={i} className={`w-4 h-4 ${i < detailVisit.rating! ? 'text-primary fill-primary' : 'text-muted-foreground/30'}`} />
                                   ))}
                                 </div>
                               )}
@@ -370,7 +369,7 @@ export default function SiteVisitsPage() {
                     <Button variant="outline" size="sm" className="gap-2"><Phone className="w-4 h-4" />Call Client</Button>
                     <Button variant="outline" size="sm" className="gap-2"><MessageSquare className="w-4 h-4" />WhatsApp</Button>
                   </div>
-                  <Button className="gap-2 bg-gradient-to-r from-primary to-amber-600 border-0 shadow-gold-sm"><Navigation className="w-4 h-4" />Get Directions</Button>
+                  <Button className="gap-2 bg-gradient-to-r from-primary to-orange-700 border-0 shadow-gold-sm"><Navigation className="w-4 h-4" />Get Directions</Button>
                 </div>
               </div>
             )
