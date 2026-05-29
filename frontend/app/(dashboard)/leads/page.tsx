@@ -19,6 +19,9 @@ interface Crm {
   hwc: string | null
   follow_up_date: string | null
   buying_status: string | null
+  profession?: string | null
+  current_city?: string | null
+  current_area?: string | null
 }
 
 interface MetaLead {

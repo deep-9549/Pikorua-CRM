@@ -422,7 +422,7 @@ export default function EmployeesPage() {
             Team Management
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
-            {admins.length} super admin{admins.length !== 1 ? "s" : ""} Ãƒâ€šÃ‚Â· {executives.length} sales executive{executives.length !== 1 ? "s" : ""}
+            {admins.length} super admin{admins.length !== 1 ? "s" : ""} - {executives.length} sales executive{executives.length !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
@@ -518,7 +518,7 @@ export default function EmployeesPage() {
         ) : executives.length === 0 ? (
           <div className="text-center py-8 rounded-xl" style={{ border: "1px dashed var(--color-border)" }}>
             <Briefcase className="w-6 h-6 mx-auto mb-2 opacity-25" />
-            <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>No sales executives yet ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â add one to start assigning leads</p>
+            <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>No sales executives yet - add one to start assigning leads</p>
           </div>
         ) : (
           <AnimatePresence initial={false}>

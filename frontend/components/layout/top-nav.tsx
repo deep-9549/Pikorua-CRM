@@ -210,7 +210,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
             <span className="flex-1 text-left text-[13px]">Search anything...</span>
             <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded"
               style={{ background: "var(--color-card)", color: "var(--color-muted-foreground)", border: "1px solid var(--color-border)" }}>
-              âŒ˜K
+              Ctrl K
             </kbd>
           </button>
 

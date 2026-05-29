@@ -195,6 +195,9 @@ export interface Lead {
   buyingStatus?: 'ready' | 'exploring' | 'not_ready'
   budgetRange?: string
   configuration?: string[]
+  profession?: string
+  currentCity?: string
+  currentArea?: string
   hwcRating?: 'hot' | 'warm' | 'cold'
   qualitativeRemarks?: string
 }

@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -60,6 +61,9 @@ interface LeadHistory {
     buying_status: string | null
     budget_range: string | null
     configuration: string[] | null
+    profession: string | null
+    current_city: string | null
+    current_area: string | null
     hwc: string | null
     remarks: string | null
   } | null
@@ -75,6 +79,9 @@ interface CrmDetails {
   buying_status: string | null
   budget_range: string | null
   configuration: string[] | null
+  profession: string | null
+  current_city: string | null
+  current_area: string | null
   follow_up_date: string | null
   hwc: string | null
   remarks: string | null
@@ -86,7 +93,7 @@ const BUDGET_RANGES = [
   "1–2 Cr","2–3 Cr","3–5 Cr","5–7 Cr",
   "7–10 Cr","10–15 Cr","15–21 Cr","21 Cr+",
 ]
-const CONFIGURATIONS = ["3 BHK","4 BHK","Penthouse","Villa","Plot","Other"]
+const CONFIGURATIONS = ["3 BHK","4 BHK","5 BHK","Penthouse","Villa","Plot","Other"]
 
 const CLIENT_STATUSES = [
   { value: "hot",   label: "Hot",   icon: Flame,         color: "oklch(0.75 0.18 35)",  bg: "oklch(0.75 0.18 35 / 0.15)"  },
@@ -112,6 +119,21 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
   )
 }
 
+function TextField({ label, value, placeholder, onChange }: {
+  label: string
+  value: string
+  placeholder: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>{label}</Label>
+      <Input value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
+        className="h-9 text-sm" />
+    </div>
+  )
+}
+
 function StatusPill({ status }: { status: string | null }) {
   if (!status) return null
   const s = CLIENT_STATUSES.find(x => x.value === status)
@@ -133,7 +155,14 @@ function formatDate(iso: string) {
 
 function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: boolean }) {
   const [open, setOpen] = useState(false)
-  const hasCrm = entry.crm && (entry.crm.call_status || entry.crm.remarks || entry.crm.budget_range)
+  const hasCrm = entry.crm && (
+    entry.crm.call_status ||
+    entry.crm.remarks ||
+    entry.crm.budget_range ||
+    entry.crm.profession ||
+    entry.crm.current_city ||
+    entry.crm.current_area
+  )
 
   return (
     <div className="rounded-xl overflow-hidden" style={{
@@ -200,6 +229,18 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
                   <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Config: </span>
                     <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.configuration.join(", ")}</span></div>
                 )}
+                {entry.crm?.profession && (
+                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Profession: </span>
+                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.profession}</span></div>
+                )}
+                {entry.crm?.current_city && (
+                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Current city: </span>
+                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.current_city}</span></div>
+                )}
+                {entry.crm?.current_area && (
+                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Current area: </span>
+                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.current_area}</span></div>
+                )}
               </div>
               {entry.crm?.remarks && (
                 <p className="text-xs italic px-3 py-2 rounded-lg"
@@ -228,6 +269,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     first_call_date: null, last_call_date: null, call_status: null,
     site_visit_status: null, visit_date: null, visit_confirmation_date: null,
     buying_status: null, budget_range: null, configuration: null,
+    profession: null, current_city: null, current_area: null,
     follow_up_date: null, hwc: null, remarks: null,
   })
   const [clientStatus, setClientStatus] = useState<string | null>(null)
@@ -474,6 +516,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <CardTitle className="text-base">CRM Details — This Lead</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "oklch(0.60 0.006 260)" }}>
+                    Client Details
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <TextField label="Profession" value={crm.profession ?? ""} placeholder="e.g. Founder, Doctor"
+                      onChange={v => setCrm(p => ({ ...p, profession: v || null }))} />
+                    <TextField label="Current City" value={crm.current_city ?? ""} placeholder="e.g. Pune"
+                      onChange={v => setCrm(p => ({ ...p, current_city: v || null }))} />
+                    <TextField label="Current Area" value={crm.current_area ?? ""} placeholder="e.g. Baner"
+                      onChange={v => setCrm(p => ({ ...p, current_area: v || null }))} />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <DateField label="First Call Date" value={crm.first_call_date ?? ""}
                     onChange={v => setCrm(p => ({ ...p, first_call_date: v || null }))} />

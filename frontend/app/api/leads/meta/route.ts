@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       source, status, received_at, assigned_at, client_id,
       assigned_to_profile:user_profiles!assigned_to(id, full_name, role),
       assigned_by_profile:user_profiles!assigned_by(id, full_name),
-      crm:lead_crm_details(call_status, hwc, follow_up_date, buying_status, site_visit_status, budget_range)
+      crm:lead_crm_details(call_status, hwc, follow_up_date, buying_status, site_visit_status, budget_range, profession, current_city, current_area)
     `)
     .order("received_at", { ascending: false })
 

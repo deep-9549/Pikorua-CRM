@@ -16,6 +16,9 @@ export interface ExportableLead {
     follow_up_date?: string | null
     buying_status?: string | null
     budget_range?: string | null
+    profession?: string | null
+    current_city?: string | null
+    current_area?: string | null
   } | null
 }
 
@@ -43,6 +46,9 @@ export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") 
     "HWC":           pretty(l.crm?.hwc),
     "Buying Status": pretty(l.crm?.buying_status),
     "Budget":        l.crm?.budget_range ?? "",
+    "Profession":    l.crm?.profession ?? "",
+    "Current City":  l.crm?.current_city ?? "",
+    "Current Area":  l.crm?.current_area ?? "",
     "Follow-up":     fmtDate(l.crm?.follow_up_date),
     "Received":      fmtDate(l.received_at),
   }))

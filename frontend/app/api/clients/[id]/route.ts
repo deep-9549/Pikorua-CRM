@@ -61,7 +61,8 @@ export async function GET(
       crm:lead_crm_details(
         call_status, site_visit_status, buying_status,
         budget_range, configuration, hwc, follow_up_date,
-        first_call_date, last_call_date, remarks, updated_at
+        first_call_date, last_call_date, profession, current_city,
+        current_area, remarks, updated_at
       )
     `)
     .eq("client_id", id)

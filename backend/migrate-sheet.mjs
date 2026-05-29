@@ -45,6 +45,9 @@ const MAPPING = {
   call_status:   null,            // must map to: spoken | not_spoken | call_back_later
   hwc:           null,            // must map to: hot | warm | cold
   budget_range:  null,
+  profession:    null,
+  current_city:  null,
+  current_area:  null,
   follow_up_date: null,
   remarks:       "Remarks",
 }
@@ -124,6 +127,9 @@ async function main() {
       call_status:    MAPPING.call_status ? TRANSLATE_CALL_STATUS(cell(row, MAPPING.call_status)) : null,
       hwc:            MAPPING.hwc ? TRANSLATE_HWC(cell(row, MAPPING.hwc)) : null,
       budget_range:   cell(row, MAPPING.budget_range),
+      profession:     cell(row, MAPPING.profession),
+      current_city:   cell(row, MAPPING.current_city),
+      current_area:   cell(row, MAPPING.current_area),
       follow_up_date: cell(row, MAPPING.follow_up_date),
       remarks:        cell(row, MAPPING.remarks),
     }

@@ -494,7 +494,7 @@ export default function MetaAdsPage() {
             Leads
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
-            Meta Ads Ã‚Â· Manual entries Ã¢â‚¬â€ assign to your sales team
+            Meta Ads - Manual entries - assign to your sales team
           </p>
         </div>
         <div className="flex items-center gap-2">

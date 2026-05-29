@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
+function optionalText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -57,6 +61,9 @@ export async function PUT(
         buying_status: body.buying_status ?? null,
         budget_range: body.budget_range ?? null,
         configuration: body.configuration ?? null,
+        profession: optionalText(body.profession),
+        current_city: optionalText(body.current_city),
+        current_area: optionalText(body.current_area),
         follow_up_date: body.follow_up_date ?? null,
         hwc: body.hwc ?? null,
         remarks: body.remarks ?? null,
