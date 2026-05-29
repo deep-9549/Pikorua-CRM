@@ -52,6 +52,10 @@ export async function POST(
     return NextResponse.json({ error: "Lead can only be assigned to a sales executive" }, { status: 400 })
   }
 
+  // Capture prior owner for the history log
+  const { data: prior } = await supabase
+    .from("meta_leads").select("assigned_to").eq("id", id).single()
+
   const { data, error } = await supabase
     .from("meta_leads")
     .update({
@@ -67,6 +71,13 @@ export async function POST(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  await supabase.from("lead_assignment_history").insert({
+    lead_id:   id,
+    from_user: prior?.assigned_to ?? null,
+    to_user:   assigned_to,
+    reason:    "manual",
+  })
 
   return NextResponse.json({ lead: data })
 }

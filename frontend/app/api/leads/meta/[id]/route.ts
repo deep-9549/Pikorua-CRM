@@ -17,7 +17,7 @@ export async function GET(
     .from("meta_leads")
     .select(`
       id, form_id, ad_id, campaign_name, full_name, phone, email, city,
-      status, received_at, assigned_at,
+      status, received_at, assigned_at, client_id,
       assigned_to_profile:user_profiles!assigned_to(id, full_name, role)
     `)
     .eq("id", id)

@@ -75,9 +75,10 @@ export async function GET(request: NextRequest) {
     .from("meta_leads")
     .select(`
       id, form_id, ad_id, campaign_name, full_name, phone, email, city,
-      source, status, received_at, assigned_at,
+      source, status, received_at, assigned_at, client_id,
       assigned_to_profile:user_profiles!assigned_to(id, full_name, role),
-      assigned_by_profile:user_profiles!assigned_by(id, full_name)
+      assigned_by_profile:user_profiles!assigned_by(id, full_name),
+      crm:lead_crm_details(call_status, hwc, follow_up_date, buying_status, site_visit_status, budget_range)
     `)
     .order("received_at", { ascending: false })
 

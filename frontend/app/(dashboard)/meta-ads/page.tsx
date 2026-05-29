@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine
+  Plus, PenLine, Snowflake, X
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -38,8 +39,8 @@ interface MetaLead {
   email: string | null
   city: string | null
   campaign_name: string | null
-  source: "meta_ad" | "manual"
-  status: "unassigned" | "assigned"
+  source: "meta_ad" | "manual" | "migrated"
+  status: "unassigned" | "assigned" | "cold_pool"
   received_at: string
   assigned_at: string | null
   assigned_to_profile: { id: string; full_name: string; role: string } | null
@@ -236,11 +237,17 @@ function LeadRow({
   employees,
   assigningId,
   onAssign,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }: {
   lead: MetaLead
   employees: Employee[]
   assigningId: string | null
   onAssign: (leadId: string, empId: string) => void
+  selectable?: boolean
+  selected?: boolean
+  onToggleSelect?: (leadId: string) => void
 }) {
   return (
     <motion.div
@@ -249,8 +256,20 @@ function LeadRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
       className="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors"
-      style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}
+      style={{
+        background: selected ? "rgb(194 65 12 / 0.06)" : "var(--color-card)",
+        border: `1px solid ${selected ? "var(--color-primary)" : "var(--color-border)"}`,
+      }}
     >
+      {/* Selection checkbox */}
+      {selectable && (
+        <Checkbox
+          checked={selected}
+          onCheckedChange={() => onToggleSelect?.(lead.id)}
+          className="shrink-0"
+        />
+      )}
+
       {/* Avatar */}
       <Avatar className="h-9 w-9 shrink-0">
         <AvatarFallback className="text-xs gold-gradient" style={{ color: "var(--color-primary-foreground)" }}>
@@ -358,6 +377,9 @@ export default function MetaAdsPage() {
   const [assigningId, setAssigningId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("unassigned")
   const [addOpen, setAddOpen] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkExec, setBulkExec] = useState("")
+  const [bulkAssigning, setBulkAssigning] = useState(false)
 
   const fetchLeads = useCallback(async (status?: string) => {
     setLoading(true)
@@ -374,6 +396,39 @@ export default function MetaAdsPage() {
       setLoading(false)
     }
   }, [])
+
+  function toggleSelect(leadId: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(leadId)) next.delete(leadId)
+      else next.add(leadId)
+      return next
+    })
+  }
+
+  async function handleBulkAssign() {
+    if (!bulkExec || selected.size === 0) return
+    setBulkAssigning(true)
+    try {
+      const res = await fetch("/api/leads/meta/assign-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_ids: Array.from(selected), assigned_to: bulkExec }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        throw new Error(json.error ?? "Bulk assignment failed")
+      }
+      // Selected leads leave the current (unassigned / cold pool) view
+      setLeads(prev => prev.filter(l => !selected.has(l.id)))
+      setSelected(new Set())
+      setBulkExec("")
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Bulk assignment failed")
+    } finally {
+      setBulkAssigning(false)
+    }
+  }
 
   useEffect(() => {
     async function loadAll() {
@@ -414,6 +469,7 @@ export default function MetaAdsPage() {
 
   function handleTabChange(tab: string) {
     setActiveTab(tab)
+    setSelected(new Set())
     fetchLeads(tab === "all" ? undefined : tab)
   }
 
@@ -426,6 +482,8 @@ export default function MetaAdsPage() {
 
   const metaCount   = leads.filter(l => l.source === "meta_ad").length
   const manualCount = leads.filter(l => l.source === "manual").length
+  // Bulk select is available where leads await (re)assignment
+  const selectable = activeTab === "unassigned" || activeTab === "cold_pool"
 
   return (
     <div className="space-y-6">
@@ -495,6 +553,9 @@ export default function MetaAdsPage() {
             <TabsList className="mb-4">
               <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
               <TabsTrigger value="assigned">Assigned</TabsTrigger>
+              <TabsTrigger value="cold_pool" className="gap-1.5">
+                <Snowflake className="w-3.5 h-3.5" />Cold Pool
+              </TabsTrigger>
               <TabsTrigger value="all">All</TabsTrigger>
             </TabsList>
 
@@ -505,6 +566,42 @@ export default function MetaAdsPage() {
               </div>
             )}
 
+            {/* Bulk assign bar — shown on selectable tabs when rows are checked */}
+            {selectable && selected.size > 0 && (
+              <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl mb-4"
+                style={{ background: "rgb(194 65 12 / 0.08)", border: "1px solid var(--color-primary)" }}>
+                <span className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
+                  {selected.size} selected
+                </span>
+                <div className="flex-1" />
+                <select
+                  value={bulkExec}
+                  onChange={e => setBulkExec(e.target.value)}
+                  className="h-8 rounded-lg px-2 text-xs bg-transparent cursor-pointer"
+                  style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                >
+                  <option value="">Choose executive...</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.full_name}</option>
+                  ))}
+                </select>
+                <Button
+                  size="sm"
+                  className="h-8 gap-1.5 gold-gradient text-[11px] font-semibold shadow-gold-sm"
+                  style={{ color: "var(--color-primary-foreground)" }}
+                  disabled={!bulkExec || bulkAssigning}
+                  onClick={handleBulkAssign}
+                >
+                  {bulkAssigning
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <><UserPlus className="w-3.5 h-3.5" />Assign {selected.size}</>}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelected(new Set())}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+
             <TabsContent value={activeTab} className="mt-0">
               {loading ? (
                 <div className="flex items-center justify-center py-16">
@@ -512,9 +609,11 @@ export default function MetaAdsPage() {
                 </div>
               ) : leads.length === 0 ? (
                 <div className="text-center py-16 space-y-3">
-                  <Users className="w-8 h-8 mx-auto opacity-30" />
+                  {activeTab === "cold_pool"
+                    ? <Snowflake className="w-8 h-8 mx-auto opacity-30" />
+                    : <Users className="w-8 h-8 mx-auto opacity-30" />}
                   <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-                    No {activeTab !== "all" ? activeTab : ""} leads
+                    {activeTab === "cold_pool" ? "No leads in the cold pool" : `No ${activeTab !== "all" ? activeTab : ""} leads`}
                   </p>
                   {activeTab === "unassigned" && (
                     <Button
@@ -538,6 +637,9 @@ export default function MetaAdsPage() {
                         employees={employees}
                         assigningId={assigningId}
                         onAssign={handleAssign}
+                        selectable={selectable}
+                        selected={selected.has(lead.id)}
+                        onToggleSelect={toggleSelect}
                       />
                     ))}
                   </div>
