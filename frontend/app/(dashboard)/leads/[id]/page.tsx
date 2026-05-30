@@ -119,6 +119,30 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
   )
 }
 
+// Convert ISO timestamp -> "YYYY-MM-DDTHH:MM" for datetime-local inputs (local tz)
+function isoToLocalInput(iso: string | null) {
+  if (!iso) return ""
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function DateTimeField({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>{label}</Label>
+      <input
+        type="datetime-local"
+        value={isoToLocalInput(value)}
+        onChange={e => onChange(e.target.value ? new Date(e.target.value).toISOString() : null)}
+        className="flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm bg-transparent"
+        style={{ borderColor: "var(--color-border)", color: "oklch(0.88 0.006 80)" }}
+      />
+    </div>
+  )
+}
+
 function TextField({ label, value, placeholder, onChange }: {
   label: string
   value: string
@@ -568,12 +592,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       </Select>
                     </div>
                     {showVisitDate && (
-                      <DateField label="Visit Date" value={crm.visit_date ?? ""}
-                        onChange={v => setCrm(p => ({ ...p, visit_date: v || null }))} />
+                      <DateTimeField label="Visit Date & Time" value={crm.visit_date}
+                        onChange={v => setCrm(p => ({ ...p, visit_date: v }))} />
                     )}
                     {showConfirmDate && (
-                      <DateField label="Confirmation Date" value={crm.visit_confirmation_date ?? ""}
-                        onChange={v => setCrm(p => ({ ...p, visit_confirmation_date: v || null }))} />
+                      <DateTimeField label="Confirmation Date & Time" value={crm.visit_confirmation_date}
+                        onChange={v => setCrm(p => ({ ...p, visit_confirmation_date: v }))} />
                     )}
                   </motion.div>
                 )}
