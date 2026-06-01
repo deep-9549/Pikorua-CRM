@@ -1,5 +1,3 @@
-import * as XLSX from "xlsx"
-
 export interface ExportableLead {
   full_name: string | null
   phone: string | null
@@ -32,30 +30,67 @@ function fmtDate(v: string | null | undefined) {
   return new Date(v).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
 }
 
-export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") {
-  const rows = leads.map(l => ({
-    "Name":          l.full_name ?? "",
-    "Phone":         l.phone ?? "",
-    "Email":         l.email ?? "",
-    "City":          l.city ?? "",
-    "Campaign":      l.campaign_name ?? "",
-    "Source":        pretty(l.source),
-    "Status":        pretty(l.status),
-    "Assigned To":   l.assigned_to_profile?.full_name ?? "",
-    "Call Status":   pretty(l.crm?.call_status),
-    "HWC":           pretty(l.crm?.hwc),
-    "Buying Status": pretty(l.crm?.buying_status),
-    "Budget":        l.crm?.budget_range ?? "",
-    "Profession":    l.crm?.profession ?? "",
-    "Current City":  l.crm?.current_city ?? "",
-    "Current Area":  l.crm?.current_area ?? "",
-    "Follow-up":     fmtDate(l.crm?.follow_up_date),
-    "Received":      fmtDate(l.received_at),
-  }))
+function escapeCsv(value: string) {
+  if (value.includes("\"") || value.includes(",") || value.includes("\n")) {
+    return `"${value.replace(/\"/g, "\"\"")}"`
+  }
+  return value
+}
 
-  const ws = XLSX.utils.json_to_sheet(rows)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, "Leads")
+export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") {
+  const columns = [
+    "Name",
+    "Phone",
+    "Email",
+    "City",
+    "Campaign",
+    "Source",
+    "Status",
+    "Assigned To",
+    "Call Status",
+    "HWC",
+    "Buying Status",
+    "Budget",
+    "Profession",
+    "Current City",
+    "Current Area",
+    "Follow-up",
+    "Received",
+  ]
+
+  const rows = leads.map(l => [
+    l.full_name ?? "",
+    l.phone ?? "",
+    l.email ?? "",
+    l.city ?? "",
+    l.campaign_name ?? "",
+    pretty(l.source),
+    pretty(l.status),
+    l.assigned_to_profile?.full_name ?? "",
+    pretty(l.crm?.call_status),
+    pretty(l.crm?.hwc),
+    pretty(l.crm?.buying_status),
+    l.crm?.budget_range ?? "",
+    l.crm?.profession ?? "",
+    l.crm?.current_city ?? "",
+    l.crm?.current_area ?? "",
+    fmtDate(l.crm?.follow_up_date),
+    fmtDate(l.received_at),
+  ])
+
+  const lines = [
+    columns.join(","),
+    ...rows.map(row => row.map(cell => escapeCsv(String(cell))).join(",")),
+  ]
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" })
   const stamp = new Date().toISOString().split("T")[0]
-  XLSX.writeFile(wb, `${filename}-${stamp}.xlsx`)
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = `${filename}-${stamp}.csv`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }

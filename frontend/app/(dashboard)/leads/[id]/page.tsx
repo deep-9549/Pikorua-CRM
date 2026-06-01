@@ -269,7 +269,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
               {entry.crm?.remarks && (
                 <p className="text-xs italic px-3 py-2 rounded-lg"
                   style={{ background: "oklch(0.18 0.012 260)", color: "oklch(0.70 0.006 80)" }}>
-                  "{entry.crm.remarks}"
+                  &quot;{entry.crm.remarks}&quot;
                 </p>
               )}
             </div>

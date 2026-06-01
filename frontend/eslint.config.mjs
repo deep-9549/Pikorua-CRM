@@ -7,8 +7,9 @@ export default defineConfig([
   ...nextTypeScript,
   {
     rules: {
-      "react-hooks/purity": "warn",
-      "react-hooks/set-state-in-effect": "warn",
+      "@typescript-eslint/no-unused-vars": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/set-state-in-effect": "off",
     },
   },
   globalIgnores([

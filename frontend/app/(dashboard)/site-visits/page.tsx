@@ -173,7 +173,7 @@ function ScheduleVisitDialog({
             Schedule Site Visit
           </DialogTitle>
           <DialogDescription>
-            Pick a lead and lock in when they're visiting.
+            Pick a lead and lock in when they are visiting.
           </DialogDescription>
         </DialogHeader>
 
