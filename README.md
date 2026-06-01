@@ -84,14 +84,7 @@ From `frontend/`:
 - `npm run start` - run production server
 - `npm run lint` - lint code
 
-## v0 Workflow (Optional)
-
-This repository is linked to v0 for UI iteration. You can continue in v0 and push updates directly to this repo.
-
-- https://v0.app/chat/projects/prj_qdUG2feV5zRf3skucCmSiwbHrcA0
-
 ## Learn More
 
 - Next.js: https://nextjs.org/docs
 - Supabase: https://supabase.com/docs
-- v0: https://v0.app/docs
