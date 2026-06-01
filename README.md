@@ -1,43 +1,64 @@
-# v0-pikoria-realty-crm
+# Pikorua CRM
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+Pikorua CRM is a real estate CRM built for high-velocity lead capture, assignment, and follow-up. It combines a fast Next.js front end with a Supabase-backed data model and API routes for CRM operations.
 
-## Built with v0
+## Highlights
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+- Lead intake and assignment flows with admin oversight
+- Role-based access and protected dashboards
+- Supabase Auth + Postgres with server-side enforcement
+- Modular UI with a consistent design system
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_qdUG2feV5zRf3skucCmSiwbHrcA0)
+## Tech Stack
 
-## Project Structure
+- Next.js App Router (frontend)
+- Supabase (Auth + Postgres)
+- TypeScript, Tailwind CSS, and Radix UI
 
-- `frontend/`: Next.js app (UI, routes, API routes).
-- `backend/`: Database assets and backend docs.
+## Repository Layout
 
-## Getting Started
+- `frontend/`: Next.js app (UI, routes, API handlers, auth proxy)
+- `backend/`: SQL setup and migrations
 
-First, move into the frontend folder and run the development server:
+## Quick Start
+
+1. Install dependencies (choose one):
+
+```bash
+cd frontend
+npm install
+# or
+pnpm install
+# or
+yarn install
+```
+
+2. Configure environment variables in `frontend/.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<server-role-key>
+META_WEBHOOK_VERIFY_TOKEN=<any-random-string>
+```
+
+3. Apply database setup:
+
+- New project: run `backend/supabase-setup.sql`
+- Existing project: run each file in `backend/migrations/` in filename order
+
+4. Start the dev server:
 
 ```bash
 cd frontend
 npm run dev
-# or
-cd frontend
-yarn dev
-# or
-cd frontend
-pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `frontend/app/page.tsx`. The page auto-updates as you edit the file.
+## Admin Bootstrap
 
-## Local Team Testing
-
-This app uses Supabase authentication and persisted lead data. Before inviting team members to test:
-
-1. Apply `backend/supabase-setup.sql` for a new project. For an existing project, apply the files in `backend/migrations/` in filename order through the Supabase SQL Editor.
-2. Create the first login in Supabase Authentication, then promote that profile to an admin in the SQL Editor:
+Create the first user in Supabase Auth, then promote them:
 
 ```sql
 update user_profiles
@@ -45,22 +66,32 @@ set role = 'super_admin', full_name = 'Admin Name'
 where id = '<auth-user-id>';
 ```
 
-3. Confirm `frontend/.env` or `frontend/.env.local` contains your Supabase URL, anon key, and service-role key. Keep the service-role key server-side and never share the env file.
-4. For testing from trusted devices on the same network, run:
+## Local Testing on a Team Network
 
 ```bash
 cd frontend
 npm run dev -- --hostname 0.0.0.0
 ```
 
-Open `http://<your-local-ip>:3000` on those devices. Use dummy lead/customer data only while validating admin creation, lead assignment, executive visibility, and user removal behavior. Do not publicly expose this development server.
+Open `http://<your-local-ip>:3000` on trusted devices. Use test data only and keep the dev server private.
+
+## Scripts
+
+From `frontend/`:
+
+- `npm run dev` - start local dev
+- `npm run build` - production build
+- `npm run start` - run production server
+- `npm run lint` - lint code
+
+## v0 Workflow (Optional)
+
+This repository is linked to v0 for UI iteration. You can continue in v0 and push updates directly to this repo.
+
+- https://v0.app/chat/projects/prj_qdUG2feV5zRf3skucCmSiwbHrcA0
 
 ## Learn More
 
-To learn more, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
-
-<a href="https://v0.app/chat/api/kiro/clone/omwasneverhere-coder/v0-pikoria-realty-crm" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+- Next.js: https://nextjs.org/docs
+- Supabase: https://supabase.com/docs
+- v0: https://v0.app/docs
