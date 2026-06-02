@@ -54,6 +54,10 @@ coverage/
 drizzle/
 *.sql
 
+# ── Seed scripts (contain credentials) ────────────────────────────────────────
+apps/api/scripts/seed-*.js
+packages/db/scripts/seed-*.js
+
 # ── OS / editor ────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
