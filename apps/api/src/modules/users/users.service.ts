@@ -2,8 +2,10 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { eq, isNull, desc } from 'drizzle-orm'
 import * as bcrypt from 'bcryptjs'
 import { DatabaseService } from '../../database/database.service'
-import { userProfiles } from '@pikorua/db'
+import { employees, userProfiles } from '@pikorua/db'
 import { CreateUserDto } from './dto/create-user.dto'
+
+const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
 type UserProfile = Omit<typeof userProfiles.$inferSelect, 'passwordHash'>
 
@@ -44,6 +46,7 @@ export class UsersService {
 
     const passwordHash = await bcrypt.hash(dto.password, 12)
     const [user] = await this.db.insert(userProfiles).values({
+      tenantId: DEFAULT_TENANT_ID,
       fullName: dto.full_name,
       email: dto.email,
       phone: dto.phone ?? null,
@@ -51,6 +54,17 @@ export class UsersService {
       passwordHash,
       status: 'active',
     }).returning()
+
+    if (user.role === 'sales_executive') {
+      await this.db.insert(employees).values({
+        userId: user.id,
+        tenantId: user.tenantId ?? DEFAULT_TENANT_ID,
+        role: 'sales_executive',
+        phoneEncrypted: user.phone,
+        status: 'active',
+        joinDate: new Date(),
+      })
+    }
 
     return { user: serializeUser(user) }
   }

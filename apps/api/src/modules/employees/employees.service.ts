@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { employees } from '@pikorua/db'
+import { employees, userProfiles } from '@pikorua/db'
 
 @Injectable()
 export class EmployeesService {
@@ -10,14 +10,24 @@ export class EmployeesService {
   private get db() { return this.database.db }
 
   async findAll() {
-    return this.db.query.employees.findMany({
-      where: isNull(employees.deletedAt),
-      with: {
-        user: true,
-        goals: true,
-        activities: true,
-      },
+    const users = await this.db.query.userProfiles.findMany({
+      where: and(
+        eq(userProfiles.role, 'sales_executive'),
+        eq(userProfiles.status, 'active'),
+        isNull(userProfiles.deletedAt),
+      ),
+      orderBy: [userProfiles.fullName],
     })
+
+    return {
+      employees: users.map((user) => ({
+        id: user.id,
+        full_name: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+      })),
+    }
   }
 
   async findOne(id: string) {
