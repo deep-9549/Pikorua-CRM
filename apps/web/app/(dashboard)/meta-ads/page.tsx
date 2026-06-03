@@ -70,6 +70,15 @@ function initials(name: string | null) {
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
 }
 
+async function readApiError(res: Response, fallback: string) {
+  const json = await res.json().catch(() => null)
+  const message = json?.message ?? json?.error
+
+  if (Array.isArray(message)) return message.join(", ")
+  if (typeof message === "string" && message.trim()) return message
+  return fallback
+}
+
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Add Lead Dialog Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function AddLeadDialog({
@@ -421,8 +430,7 @@ export default function MetaAdsPage() {
         body: JSON.stringify({ lead_ids: Array.from(selected), assigned_to: bulkExec }),
       })
       if (!res.ok) {
-        const json = await res.json()
-        throw new Error(json.error ?? "Bulk assignment failed")
+        throw new Error(await readApiError(res, "Bulk assignment failed"))
       }
       // Selected leads leave the current (unassigned / cold pool) view
       setLeads(prev => prev.filter(l => !selected.has(l.id)))
@@ -469,7 +477,7 @@ export default function MetaAdsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assigned_to: employeeId }),
       })
-      if (!res.ok) throw new Error("Assignment failed")
+      if (!res.ok) throw new Error(await readApiError(res, "Assignment failed"))
       setLeads(prev => prev.filter(l => l.id !== leadId))
     } catch (e) {
       alert(e instanceof Error ? e.message : "Assignment failed")
