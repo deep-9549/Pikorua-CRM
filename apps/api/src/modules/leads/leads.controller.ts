@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Put, Param, Body, Query, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { LeadsService } from './leads.service'
 import { CreateLeadDto } from './dto/create-lead.dto'
@@ -34,6 +34,7 @@ export class LeadsController {
   }
 
   @Patch(':id')
+  @Put(':id')
   @ApiOperation({ summary: 'Update lead CRM details' })
   update(@Param('id') id: string, @Body() dto: UpdateLeadDto) {
     return this.leadsService.update(id, dto)

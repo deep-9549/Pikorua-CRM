@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Param, Body, Query, UseGuards } from '@nestjs/common'
+import { Controller, ForbiddenException, Get, Patch, Post, Param, Body, Query, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { MetaLeadsService } from './meta-leads.service'
 import { AssignLeadDto } from './dto/assign-lead.dto'
@@ -27,18 +27,27 @@ export class MetaLeadsController {
   }
 
   @Patch(':id/assign')
+  @Post(':id/assign')
   @ApiOperation({ summary: 'Assign a lead to an employee' })
   assign(
     @Param('id') id: string,
     @Body() dto: AssignLeadDto,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
   ) {
+    if (user.role !== 'super_admin') {
+      throw new ForbiddenException('Only super admins can assign leads')
+    }
+
     return this.metaLeadsService.assign(id, user.id, dto)
   }
 
   @Post('bulk-assign')
   @ApiOperation({ summary: 'Bulk assign leads to an employee' })
-  bulkAssign(@Body() dto: BulkAssignDto, @CurrentUser() user: { id: string }) {
+  bulkAssign(@Body() dto: BulkAssignDto, @CurrentUser() user: { id: string; role: string }) {
+    if (user.role !== 'super_admin') {
+      throw new ForbiddenException('Only super admins can assign leads')
+    }
+
     return this.metaLeadsService.bulkAssign(user.id, dto)
   }
 

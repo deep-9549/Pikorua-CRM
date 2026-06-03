@@ -4,6 +4,7 @@ import { SiteVisitsService } from './site-visits.service'
 import { CreateSiteVisitDto } from './dto/create-site-visit.dto'
 import { UpdateSiteVisitDto } from './dto/update-site-visit.dto'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { CurrentUser } from '../../common/decorators/current-user.decorator'
 
 @ApiTags('Site Visits')
 @ApiBearerAuth()
@@ -21,8 +22,8 @@ export class SiteVisitsController {
 
   @Post()
   @ApiOperation({ summary: 'Schedule a site visit' })
-  create(@Body() dto: CreateSiteVisitDto) {
-    return this.siteVisitsService.create(dto)
+  create(@Body() dto: CreateSiteVisitDto, @CurrentUser() user: { id: string }) {
+    return this.siteVisitsService.create(dto, user.id)
   }
 
   @Patch(':id')

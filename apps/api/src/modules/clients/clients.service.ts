@@ -2,6 +2,23 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { eq, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { clients, metaLeads } from '@pikorua/db'
+import { serializeMetaLead } from '../leads/lead.serializer'
+
+function serializeClient(client: typeof clients.$inferSelect) {
+  return {
+    id: client.id,
+    full_name: client.fullName,
+    phone: client.phone,
+    email: client.email,
+    status: client.status,
+    status_note: client.statusNote,
+    status_updated_by: client.statusUpdatedBy,
+    status_updated_at: client.statusUpdatedAt,
+    tier: client.tier,
+    created_at: client.createdAt,
+    updated_at: client.updatedAt,
+  }
+}
 
 @Injectable()
 export class ClientsService {
@@ -21,7 +38,10 @@ export class ClientsService {
       orderBy: (t, { desc }) => [desc(t.receivedAt)],
     })
 
-    return { ...client, leads }
+    return {
+      client: serializeClient(client),
+      leads: leads.map(serializeMetaLead),
+    }
   }
 
   async updateStatus(id: string, updatedBy: string, status: string, statusNote?: string) {
@@ -33,6 +53,6 @@ export class ClientsService {
       .set({ status, statusNote: statusNote ?? null, statusUpdatedBy: updatedBy, statusUpdatedAt: new Date(), updatedAt: new Date() })
       .where(eq(clients.id, id))
       .returning()
-    return updated
+    return { client: serializeClient(updated) }
   }
 }

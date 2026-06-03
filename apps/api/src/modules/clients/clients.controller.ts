@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common'
+import { Controller, Get, Patch, Put, Param, Body, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { IsString, IsOptional } from 'class-validator'
 import { ClientsService } from './clients.service'
@@ -22,6 +22,7 @@ export class ClientsController {
   findOne(@Param('id') id: string) { return this.clientsService.findOne(id) }
 
   @Patch(':id/status')
+  @Put(':id/status')
   @ApiOperation({ summary: 'Update client status' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateStatusDto, @CurrentUser() user: { id: string }) {
     return this.clientsService.updateStatus(id, user.id, dto.status, dto.status_note)
