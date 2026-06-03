@@ -5,6 +5,7 @@ import { metaLeads, leadCrmDetails, leadNotes } from '@pikorua/db'
 import { CreateLeadDto } from './dto/create-lead.dto'
 import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
+import { serializeCrmDetails, serializeMetaLead } from './lead.serializer'
 
 @Injectable()
 export class LeadsService {
@@ -16,7 +17,7 @@ export class LeadsService {
     const conditions = [isNull(metaLeads.deletedAt)]
     if (status) conditions.push(eq(metaLeads.status, status as never))
 
-    return this.db.query.metaLeads.findMany({
+    const leads = await this.db.query.metaLeads.findMany({
       where: and(...conditions),
       with: {
         assignedToProfile: true,
@@ -25,6 +26,8 @@ export class LeadsService {
       },
       orderBy: [desc(metaLeads.receivedAt)],
     })
+
+    return { leads: leads.map(serializeMetaLead) }
   }
 
   async findOne(id: string) {
@@ -39,7 +42,12 @@ export class LeadsService {
       },
     })
     if (!lead) throw new NotFoundException(`Lead ${id} not found`)
-    return lead
+    return serializeMetaLead(lead)
+  }
+
+  async findCrm(id: string) {
+    const lead = await this.findOne(id)
+    return { crm: serializeCrmDetails((lead as any)?.crm) }
   }
 
   async create(dto: CreateLeadDto) {
@@ -53,7 +61,8 @@ export class LeadsService {
       source: 'manual',
       status: 'unassigned',
     }).returning()
-    return lead
+
+    return { lead: serializeMetaLead(lead) }
   }
 
   async update(id: string, dto: UpdateLeadDto) {

@@ -4,6 +4,7 @@ import { DatabaseService } from '../../database/database.service'
 import { metaLeads } from '@pikorua/db'
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
+import { serializeMetaLead } from '../leads/lead.serializer'
 
 @Injectable()
 export class MetaLeadsService {
@@ -15,7 +16,7 @@ export class MetaLeadsService {
     const conditions = [isNull(metaLeads.deletedAt)]
     if (status) conditions.push(eq(metaLeads.status, status as never))
 
-    return this.db.query.metaLeads.findMany({
+    const leads = await this.db.query.metaLeads.findMany({
       where: and(...conditions),
       with: {
         assignedToProfile: true,
@@ -24,6 +25,8 @@ export class MetaLeadsService {
       },
       orderBy: [desc(metaLeads.receivedAt)],
     })
+
+    return { leads: leads.map(serializeMetaLead) }
   }
 
   async findOne(id: string) {
@@ -38,7 +41,7 @@ export class MetaLeadsService {
       },
     })
     if (!lead) throw new NotFoundException(`Meta lead ${id} not found`)
-    return lead
+    return { lead: serializeMetaLead(lead) }
   }
 
   async assign(id: string, assignedBy: string, dto: AssignLeadDto) {
@@ -53,7 +56,7 @@ export class MetaLeadsService {
       })
       .where(eq(metaLeads.id, id))
       .returning()
-    return updated
+    return { lead: serializeMetaLead(updated) }
   }
 
   async bulkAssign(assignedBy: string, dto: BulkAssignDto) {
@@ -77,7 +80,7 @@ export class MetaLeadsService {
       .set({ status: 'converted', updatedAt: new Date() })
       .where(eq(metaLeads.id, id))
       .returning()
-    return updated
+    return { lead: serializeMetaLead(updated) }
   }
 
   async reject(id: string) {
@@ -87,6 +90,6 @@ export class MetaLeadsService {
       .set({ status: 'rejected', updatedAt: new Date() })
       .where(eq(metaLeads.id, id))
       .returning()
-    return updated
+    return { lead: serializeMetaLead(updated) }
   }
 }

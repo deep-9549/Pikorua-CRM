@@ -24,7 +24,7 @@ export class LeadsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get lead by ID' })
   findOne(@Param('id') id: string) {
-    return this.leadsService.findOne(id)
+    return this.leadsService.findCrm(id)
   }
 
   @Post()
