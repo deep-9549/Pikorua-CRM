@@ -11,7 +11,7 @@ const PROTECTED = [
   '/scripts', '/documents', '/ai-control', '/smart-matching', '/hni-clients',
 ]
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get('pikorua_token')?.value
   const isProtected = PROTECTED.some(p => pathname.startsWith(p))
