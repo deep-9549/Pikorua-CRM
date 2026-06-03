@@ -12,7 +12,10 @@ export class DatabaseService implements OnModuleDestroy {
   constructor() {
     const url = process.env.DATABASE_URL
     if (!url) throw new Error('DATABASE_URL is not set')
-    this.client = postgres(url)
+    this.client = postgres(url, {
+      ssl: process.env.DATABASE_SSL === 'true' ? 'require' : undefined,
+      max: Number(process.env.DATABASE_MAX_CONNECTIONS ?? 1),
+    })
     this.db = drizzle(this.client, { schema })
     this.logger.log('Database connected')
   }
