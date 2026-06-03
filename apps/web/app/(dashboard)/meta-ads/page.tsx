@@ -29,6 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { getAuthUser } from "@/lib/auth/cookies"
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Types Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
@@ -237,6 +238,7 @@ function LeadRow({
   employees,
   assigningId,
   onAssign,
+  canAssign = false,
   selectable = false,
   selected = false,
   onToggleSelect,
@@ -245,6 +247,7 @@ function LeadRow({
   employees: Employee[]
   assigningId: string | null
   onAssign: (leadId: string, empId: string) => void
+  canAssign?: boolean
   selectable?: boolean
   selected?: boolean
   onToggleSelect?: (leadId: string) => void
@@ -335,7 +338,7 @@ function LeadRow({
           </span>
           <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-success)" }} />
         </div>
-      ) : (
+      ) : canAssign ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -359,10 +362,10 @@ function LeadRow({
                   </Avatar>
                   {emp.full_name}
                 </DropdownMenuItem>
-              ))}
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
-      )}
+      ) : null}
     </motion.div>
   )
 }
@@ -380,6 +383,7 @@ export default function MetaAdsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkExec, setBulkExec] = useState("")
   const [bulkAssigning, setBulkAssigning] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   const fetchLeads = useCallback(async (status?: string) => {
     setLoading(true)
@@ -407,6 +411,7 @@ export default function MetaAdsPage() {
   }
 
   async function handleBulkAssign() {
+    if (!isSuperAdmin) return
     if (!bulkExec || selected.size === 0) return
     setBulkAssigning(true)
     try {
@@ -434,11 +439,16 @@ export default function MetaAdsPage() {
     async function loadAll() {
       setLoading(true)
       try {
+        const authUser = getAuthUser()
+        const canViewEmployees = authUser?.role === "super_admin"
+        setIsSuperAdmin(canViewEmployees)
+
         const [leadsRes, empsRes] = await Promise.all([
           fetch("/api/leads/meta?status=unassigned"),
-          fetch("/api/employees"),
+          canViewEmployees ? fetch("/api/employees") : Promise.resolve(null),
         ])
-        const [leadsJson, empsJson] = await Promise.all([leadsRes.json(), empsRes.json()])
+        const leadsJson = await leadsRes.json()
+        const empsJson = empsRes ? await empsRes.json() : { employees: [] }
         setLeads(leadsJson.leads ?? [])
         setEmployees(empsJson.employees ?? [])
       } catch {
@@ -451,6 +461,7 @@ export default function MetaAdsPage() {
   }, [])
 
   async function handleAssign(leadId: string, employeeId: string) {
+    if (!isSuperAdmin) return
     setAssigningId(leadId)
     try {
       const res = await fetch(`/api/leads/meta/${leadId}/assign`, {
@@ -483,7 +494,7 @@ export default function MetaAdsPage() {
   const metaCount   = leads.filter(l => l.source === "meta_ad").length
   const manualCount = leads.filter(l => l.source === "manual").length
   // Bulk select is available where leads await (re)assignment
-  const selectable = activeTab === "unassigned" || activeTab === "cold_pool"
+  const selectable = isSuperAdmin && (activeTab === "unassigned" || activeTab === "cold_pool")
 
   return (
     <div className="space-y-6">
@@ -637,6 +648,7 @@ export default function MetaAdsPage() {
                         employees={employees}
                         assigningId={assigningId}
                         onAssign={handleAssign}
+                        canAssign={isSuperAdmin}
                         selectable={selectable}
                         selected={selected.has(lead.id)}
                         onToggleSelect={toggleSelect}
