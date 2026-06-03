@@ -5,6 +5,21 @@ import { DatabaseService } from '../../database/database.service'
 import { userProfiles } from '@pikorua/db'
 import { CreateUserDto } from './dto/create-user.dto'
 
+type UserProfile = Omit<typeof userProfiles.$inferSelect, 'passwordHash'>
+
+function serializeUser(user: UserProfile) {
+  return {
+    id: user.id,
+    full_name: user.fullName,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    status: user.status,
+    created_at: user.createdAt,
+    updated_at: user.updatedAt,
+  }
+}
+
 @Injectable()
 export class UsersService {
   constructor(private readonly database: DatabaseService) {}
@@ -12,11 +27,13 @@ export class UsersService {
   private get db() { return this.database.db }
 
   async findAll() {
-    return this.db.query.userProfiles.findMany({
+    const users = await this.db.query.userProfiles.findMany({
       where: isNull(userProfiles.deletedAt),
       columns: { passwordHash: false },
       orderBy: [desc(userProfiles.createdAt)],
     })
+
+    return { users: users.map(serializeUser) }
   }
 
   async create(dto: CreateUserDto) {
@@ -33,8 +50,9 @@ export class UsersService {
       role: dto.role as never,
       passwordHash,
       status: 'active',
-    }).returning({ id: userProfiles.id, fullName: userProfiles.fullName, email: userProfiles.email, role: userProfiles.role })
-    return user
+    }).returning()
+
+    return { user: serializeUser(user) }
   }
 
   async remove(id: string, requesterId: string) {
