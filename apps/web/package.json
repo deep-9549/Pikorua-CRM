@@ -2,6 +2,9 @@
     "name": "@pikorua/web",
     "version": "0.1.0",
     "private": true,
+    "engines": {
+        "node": "22.x"
+    },
     "scripts": {
         "dev": "node --max-old-space-size=2048 node_modules/next/dist/bin/next dev -p 3000",
         "build": "next build",
