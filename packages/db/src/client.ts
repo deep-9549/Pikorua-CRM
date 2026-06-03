@@ -8,7 +8,9 @@ if (!connectionString) {
   throw new Error('DATABASE_URL environment variable is required')
 }
 
-const queryClient = postgres(connectionString)
+const queryClient = postgres(connectionString, {
+  ssl: process.env.DATABASE_SSL === 'true' ? 'require' : undefined,
+})
 
 export const db = drizzle(queryClient, { schema })
 
