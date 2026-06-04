@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine, Snowflake, X
+  Plus, PenLine, Snowflake, X, FileUp
 } from "lucide-react"
+import { ImportLeadsDialog } from "@/components/import-leads-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -389,6 +390,7 @@ export default function MetaAdsPage() {
   const [assigningId, setAssigningId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("unassigned")
   const [addOpen, setAddOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkExec, setBulkExec] = useState("")
   const [bulkAssigning, setBulkAssigning] = useState(false)
@@ -527,6 +529,17 @@ export default function MetaAdsPage() {
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Refresh
           </Button>
+          {isSuperAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setImportOpen(true)}
+            >
+              <FileUp className="w-4 h-4" />
+              Import Excel
+            </Button>
+          )}
           <Button
             size="sm"
             className="gap-2 gold-gradient font-semibold shadow-gold-sm"
@@ -675,6 +688,13 @@ export default function MetaAdsPage() {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onAdded={handleLeadAdded}
+      />
+
+      {/* Import Leads Dialog */}
+      <ImportLeadsDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => fetchLeads(activeTab === "all" ? undefined : activeTab)}
       />
     </div>
   )
