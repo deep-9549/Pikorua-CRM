@@ -6,7 +6,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 
 class UpdateStatusDto {
-  @IsString() status: string
+  @IsString() @IsOptional() status?: string
   @IsString() @IsOptional() status_note?: string
 }
 
@@ -21,10 +21,9 @@ export class ClientsController {
   @ApiOperation({ summary: 'Get client profile with lead history' })
   findOne(@Param('id') id: string) { return this.clientsService.findOne(id) }
 
-  @Patch(':id/status')
   @Put(':id/status')
   @ApiOperation({ summary: 'Update client status' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateStatusDto, @CurrentUser() user: { id: string }) {
-    return this.clientsService.updateStatus(id, user.id, dto.status, dto.status_note)
+    return this.clientsService.updateStatus(id, user.id, dto.status ?? null, dto.status_note)
   }
 }

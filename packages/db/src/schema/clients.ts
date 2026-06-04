@@ -19,6 +19,7 @@ export const clients = pgTable('clients', {
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 })
 
-export const clientsRelations = relations(clients, ({ many }) => ({
+export const clientsRelations = relations(clients, ({ one, many }) => ({
   leads: many(metaLeads),
+  statusUpdatedByProfile: one(userProfiles, { fields: [clients.statusUpdatedBy], references: [userProfiles.id] }),
 }))

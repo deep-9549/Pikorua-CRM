@@ -175,7 +175,7 @@ function StatusPill({ status }: { status: string | null }) {
   const Icon = s.icon
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-      style={{ background: s.bg, color: s.color, border: `1px solid ${s.color}60` }}>
+      style={{ background: s.color, color: "#fff", border: `1px solid ${s.color}` }}>
       <Icon className="w-3 h-3" />{s.label}
     </span>
   )
