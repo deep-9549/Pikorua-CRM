@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { eq, min, max, count } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { clients, metaLeads } from '@pikorua/db'
 import { serializeMetaLead } from '../leads/lead.serializer'
@@ -75,7 +75,10 @@ export class ClientsService {
     })
     if (!client) throw new NotFoundException(`Client ${id} not found`)
 
-    const [updated] = await this.db
+    const wasСold = client.status === 'cold'
+    const isCold = status === 'cold'
+
+    await this.db
       .update(clients)
       .set({
         status: status ?? null,
@@ -85,9 +88,28 @@ export class ClientsService {
         updatedAt: new Date(),
       })
       .where(eq(clients.id, id))
-      .returning()
 
-    // Re-fetch with profile for the response
+    // Sync cold pool status on linked meta leads
+    if (isCold && !wasСold) {
+      // Mark all assigned leads for this client as cold_pool
+      await this.db
+        .update(metaLeads)
+        .set({ status: 'cold_pool' as never })
+        .where(and(
+          eq(metaLeads.clientId, id),
+          eq(metaLeads.status, 'assigned' as never),
+        ))
+    } else if (!isCold && wasСold) {
+      // Move cold_pool leads back to assigned
+      await this.db
+        .update(metaLeads)
+        .set({ status: 'assigned' as never })
+        .where(and(
+          eq(metaLeads.clientId, id),
+          eq(metaLeads.status, 'cold_pool' as never),
+        ))
+    }
+
     const full = await this.db.query.clients.findFirst({
       where: eq(clients.id, id),
       with: { statusUpdatedByProfile: true },

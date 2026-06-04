@@ -74,5 +74,6 @@ export function serializeMetaLead(lead: any) {
     assigned_to_profile: serializeProfile(lead.assignedToProfile),
     assigned_by_profile: serializeProfile(lead.assignedByProfile),
     crm: serializeCrmDetails(lead.crmDetails),
+    client_status: lead.clientStatus ?? null,
   }
 }

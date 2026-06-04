@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
-import { eq, inArray, desc, and, isNull } from 'drizzle-orm'
+import { eq, inArray, desc, and, isNull, sql } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { metaLeads, userProfiles } from '@pikorua/db'
+import { metaLeads, userProfiles, clients } from '@pikorua/db'
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
 import { serializeMetaLead } from '../leads/lead.serializer'
@@ -41,7 +41,22 @@ export class MetaLeadsService {
       orderBy: [desc(metaLeads.receivedAt)],
     })
 
-    return { leads: leads.map(serializeMetaLead) }
+    // Batch-fetch client statuses for leads that have a clientId
+    const clientIds = [...new Set(leads.map(l => l.clientId).filter(Boolean))] as string[]
+    const clientStatusMap = new Map<string, string | null>()
+    if (clientIds.length > 0) {
+      const rows = await this.db.execute(
+        sql`SELECT id::text AS id, status FROM clients WHERE id::text = ANY(${clientIds})`
+      ) as Array<{ id: string; status: string | null }>
+      for (const row of rows) clientStatusMap.set(row.id, row.status)
+    }
+
+    return {
+      leads: leads.map(l => serializeMetaLead({
+        ...l,
+        clientStatus: clientStatusMap.get(l.clientId ?? '') ?? null,
+      })),
+    }
   }
 
   async findOne(id: string) {
@@ -56,7 +71,16 @@ export class MetaLeadsService {
       },
     })
     if (!lead) throw new NotFoundException(`Meta lead ${id} not found`)
-    return { lead: serializeMetaLead(lead) }
+
+    let clientStatus: string | null = null
+    if (lead.clientId) {
+      const rows = await this.db.execute(
+        sql`SELECT status FROM clients WHERE id::text = ${lead.clientId} LIMIT 1`
+      ) as Array<{ status: string | null }>
+      clientStatus = rows[0]?.status ?? null
+    }
+
+    return { lead: serializeMetaLead({ ...lead, clientStatus }) }
   }
 
   async assign(id: string, assignedBy: string, dto: AssignLeadDto) {

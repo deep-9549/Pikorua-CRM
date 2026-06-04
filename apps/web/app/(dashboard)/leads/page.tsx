@@ -37,6 +37,7 @@ interface MetaLead {
   assigned_at: string | null
   assigned_to_profile: { id: string; full_name: string } | null
   crm?: Crm | null
+  client_status?: string | null
 }
 
 function initials(name: string | null) {
@@ -59,19 +60,25 @@ function isFresh(lead: MetaLead) {
   return lead.crm?.call_status !== "spoken"
 }
 
-function HWCBadge({ hwc }: { hwc: string | null | undefined }) {
-  if (!hwc) return null
-  const map = {
-    hot: { label: "Hot", icon: Flame, color: "var(--color-destructive)", bg: "rgb(185 28 28 / 0.12)", border: "rgb(185 28 28 / 0.3)" },
-    warm: { label: "Warm", icon: Thermometer, color: "var(--color-warning)", bg: "rgb(217 119 6 / 0.12)", border: "rgb(217 119 6 / 0.3)" },
-    cold: { label: "Cold", icon: Snowflake, color: "var(--color-muted-foreground)", bg: "rgb(154 52 18 / 0.12)", border: "rgb(154 52 18 / 0.3)" },
-  }
-  const m = map[hwc as keyof typeof map]
+const CLIENT_STATUS_MAP: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  hot:                    { label: "Hot",               icon: Flame,        color: "oklch(0.75 0.18 35)"  },
+  warm:                   { label: "Warm",              icon: Thermometer,  color: "oklch(0.78 0.15 65)"  },
+  cold:                   { label: "Cold",              icon: Snowflake,    color: "oklch(0.65 0.15 250)" },
+  lost:                   { label: "Lost",              icon: Star,         color: "oklch(0.60 0.12 20)"  },
+  low_budget:             { label: "Low Budget",        icon: Filter,       color: "oklch(0.72 0.15 85)"  },
+  not_interested:         { label: "Not Interested",    icon: X,            color: "oklch(0.55 0.08 260)" },
+  broker:                 { label: "Broker",            icon: Users,        color: "oklch(0.65 0.15 145)" },
+  construction_biz_owner: { label: "Const. Owner",      icon: Users,        color: "oklch(0.65 0.12 200)" },
+}
+
+function ClientStatusBadge({ status }: { status: string | null | undefined }) {
+  if (!status) return null
+  const m = CLIENT_STATUS_MAP[status]
   if (!m) return null
   const Icon = m.icon
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
-      style={{ color: m.color, background: m.bg, border: `1px solid ${m.border}` }}>
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
+      style={{ background: m.color, color: "#fff" }}>
       <Icon className="w-2.5 h-2.5" />{m.label}
     </span>
   )
@@ -347,7 +354,7 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                     <p className="text-sm font-semibold truncate" style={{ color: "var(--color-foreground)" }}>
                       {lead.full_name ?? "Unknown"}
                     </p>
-                    <HWCBadge hwc={lead.crm?.hwc} />
+                    <ClientStatusBadge status={lead.client_status} />
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     {lead.phone && (
