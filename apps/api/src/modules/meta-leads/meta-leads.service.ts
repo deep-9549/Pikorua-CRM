@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
-import { eq, inArray, desc, and, isNull, sql } from 'drizzle-orm'
+import { eq, inArray, desc, and, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, userProfiles, clients } from '@pikorua/db'
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
 import { serializeMetaLead } from '../leads/lead.serializer'
+
+const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
 @Injectable()
 export class MetaLeadsService {
@@ -21,10 +23,42 @@ export class MetaLeadsService {
         isNull(userProfiles.deletedAt),
       ),
     })
+    if (!user) throw new BadRequestException('Assigned user must be an active sales executive')
+  }
 
-    if (!user) {
-      throw new BadRequestException('Assigned user must be an active sales executive')
+  /**
+   * Find or create a client record keyed by phone number, then link it to the
+   * meta lead if not already linked. Returns the client id.
+   */
+  private async ensureClient(lead: { id: string; phone: string | null; fullName: string | null; email: string | null; clientId: string | null }): Promise<string | null> {
+    if (!lead.phone) return null
+
+    // Already linked — nothing to do
+    if (lead.clientId) return lead.clientId
+
+    const existing = await this.db.query.clients.findFirst({
+      where: eq(clients.phone, lead.phone),
+    })
+
+    let clientId: string
+    if (existing) {
+      clientId = existing.id
+    } else {
+      const [inserted] = await this.db.insert(clients).values({
+        tenantId: DEFAULT_TENANT_ID,
+        fullName: lead.fullName,
+        phone: lead.phone,
+        email: lead.email,
+      }).returning()
+      clientId = inserted.id
     }
+
+    await this.db
+      .update(metaLeads)
+      .set({ clientId, updatedAt: new Date() })
+      .where(eq(metaLeads.id, lead.id))
+
+    return clientId
   }
 
   async findAll(status?: string) {
@@ -33,28 +67,26 @@ export class MetaLeadsService {
 
     const leads = await this.db.query.metaLeads.findMany({
       where: and(...conditions),
-      with: {
-        assignedToProfile: true,
-        assignedByProfile: true,
-        crmDetails: true,
-      },
+      with: { assignedToProfile: true, assignedByProfile: true, crmDetails: true },
       orderBy: [desc(metaLeads.receivedAt)],
     })
 
-    // Batch-fetch client statuses for leads that have a clientId
-    const clientIds = [...new Set(leads.map(l => l.clientId).filter(Boolean))] as string[]
-    const clientStatusMap = new Map<string, string | null>()
-    if (clientIds.length > 0) {
-      const rows = await this.db.execute(
-        sql`SELECT id::text AS id, status FROM clients WHERE id::text = ANY(${clientIds})`
-      ) as Array<{ id: string; status: string | null }>
-      for (const row of rows) clientStatusMap.set(row.id, row.status)
+    // Build phone list for client status lookup (works even when clientId is not yet set)
+    const phones = [...new Set(leads.map(l => l.phone).filter(Boolean))] as string[]
+    const phoneStatusMap = new Map<string, string | null>()
+    if (phones.length > 0) {
+      const rows = await this.db.query.clients.findMany({
+        where: inArray(clients.phone, phones),
+      })
+      for (const row of rows) {
+        if (row.phone) phoneStatusMap.set(row.phone, row.status)
+      }
     }
 
     return {
       leads: leads.map(l => serializeMetaLead({
         ...l,
-        clientStatus: clientStatusMap.get(l.clientId ?? '') ?? null,
+        clientStatus: l.phone ? (phoneStatusMap.get(l.phone) ?? null) : null,
       })),
     }
   }
@@ -72,15 +104,19 @@ export class MetaLeadsService {
     })
     if (!lead) throw new NotFoundException(`Meta lead ${id} not found`)
 
+    // Auto-create and link a client if the lead doesn't have one yet
+    const clientId = await this.ensureClient(lead)
+
+    // Fetch current client status (for the response)
     let clientStatus: string | null = null
-    if (lead.clientId) {
-      const rows = await this.db.execute(
-        sql`SELECT status FROM clients WHERE id::text = ${lead.clientId} LIMIT 1`
-      ) as Array<{ status: string | null }>
-      clientStatus = rows[0]?.status ?? null
+    if (clientId) {
+      const client = await this.db.query.clients.findFirst({
+        where: eq(clients.id, clientId),
+      })
+      clientStatus = client?.status ?? null
     }
 
-    return { lead: serializeMetaLead({ ...lead, clientStatus }) }
+    return { lead: serializeMetaLead({ ...lead, clientId, clientStatus }) }
   }
 
   async assign(id: string, assignedBy: string, dto: AssignLeadDto) {
@@ -89,12 +125,7 @@ export class MetaLeadsService {
 
     const [updated] = await this.db
       .update(metaLeads)
-      .set({
-        assignedTo: dto.assigned_to,
-        assignedBy,
-        assignedAt: new Date(),
-        status: 'assigned',
-      })
+      .set({ assignedTo: dto.assigned_to, assignedBy, assignedAt: new Date(), status: 'assigned' })
       .where(eq(metaLeads.id, id))
       .returning()
     if (!updated) throw new NotFoundException(`Meta lead ${id} not found`)
@@ -106,12 +137,7 @@ export class MetaLeadsService {
 
     const updated = await this.db
       .update(metaLeads)
-      .set({
-        assignedTo: dto.assigned_to,
-        assignedBy,
-        assignedAt: new Date(),
-        status: 'assigned',
-      })
+      .set({ assignedTo: dto.assigned_to, assignedBy, assignedAt: new Date(), status: 'assigned' })
       .where(inArray(metaLeads.id, dto.lead_ids))
       .returning()
     return { updated: updated.length }

@@ -105,6 +105,7 @@ const CLIENT_STATUSES = [
   { value: "broker",               label: "Broker",               icon: Briefcase,     color: "oklch(0.65 0.15 145)", bg: "oklch(0.65 0.15 145 / 0.15)" },
   { value: "construction_biz_owner", label: "Construction Owner", icon: Building,      color: "oklch(0.65 0.12 200)", bg: "oklch(0.65 0.12 200 / 0.15)" },
 ]
+const CLIENT_STATUS_VALUES = new Set(CLIENT_STATUSES.map(status => status.value))
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -169,7 +170,7 @@ function TextField({ label, value, placeholder, onChange }: {
 }
 
 function StatusPill({ status }: { status: string | null }) {
-  if (!status) return null
+  if (!status || !CLIENT_STATUS_VALUES.has(status)) return null
   const s = CLIENT_STATUSES.find(x => x.value === status)
   if (!s) return null
   const Icon = s.icon
@@ -331,7 +332,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             const clientJson = await clientRes.json()
             if (clientJson.client) {
               setClient(clientJson.client)
-              setClientStatus(clientJson.client.status)
+              setClientStatus(CLIENT_STATUS_VALUES.has(clientJson.client.status) ? clientJson.client.status : null)
               setClientNote(clientJson.client.status_note ?? "")
             }
             if (clientJson.leads) setHistory(clientJson.leads)
@@ -393,8 +394,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: clientStatus, status_note: clientNote }),
       })
-      const json = await res.json()
-      if (json.client) setClient(json.client)
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const msg = Array.isArray(json.message) ? json.message.join(", ") : (json.message ?? json.error ?? "Failed to save client status")
+        throw new Error(msg)
+      }
+      if (json.client) {
+        setClient(json.client)
+        setClientStatus(CLIENT_STATUS_VALUES.has(json.client.status) ? json.client.status : null)
+        setClientNote(json.client.status_note ?? "")
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to save client status")
     } finally { setSavingStatus(false) }
   }
 
