@@ -35,8 +35,12 @@ export class LeadsController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Update lead CRM details' })
-  update(@Param('id') id: string, @Body() dto: UpdateLeadDto) {
-    return this.leadsService.update(id, dto)
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateLeadDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.leadsService.update(id, dto, user.id)
   }
 
   @Get(':id/notes')

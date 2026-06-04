@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { eq, desc, and, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { metaLeads, leadCrmDetails, leadNotes } from '@pikorua/db'
+import { metaLeads, leadCrmDetails, leadNotes, siteVisits } from '@pikorua/db'
 import { CreateLeadDto } from './dto/create-lead.dto'
 import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
@@ -65,7 +65,7 @@ export class LeadsService {
     return { lead: serializeMetaLead(lead) }
   }
 
-  async update(id: string, dto: UpdateLeadDto) {
+  async update(id: string, dto: UpdateLeadDto, userId?: string) {
     await this.findOne(id)
     const existing = await this.db.query.leadCrmDetails.findFirst({
       where: eq(leadCrmDetails.leadId, id),
@@ -127,7 +127,47 @@ export class LeadsService {
     } else {
       await this.db.insert(leadCrmDetails).values({ leadId: id, ...payload })
     }
+
+    // Sync to siteVisits table so the site visits page reflects CRM changes
+    await this.syncSiteVisit(id, dto, userId)
+
     return this.findOne(id)
+  }
+
+  private async syncSiteVisit(leadId: string, dto: UpdateLeadDto, userId?: string) {
+    const uiStatus = dto.site_visit_status
+    if (!uiStatus || uiStatus === 'yet_to_visit') return
+
+    const dbStatus = uiStatus === 'visited' ? 'completed' : 'scheduled'
+
+    // Determine the scheduled date from the DTO fields
+    const scheduledDate = dto.visit_date
+      ? new Date(dto.visit_date)
+      : dto.visit_confirmation_date
+        ? new Date(dto.visit_confirmation_date)
+        : null
+
+    // Find the most recent non-deleted site visit for this lead
+    const existing = await this.db.query.siteVisits.findFirst({
+      where: and(eq(siteVisits.leadId, leadId), isNull(siteVisits.deletedAt)),
+      orderBy: [desc(siteVisits.createdAt)],
+    })
+
+    if (existing) {
+      await this.db.update(siteVisits).set({
+        status: dbStatus as never,
+        ...(scheduledDate ? { scheduledDate } : {}),
+        updatedAt: new Date(),
+      }).where(eq(siteVisits.id, existing.id))
+    } else if (userId) {
+      await this.db.insert(siteVisits).values({
+        tenantId: '00000000-0000-0000-0000-000000000000',
+        leadId,
+        employeeId: userId,
+        scheduledDate: scheduledDate ?? new Date(),
+        status: dbStatus as never,
+      })
+    }
   }
 
   async getNotes(leadId: string) {
