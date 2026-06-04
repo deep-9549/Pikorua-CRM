@@ -102,16 +102,24 @@ export class LeadsService {
       ? (BUYING_UI_TO_DB[dto.buying_status] ?? null)
       : undefined
 
+    const toDate = (v: string | null | undefined) => (v ? new Date(v) : null)
+
     const payload = {
       ...(dto.call_status !== undefined && { callStatus: dto.call_status as never }),
+      ...(dto.first_call_date !== undefined && { firstCallDate: toDate(dto.first_call_date) }),
+      ...(dto.last_call_date !== undefined && { lastCallDate: toDate(dto.last_call_date) }),
       ...(dto.hwc !== undefined && { hwc: dto.hwc as never }),
-      ...(dto.follow_up_date !== undefined && { followUpDate: dto.follow_up_date ? new Date(dto.follow_up_date) : null }),
+      ...(dto.follow_up_date !== undefined && { followUpDate: toDate(dto.follow_up_date) }),
       ...(dbBuying !== undefined && { buyingStatus: dbBuying as never }),
       ...(dbSiteVisit !== undefined && { siteVisitStatus: dbSiteVisit as never }),
+      ...(dto.visit_date !== undefined && { visitDate: toDate(dto.visit_date) }),
+      ...(dto.visit_confirmation_date !== undefined && { visitConfirmationDate: toDate(dto.visit_confirmation_date) }),
       ...(dto.budget_range !== undefined && { budgetRange: dto.budget_range }),
+      ...(dto.configuration !== undefined && { configuration: dto.configuration }),
       ...(dto.profession !== undefined && { profession: dto.profession }),
       ...(dto.current_city !== undefined && { currentCity: dto.current_city }),
       ...(dto.current_area !== undefined && { currentArea: dto.current_area }),
+      ...(dto.remarks !== undefined && { remarks: dto.remarks }),
     }
 
     if (existing) {

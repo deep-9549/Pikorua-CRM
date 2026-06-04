@@ -111,7 +111,7 @@ const CLIENT_STATUSES = [
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>{label}</Label>
+      <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>{label}</Label>
       <input type="date" value={value} onChange={e => onChange(e.target.value)}
         className="flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm bg-transparent"
         style={{ borderColor: "var(--color-border)", color: "oklch(0.88 0.006 80)" }} />
@@ -131,7 +131,7 @@ function isoToLocalInput(iso: string | null) {
 function DateTimeField({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>{label}</Label>
+      <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>{label}</Label>
       <input
         type="datetime-local"
         value={isoToLocalInput(value)}
@@ -151,7 +151,7 @@ function TextField({ label, value, placeholder, onChange }: {
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>{label}</Label>
+      <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>{label}</Label>
       <Input value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
         className="h-9 text-sm" />
     </div>
@@ -202,7 +202,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
                 THIS LEAD
               </span>
             )}
-            <span className="text-xs font-medium" style={{ color: "oklch(0.70 0.006 80)" }}>
+            <span className="text-xs font-medium" style={{ color: "var(--color-foreground)" }}>
               {formatDate(entry.received_at)}
             </span>
             {entry.campaign_name && <Badge variant="secondary" className="text-[10px]">{entry.campaign_name}</Badge>}
@@ -210,7 +210,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
           </div>
           <div className="flex flex-wrap items-center gap-x-3 mt-1">
             {entry.assigned_to_profile && (
-              <span className="flex items-center gap-1 text-[11px]" style={{ color: "oklch(0.55 0.006 260)" }}>
+              <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-foreground)" }}>
                 <User className="w-3 h-3" />{entry.assigned_to_profile.full_name}
               </span>
             )}
@@ -225,7 +225,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
         {hasCrm && (
           <button onClick={() => setOpen(p => !p)}
             className="shrink-0 p-1 rounded hover:bg-white/5"
-            style={{ color: "oklch(0.45 0.008 260)" }}>
+            style={{ color: "var(--color-foreground)" }}>
             {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
         )}
@@ -238,32 +238,32 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
             <div className="px-4 pb-4 space-y-2 border-t" style={{ borderColor: "var(--color-border)" }}>
               <div className="pt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                 {entry.crm?.budget_range && (
-                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Budget: </span>
-                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.budget_range}</span></div>
+                  <div><span style={{ color: "var(--color-foreground)" }}>Budget: </span>
+                    <span style={{ color: "var(--color-foreground)" }}>{entry.crm.budget_range}</span></div>
                 )}
                 {entry.crm?.buying_status && (
-                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Buying: </span>
-                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.buying_status.replace(/_/g, " ")}</span></div>
+                  <div><span style={{ color: "var(--color-foreground)" }}>Buying: </span>
+                    <span style={{ color: "var(--color-foreground)" }}>{entry.crm.buying_status.replace(/_/g, " ")}</span></div>
                 )}
                 {entry.crm?.site_visit_status && (
-                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Site visit: </span>
-                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.site_visit_status.replace(/_/g, " ")}</span></div>
+                  <div><span style={{ color: "var(--color-foreground)" }}>Site visit: </span>
+                    <span style={{ color: "var(--color-foreground)" }}>{entry.crm.site_visit_status.replace(/_/g, " ")}</span></div>
                 )}
                 {entry.crm?.configuration && entry.crm.configuration.length > 0 && (
-                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Config: </span>
-                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.configuration.join(", ")}</span></div>
+                  <div><span style={{ color: "var(--color-foreground)" }}>Config: </span>
+                    <span style={{ color: "var(--color-foreground)" }}>{entry.crm.configuration.join(", ")}</span></div>
                 )}
                 {entry.crm?.profession && (
-                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Profession: </span>
-                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.profession}</span></div>
+                  <div><span style={{ color: "var(--color-foreground)" }}>Profession: </span>
+                    <span style={{ color: "var(--color-foreground)" }}>{entry.crm.profession}</span></div>
                 )}
                 {entry.crm?.current_city && (
-                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Current city: </span>
-                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.current_city}</span></div>
+                  <div><span style={{ color: "var(--color-foreground)" }}>Current city: </span>
+                    <span style={{ color: "var(--color-foreground)" }}>{entry.crm.current_city}</span></div>
                 )}
                 {entry.crm?.current_area && (
-                  <div><span style={{ color: "oklch(0.50 0.006 260)" }}>Current area: </span>
-                    <span style={{ color: "oklch(0.82 0.006 80)" }}>{entry.crm.current_area}</span></div>
+                  <div><span style={{ color: "var(--color-foreground)" }}>Current area: </span>
+                    <span style={{ color: "var(--color-foreground)" }}>{entry.crm.current_area}</span></div>
                 )}
               </div>
               {entry.crm?.remarks && (
@@ -386,7 +386,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (!lead) {
     return (
       <div className="text-center py-20">
-        <p className="text-sm" style={{ color: "oklch(0.55 0.006 260)" }}>Lead not found</p>
+        <p className="text-sm" style={{ color: "var(--color-foreground)" }}>Lead not found</p>
         <Button variant="outline" size="sm" className="mt-4" onClick={() => router.back()}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
@@ -418,7 +418,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg font-bold" style={{ color: "oklch(0.92 0.006 80)" }}>
+                  <h2 className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>
                     {lead.full_name ?? "Unknown"}
                   </h2>
                   {clientStatus && <StatusPill status={clientStatus} />}
@@ -445,7 +445,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
                   style={{ border: "1px solid var(--color-border)" }}>
                   <Phone className="w-4 h-4 shrink-0" style={{ color: "oklch(0.700 0.130 75)" }} />
-                  <span className="text-sm" style={{ color: "oklch(0.88 0.006 80)" }}>{lead.phone}</span>
+                  <span className="text-sm" style={{ color: "var(--color-foreground)" }}>{lead.phone}</span>
                 </a>
               )}
               {lead.email && (
@@ -453,27 +453,27 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
                   style={{ border: "1px solid var(--color-border)" }}>
                   <Mail className="w-4 h-4 shrink-0" style={{ color: "oklch(0.700 0.130 75)" }} />
-                  <span className="text-sm truncate" style={{ color: "oklch(0.88 0.006 80)" }}>{lead.email}</span>
+                  <span className="text-sm truncate" style={{ color: "var(--color-foreground)" }}>{lead.email}</span>
                 </a>
               )}
             </div>
 
             <div className="flex flex-wrap gap-3">
               {lead.city && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.55 0.006 260)" }}>
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
                   <MapPin className="w-3.5 h-3.5" />{lead.city}
                 </span>
               )}
-              <span className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.55 0.006 260)" }}>
+              <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
                 <Calendar className="w-3.5 h-3.5" />Received {formatDate(lead.received_at)}
               </span>
               {lead.assigned_to_profile && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.55 0.006 260)" }}>
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
                   <User className="w-3.5 h-3.5" />{lead.assigned_to_profile.full_name}
                 </span>
               )}
               {client && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.55 0.006 260)" }}>
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
                   <Clock className="w-3.5 h-3.5" />First seen {formatDate(client.first_seen_at)}
                 </span>
               )}
@@ -481,7 +481,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
             {/* Client status picker */}
             <div className="pt-1 space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "oklch(0.45 0.008 260)" }}>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
                 Client Status
               </p>
               <div className="flex flex-wrap gap-2">
@@ -493,7 +493,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       onClick={() => setClientStatus(active ? null : s.value)}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
                       style={active ? { background: s.bg, color: s.color, border: `1px solid ${s.color}60` }
-                        : { background: "oklch(0.185 0.015 260)", color: "oklch(0.55 0.006 260)", border: "1px solid oklch(0.250 0.014 260)" }}>
+                        : { background: "oklch(0.185 0.015 260)", color: "var(--color-foreground)", border: "1px solid oklch(0.250 0.014 260)" }}>
                       <Icon className="w-3 h-3" />{s.label}
                     </button>
                   )
@@ -512,7 +512,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </Button>
               </div>
               {client?.status_updated_by_profile && client.status_updated_at && (
-                <p className="text-[10px]" style={{ color: "oklch(0.42 0.008 260)" }}>
+                <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
                   Updated by {client.status_updated_by_profile.full_name} · {formatDate(client.status_updated_at)}
                 </p>
               )}
@@ -532,7 +532,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             className="flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-150"
             style={activeTab === tab.key
               ? { background: "oklch(0.700 0.130 75 / 0.15)", color: "oklch(0.700 0.130 75)" }
-              : { background: "transparent", color: "oklch(0.50 0.008 260)" }}>
+              : { background: "transparent", color: "var(--color-muted-foreground)" }}>
             {tab.label}
           </button>
         ))}
@@ -548,7 +548,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "oklch(0.60 0.006 260)" }}>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
                     Client Details
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -569,7 +569,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Call Status</Label>
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Call Status</Label>
                   <Select value={crm.call_status ?? ""} onValueChange={v => setCrm(p => ({
                     ...p, call_status: v || null, site_visit_status: null, visit_date: null, visit_confirmation_date: null
                   }))}>
@@ -585,7 +585,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 {showSiteVisit && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Site Visit Status</Label>
+                      <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Site Visit Status</Label>
                       <Select value={crm.site_visit_status ?? ""} onValueChange={v => setCrm(p => ({
                         ...p, site_visit_status: v || null, visit_date: null, visit_confirmation_date: null
                       }))}>
@@ -610,7 +610,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 )}
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Buying Status</Label>
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Buying Status</Label>
                   <Select value={crm.buying_status ?? ""} onValueChange={v => setCrm(p => ({ ...p, buying_status: v || null }))}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Select buying status..." /></SelectTrigger>
                     <SelectContent>
@@ -623,7 +623,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Budget Range</Label>
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Budget Range</Label>
                   <div className="flex flex-wrap gap-2">
                     {BUDGET_RANGES.map(range => (
                       <button key={range} type="button"
@@ -631,7 +631,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                         className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                         style={crm.budget_range === range
                           ? { background: "oklch(0.700 0.130 75 / 0.2)", color: "oklch(0.700 0.130 75)", border: "1px solid oklch(0.700 0.130 75 / 0.5)" }
-                          : { background: "oklch(0.185 0.015 260)", color: "oklch(0.65 0.006 260)", border: "1px solid oklch(0.250 0.014 260)" }}>
+                          : { background: "oklch(0.185 0.015 260)", color: "var(--color-foreground)", border: "1px solid oklch(0.250 0.014 260)" }}>
                         {range}
                       </button>
                     ))}
@@ -639,7 +639,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Configuration Needed</Label>
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Configuration Needed</Label>
                   <div className="flex flex-wrap gap-2">
                     {CONFIGURATIONS.map(cfg => {
                       const selected = (crm.configuration ?? []).includes(cfg)
@@ -648,7 +648,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                           className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                           style={selected
                             ? { background: "oklch(0.65 0.15 145 / 0.15)", color: "oklch(0.65 0.15 145)", border: "1px solid oklch(0.65 0.15 145 / 0.4)" }
-                            : { background: "oklch(0.185 0.015 260)", color: "oklch(0.65 0.006 260)", border: "1px solid oklch(0.250 0.014 260)" }}>
+                            : { background: "oklch(0.185 0.015 260)", color: "var(--color-foreground)", border: "1px solid oklch(0.250 0.014 260)" }}>
                           {cfg}
                         </button>
                       )
@@ -660,7 +660,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   onChange={v => setCrm(p => ({ ...p, follow_up_date: v || null }))} />
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs" style={{ color: "oklch(0.60 0.006 260)" }}>Qualitative Remarks</Label>
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Qualitative Remarks</Label>
                   <Textarea placeholder="Notes about this lead interaction..."
                     value={crm.remarks ?? ""} onChange={e => setCrm(p => ({ ...p, remarks: e.target.value || null }))}
                     className="min-h-[90px] text-sm resize-none" />
@@ -688,14 +688,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   All Enquiries — {lead.full_name}
                 </CardTitle>
                 {client && (
-                  <p className="text-xs mt-1" style={{ color: "oklch(0.50 0.006 260)" }}>
+                  <p className="text-xs mt-1" style={{ color: "var(--color-foreground)" }}>
                     First enquiry {formatDate(client.first_seen_at)} · {client.total_inquiries} total
                   </p>
                 )}
               </CardHeader>
               <CardContent className="space-y-3">
                 {history.length === 0 ? (
-                  <p className="text-sm text-center py-8" style={{ color: "oklch(0.50 0.006 260)" }}>
+                  <p className="text-sm text-center py-8" style={{ color: "var(--color-foreground)" }}>
                     No previous enquiries
                   </p>
                 ) : (

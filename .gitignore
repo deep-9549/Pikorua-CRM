@@ -58,6 +58,9 @@ drizzle/
 apps/api/scripts/seed-*.js
 packages/db/scripts/seed-*.js
 
+# ── Postman collections (local testing only) ──────────────────────────────────
+postman/
+
 # ── OS / editor ────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
