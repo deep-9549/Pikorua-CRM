@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
+import { getAuthUser } from "@/lib/auth/cookies"
 import { 
   Settings,
   User,
@@ -101,6 +102,12 @@ const managedEmployees: ManagedEmployee[] = initialEmployees.map((emp, i) => ({
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile")
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  // Employee management is restricted to super admins.
+  useEffect(() => {
+    setIsSuperAdmin(getAuthUser()?.role === "super_admin")
+  }, [])
   const [employees, setEmployees] = useState(managedEmployees)
   const [searchQuery, setSearchQuery] = useState("")
   const [showAddEmployee, setShowAddEmployee] = useState(false)
@@ -189,10 +196,12 @@ export default function SettingsPage() {
               <User className="h-4 w-4 mr-2" />
               Profile
             </TabsTrigger>
-            <TabsTrigger value="employees" className="data-[state=active]:bg-background">
-              <Users className="h-4 w-4 mr-2" />
-              Employees
-            </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="employees" className="data-[state=active]:bg-background">
+                <Users className="h-4 w-4 mr-2" />
+                Employees
+              </TabsTrigger>
+            )}
             <TabsTrigger value="notifications" className="data-[state=active]:bg-background">
               <Bell className="h-4 w-4 mr-2" />
               Notifications
@@ -269,6 +278,7 @@ export default function SettingsPage() {
           </TabsContent>
 
           {/* Employees Tab - Super Admin Panel */}
+          {isSuperAdmin && (
           <TabsContent value="employees">
             <div className="grid gap-6">
               {/* Header with Add Button */}
@@ -386,6 +396,7 @@ export default function SettingsPage() {
               </Card>
             </div>
           </TabsContent>
+          )}
 
           {/* Notifications Tab */}
           <TabsContent value="notifications">

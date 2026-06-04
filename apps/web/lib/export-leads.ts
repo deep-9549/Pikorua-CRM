@@ -15,6 +15,7 @@ export interface ExportableLead {
     buying_status?: string | null
     budget_range?: string | null
     profession?: string | null
+    company_name?: string | null
     current_city?: string | null
     current_area?: string | null
   } | null
@@ -52,6 +53,7 @@ export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") 
     "Buying Status",
     "Budget",
     "Profession",
+    "Company",
     "Current City",
     "Current Area",
     "Follow-up",
@@ -72,6 +74,7 @@ export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") 
     pretty(l.crm?.buying_status),
     l.crm?.budget_range ?? "",
     l.crm?.profession ?? "",
+    l.crm?.company_name ?? "",
     l.crm?.current_city ?? "",
     l.crm?.current_area ?? "",
     fmtDate(l.crm?.follow_up_date),

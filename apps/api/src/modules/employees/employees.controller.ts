@@ -1,23 +1,21 @@
-import { Controller, ForbiddenException, Get, Param, UseGuards } from '@nestjs/common'
+import { Controller, Get, Param, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { EmployeesService } from './employees.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
-import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import { RolesGuard } from '../../common/guards/roles.guard'
+import { Roles } from '../../common/decorators/roles.decorator'
 
 @ApiTags('Employees')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('super_admin')
 @Controller('employees')
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
 
   @Get()
   @ApiOperation({ summary: 'List all employees' })
-  findAll(@CurrentUser() user: { role: string }) {
-    if (user.role !== 'super_admin') {
-      throw new ForbiddenException('Only super admins can view sales executives')
-    }
-
+  findAll() {
     return this.employeesService.findAll()
   }
 

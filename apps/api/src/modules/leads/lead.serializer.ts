@@ -42,6 +42,7 @@ export function serializeCrmDetails(crm: any) {
     budget_range: crm.budgetRange ?? crm.budget_range ?? null,
     configuration: crm.configuration ?? null,
     profession: crm.profession ?? null,
+    company_name: crm.companyName ?? crm.company_name ?? null,
     current_city: crm.currentCity ?? crm.current_city ?? null,
     current_area: crm.currentArea ?? crm.current_area ?? null,
     remarks: crm.remarks ?? null,

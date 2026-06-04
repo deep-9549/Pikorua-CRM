@@ -10,6 +10,7 @@ export class UpdateLeadDto {
   @ApiPropertyOptional() @IsString() @IsOptional() site_visit_status?: string
   @ApiPropertyOptional() @IsString() @IsOptional() budget_range?: string
   @ApiPropertyOptional() @IsString() @IsOptional() profession?: string
+  @ApiPropertyOptional() @IsString() @IsOptional() company_name?: string
   @ApiPropertyOptional() @IsString() @IsOptional() current_city?: string
   @ApiPropertyOptional() @IsString() @IsOptional() current_area?: string
 

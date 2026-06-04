@@ -62,6 +62,7 @@ interface LeadHistory {
     budget_range: string | null
     configuration: string[] | null
     profession: string | null
+    company_name: string | null
     current_city: string | null
     current_area: string | null
     hwc: string | null
@@ -80,6 +81,7 @@ interface CrmDetails {
   budget_range: string | null
   configuration: string[] | null
   profession: string | null
+  company_name: string | null
   current_city: string | null
   current_area: string | null
   follow_up_date: string | null
@@ -195,6 +197,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
     entry.crm.remarks ||
     entry.crm.budget_range ||
     entry.crm.profession ||
+    entry.crm.company_name ||
     entry.crm.current_city ||
     entry.crm.current_area
   )
@@ -268,6 +271,10 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
                   <div><span style={{ color: "var(--color-foreground)" }}>Profession: </span>
                     <span style={{ color: "var(--color-foreground)" }}>{entry.crm.profession}</span></div>
                 )}
+                {entry.crm?.company_name && (
+                  <div><span style={{ color: "var(--color-foreground)" }}>Company: </span>
+                    <span style={{ color: "var(--color-foreground)" }}>{entry.crm.company_name}</span></div>
+                )}
                 {entry.crm?.current_city && (
                   <div><span style={{ color: "var(--color-foreground)" }}>Current city: </span>
                     <span style={{ color: "var(--color-foreground)" }}>{entry.crm.current_city}</span></div>
@@ -304,7 +311,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     first_call_date: null, last_call_date: null, call_status: null,
     site_visit_status: null, visit_date: null, visit_confirmation_date: null,
     buying_status: null, budget_range: null, configuration: null,
-    profession: null, current_city: null, current_area: null,
+    profession: null, company_name: null, current_city: null, current_area: null,
     follow_up_date: null, hwc: null, remarks: null,
   })
   const [clientStatus, setClientStatus] = useState<string | null>(null)
@@ -362,6 +369,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         budget_range: crm.budget_range,
         configuration: crm.configuration,
         profession: crm.profession,
+        company_name: crm.company_name,
         current_city: crm.current_city,
         current_area: crm.current_area,
         remarks: crm.remarks,
@@ -582,9 +590,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
                     Client Details
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <TextField label="Profession" value={crm.profession ?? ""} placeholder="e.g. Founder, Doctor"
                       onChange={v => setCrm(p => ({ ...p, profession: v || null }))} />
+                    <TextField label="Company" value={crm.company_name ?? ""} placeholder="e.g. Acme Corp"
+                      onChange={v => setCrm(p => ({ ...p, company_name: v || null }))} />
                     <TextField label="Current City" value={crm.current_city ?? ""} placeholder="e.g. Pune"
                       onChange={v => setCrm(p => ({ ...p, current_city: v || null }))} />
                     <TextField label="Current Area" value={crm.current_area ?? ""} placeholder="e.g. Baner"

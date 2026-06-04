@@ -117,6 +117,7 @@ export class LeadsService {
       ...(dto.budget_range !== undefined && { budgetRange: dto.budget_range }),
       ...(dto.configuration !== undefined && { configuration: dto.configuration }),
       ...(dto.profession !== undefined && { profession: dto.profession }),
+      ...(dto.company_name !== undefined && { companyName: dto.company_name }),
       ...(dto.current_city !== undefined && { currentCity: dto.current_city }),
       ...(dto.current_area !== undefined && { currentArea: dto.current_area }),
       ...(dto.remarks !== undefined && { remarks: dto.remarks }),

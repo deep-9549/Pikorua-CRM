@@ -53,6 +53,7 @@ export const leadCrmDetails = pgTable('lead_crm_details', {
   budgetRange: text('budget_range'),
   configuration: jsonb('configuration').$type<string[]>(),
   profession: text('profession'),
+  companyName: text('company_name'),
   currentCity: text('current_city'),
   currentArea: text('current_area'),
   remarks: text('remarks'),

@@ -1,14 +1,16 @@
-import { Controller, ForbiddenException, Get, Patch, Post, Param, Body, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Patch, Post, Param, Body, Query, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { MetaLeadsService } from './meta-leads.service'
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { RolesGuard } from '../../common/guards/roles.guard'
+import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 
 @ApiTags('Meta Leads')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('meta-leads')
 export class MetaLeadsController {
   constructor(private readonly metaLeadsService: MetaLeadsService) {}
@@ -27,26 +29,20 @@ export class MetaLeadsController {
   }
 
   @Post(':id/assign')
+  @Roles('super_admin')
   @ApiOperation({ summary: 'Assign a lead to an employee' })
   assign(
     @Param('id') id: string,
     @Body() dto: AssignLeadDto,
-    @CurrentUser() user: { id: string; role: string },
+    @CurrentUser() user: { id: string },
   ) {
-    if (user.role !== 'super_admin') {
-      throw new ForbiddenException('Only super admins can assign leads')
-    }
-
     return this.metaLeadsService.assign(id, user.id, dto)
   }
 
   @Post('bulk-assign')
+  @Roles('super_admin')
   @ApiOperation({ summary: 'Bulk assign leads to an employee' })
-  bulkAssign(@Body() dto: BulkAssignDto, @CurrentUser() user: { id: string; role: string }) {
-    if (user.role !== 'super_admin') {
-      throw new ForbiddenException('Only super admins can assign leads')
-    }
-
+  bulkAssign(@Body() dto: BulkAssignDto, @CurrentUser() user: { id: string }) {
     return this.metaLeadsService.bulkAssign(user.id, dto)
   }
 

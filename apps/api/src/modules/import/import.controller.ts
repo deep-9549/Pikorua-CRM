@@ -1,6 +1,5 @@
 import {
   Controller,
-  ForbiddenException,
   Get,
   Post,
   Res,
@@ -14,11 +13,13 @@ import { Response } from 'express'
 import { memoryStorage } from 'multer'
 import { ImportService } from './import.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
-import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import { RolesGuard } from '../../common/guards/roles.guard'
+import { Roles } from '../../common/decorators/roles.decorator'
 
 @ApiTags('Import')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('super_admin')
 @Controller('import')
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
@@ -58,13 +59,7 @@ export class ImportController {
       },
     }),
   )
-  async importMetaLeads(
-    @UploadedFile() file: Express.Multer.File,
-    @CurrentUser() user: { id: string; role: string },
-  ) {
-    if (user.role !== 'super_admin' && user.role !== 'admin') {
-      throw new ForbiddenException('Only admins can import leads')
-    }
+  async importMetaLeads(@UploadedFile() file: Express.Multer.File) {
     return this.importService.importMetaLeads(file)
   }
 }

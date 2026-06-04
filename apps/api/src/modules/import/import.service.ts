@@ -4,24 +4,37 @@ import * as XLSX from 'xlsx'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, leadCrmDetails, clients } from '@pikorua/db'
 import { ImportResultDto } from './dto/import-result.dto'
+import { normalizeMetaBudget, stripPhonePrefix } from '../../common/utils/meta-format'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
+// Exact-match aliases (header is lower-cased & trimmed before comparison).
+// Includes Meta's underscore_separated lead-form export headers.
 const HEADER_MAP: Record<string, string[]> = {
   full_name:      ['name', 'full name', 'full_name', 'lead name', 'contact name'],
-  phone:          ['phone', 'mobile', 'contact', 'phone number', 'mobile number'],
+  phone:          ['phone', 'mobile', 'contact', 'phone number', 'phone_number', 'mobile number'],
   email:          ['email', 'email address', 'e-mail'],
   city:           ['city', 'location', 'town'],
-  campaign_name:  ['source', 'campaign', 'campaign name', 'lead source'],
-  received_at:    ['date', 'received', 'received at', 'lead date', 'enquiry date'],
+  campaign_name:  ['source', 'campaign', 'campaign name', 'campaign_name', 'lead source'],
+  received_at:    ['date', 'received', 'received at', 'created', 'created_time', 'created time', 'lead date', 'enquiry date'],
   call_status:    ['call status', 'call_status', 'status'],
   hwc:            ['hwc', 'priority', 'temperature', 'lead quality'],
-  budget_range:   ['budget', 'budget range'],
-  profession:     ['profession', 'occupation', 'job', 'job title'],
+  budget_range:   ['budget', 'budget range', 'budget_range'],
+  profession:     ['profession', 'occupation', 'job', 'job title', 'job_title'],
+  company_name:   ['company', 'company name', 'company_name', 'organisation', 'organization'],
   current_city:   ['current city', 'current location', 'from city'],
   current_area:   ['current area', 'area', 'locality'],
   follow_up_date: ['follow up', 'follow up date', 'followup', 'next follow up'],
   remarks:        ['remarks', 'notes', 'comments', 'additional info'],
+}
+
+// Fallback substring rules for Meta's free-text question headers, e.g.
+// "what_budget_are_you_comfortable_with". Applied only to fields not already
+// matched exactly above. Order is irrelevant — each field is filled once.
+const HEADER_CONTAINS_MAP: Record<string, string[]> = {
+  budget_range:  ['budget'],
+  company_name:  ['company', 'organis', 'organiz'],
+  profession:    ['job', 'profession', 'occupation', 'designation'],
 }
 
 const CALL_STATUS_MAP: Record<string, string> = {
@@ -47,6 +60,7 @@ interface ParsedRow {
   hwc: string | null
   budgetRange: string | null
   profession: string | null
+  companyName: string | null
   currentCity: string | null
   currentArea: string | null
   followUpDate: Date | null
@@ -61,6 +75,8 @@ export class ImportService {
 
   private buildHeaderIndex(headers: string[]): Record<string, string> {
     const index: Record<string, string> = {}
+
+    // Pass 1 — exact alias match (most precise).
     for (const header of headers) {
       const lc = header.trim().toLowerCase()
       for (const [field, aliases] of Object.entries(HEADER_MAP)) {
@@ -69,6 +85,19 @@ export class ImportService {
         }
       }
     }
+
+    // Pass 2 — substring fallback for verbose Meta question headers,
+    // only for fields still unmatched.
+    for (const header of headers) {
+      const lc = header.trim().toLowerCase()
+      for (const [field, needles] of Object.entries(HEADER_CONTAINS_MAP)) {
+        if (field in index) continue
+        if (needles.some(n => lc.includes(n)) && !Object.values(index).includes(header)) {
+          index[field] = header
+        }
+      }
+    }
+
     return index
   }
 
@@ -91,7 +120,9 @@ export class ImportService {
   }
 
   private normalizePhone(raw: string): string {
-    return raw.replace(/[\s\-().+]/g, '')
+    // Meta CSV exports prefix the number with "p:" — drop it, then strip
+    // separators/symbols so dedup compares bare digits.
+    return stripPhonePrefix(raw).replace(/[\s\-().+]/g, '')
   }
 
   async importMetaLeads(file: Express.Multer.File): Promise<ImportResultDto> {
@@ -155,8 +186,9 @@ export class ImportService {
         receivedAt:   this.parseDate(this.cell(row, idx['received_at'])) ?? new Date(),
         callStatus:   callStatusRaw ? (CALL_STATUS_MAP[callStatusRaw.toLowerCase()] ?? null) : null,
         hwc:          hwcRaw        ? (HWC_MAP[hwcRaw.toLowerCase()] ?? null)        : null,
-        budgetRange:  this.cell(row, idx['budget_range']),
+        budgetRange:  normalizeMetaBudget(this.cell(row, idx['budget_range'])),
         profession:   this.cell(row, idx['profession']),
+        companyName:  this.cell(row, idx['company_name']),
         currentCity:  this.cell(row, idx['current_city']),
         currentArea:  this.cell(row, idx['current_area']),
         followUpDate: this.parseDate(this.cell(row, idx['follow_up_date'])),
@@ -248,7 +280,7 @@ export class ImportService {
 
     // ── Step 7: Bulk insert CRM details for rows that have them — 1 query ───
     const crmValues = newRows
-      .filter(r => r.callStatus || r.hwc || r.budgetRange || r.profession ||
+      .filter(r => r.callStatus || r.hwc || r.budgetRange || r.profession || r.companyName ||
                    r.currentCity || r.currentArea || r.followUpDate || r.remarks)
       .map(r => {
         const leadId = leadIdByPhone.get(r.phone)
@@ -259,6 +291,7 @@ export class ImportService {
           ...(r.hwc          ? { hwc:          r.hwc          as 'hot' | 'warm' | 'cold' } : {}),
           ...(r.budgetRange  ? { budgetRange:  r.budgetRange  } : {}),
           ...(r.profession   ? { profession:   r.profession   } : {}),
+          ...(r.companyName  ? { companyName:  r.companyName  } : {}),
           ...(r.currentCity  ? { currentCity:  r.currentCity  } : {}),
           ...(r.currentArea  ? { currentArea:  r.currentArea  } : {}),
           ...(r.followUpDate ? { followUpDate: r.followUpDate } : {}),
@@ -278,12 +311,12 @@ export class ImportService {
   generateMetaLeadsTemplate(): Buffer {
     const headers = [
       'Name', 'Phone', 'Email', 'City', 'Source',
-      'Date', 'Call Status', 'HWC', 'Budget', 'Profession',
+      'Date', 'Call Status', 'HWC', 'Budget', 'Profession', 'Company',
       'Current City', 'Current Area', 'Follow Up', 'Remarks',
     ]
     const sample = [
       'John Doe', '9876543210', 'john@example.com', 'Mumbai', 'Referral',
-      '2024-01-15', 'spoken', 'hot', '50-80L', 'IT Professional',
+      '2024-01-15', 'spoken', 'hot', '50-80L', 'IT Professional', 'Acme Corp',
       'Pune', 'Baner', '2024-02-01', 'Looking for 2BHK near metro',
     ]
     const ws = XLSX.utils.aoa_to_sheet([headers, sample])
