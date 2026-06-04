@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { eq } from 'drizzle-orm'
+import { inArray } from 'drizzle-orm'
 import * as XLSX from 'xlsx'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, leadCrmDetails, clients } from '@pikorua/db'
@@ -7,7 +7,6 @@ import { ImportResultDto } from './dto/import-result.dto'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
-// Accepted column header names — case-insensitive, first match wins
 const HEADER_MAP: Record<string, string[]> = {
   full_name:      ['name', 'full name', 'full_name', 'lead name', 'contact name'],
   phone:          ['phone', 'mobile', 'contact', 'phone number', 'mobile number'],
@@ -34,6 +33,24 @@ const CALL_STATUS_MAP: Record<string, string> = {
 const HWC_MAP: Record<string, string> = {
   hot: 'hot', warm: 'warm', cold: 'cold',
   h: 'hot', w: 'warm', c: 'cold',
+}
+
+interface ParsedRow {
+  rowNum: number
+  phone: string
+  fullName: string | null
+  email: string | null
+  city: string | null
+  campaignName: string | null
+  receivedAt: Date
+  callStatus: string | null
+  hwc: string | null
+  budgetRange: string | null
+  profession: string | null
+  currentCity: string | null
+  currentArea: string | null
+  followUpDate: Date | null
+  remarks: string | null
 }
 
 @Injectable()
@@ -64,7 +81,6 @@ export class ImportService {
 
   private parseDate(v: string | null): Date | null {
     if (!v) return null
-    // Handle Excel serial date numbers
     const num = Number(v)
     if (!isNaN(num) && num > 1000) {
       const date = XLSX.SSF.parse_date_code(num)
@@ -91,13 +107,13 @@ export class ImportService {
     const sheetName = workbook.SheetNames[0]
     if (!sheetName) throw new BadRequestException('File has no sheets')
 
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
       workbook.Sheets[sheetName],
       { defval: null },
     )
-    if (rows.length === 0) throw new BadRequestException('File is empty or has no data rows')
+    if (rawRows.length === 0) throw new BadRequestException('File is empty or has no data rows')
 
-    const headers = Object.keys(rows[0])
+    const headers = Object.keys(rawRows[0])
     const idx = this.buildHeaderIndex(headers)
 
     if (!idx['phone']) {
@@ -106,119 +122,157 @@ export class ImportService {
       )
     }
 
-    const result: ImportResultDto = { total: rows.length, inserted: 0, skipped: 0, errors: [] }
+    const result: ImportResultDto = { total: rawRows.length, inserted: 0, skipped: 0, errors: [] }
 
-    const BATCH = 50
-    for (let i = 0; i < rows.length; i += BATCH) {
-      const batch = rows.slice(i, i + BATCH)
-      for (const [j, row] of batch.entries()) {
-        const rowNum = i + j + 2 // +2 for 1-based + header row
-        await this.processRow(row, idx, rowNum, result)
+    // ── Step 1: Parse all rows in memory (no DB calls) ──────────────────────
+    const parsed: ParsedRow[] = []
+    const seenPhones = new Set<string>() // catch within-file duplicates
+
+    for (const [i, row] of rawRows.entries()) {
+      const rowNum = i + 2
+      const rawPhone = this.cell(row, idx['phone'])
+      if (!rawPhone) {
+        result.errors.push({ row: rowNum, reason: 'Phone is required' })
+        continue
       }
-    }
+      const phone = this.normalizePhone(rawPhone)
+      if (seenPhones.has(phone)) {
+        result.skipped++
+        continue
+      }
+      seenPhones.add(phone)
 
-    return result
-  }
+      const callStatusRaw = this.cell(row, idx['call_status'])
+      const hwcRaw        = this.cell(row, idx['hwc'])
 
-  private async processRow(
-    row: Record<string, unknown>,
-    idx: Record<string, string>,
-    rowNum: number,
-    result: ImportResultDto,
-  ) {
-    const rawPhone = this.cell(row, idx['phone'])
-    if (!rawPhone) {
-      result.errors.push({ row: rowNum, reason: 'Phone is required' })
-      return
-    }
-
-    const phone = this.normalizePhone(rawPhone)
-
-    // Duplicate check
-    const existing = await this.db.query.metaLeads.findFirst({
-      where: eq(metaLeads.phone, phone),
-      columns: { id: true },
-    })
-    if (existing) {
-      result.skipped++
-      return
-    }
-
-    // Build meta lead payload
-    const receivedAt = this.parseDate(this.cell(row, idx['received_at'])) ?? new Date()
-
-    let leadId: string
-    try {
-      const [inserted] = await this.db.insert(metaLeads).values({
-        fullName:     this.cell(row, idx['full_name']),
+      parsed.push({
+        rowNum,
         phone,
+        fullName:     this.cell(row, idx['full_name']),
         email:        this.cell(row, idx['email']),
         city:         this.cell(row, idx['city']),
         campaignName: this.cell(row, idx['campaign_name']),
-        source:       'migrated',
-        status:       'unassigned',
-        receivedAt,
-      }).returning({ id: metaLeads.id })
-      leadId = inserted.id
-    } catch (err) {
-      result.errors.push({ row: rowNum, reason: err instanceof Error ? err.message : 'Insert failed' })
-      return
+        receivedAt:   this.parseDate(this.cell(row, idx['received_at'])) ?? new Date(),
+        callStatus:   callStatusRaw ? (CALL_STATUS_MAP[callStatusRaw.toLowerCase()] ?? null) : null,
+        hwc:          hwcRaw        ? (HWC_MAP[hwcRaw.toLowerCase()] ?? null)        : null,
+        budgetRange:  this.cell(row, idx['budget_range']),
+        profession:   this.cell(row, idx['profession']),
+        currentCity:  this.cell(row, idx['current_city']),
+        currentArea:  this.cell(row, idx['current_area']),
+        followUpDate: this.parseDate(this.cell(row, idx['follow_up_date'])),
+        remarks:      this.cell(row, idx['remarks']),
+      })
     }
 
-    // Ensure client record exists
-    await this.ensureClient({ id: leadId, phone, fullName: this.cell(row, idx['full_name']), email: this.cell(row, idx['email']) })
+    if (parsed.length === 0) return result
 
-    // Build CRM details if any CRM columns present
-    const callStatusRaw  = this.cell(row, idx['call_status'])
-    const hwcRaw         = this.cell(row, idx['hwc'])
-    const budgetRange    = this.cell(row, idx['budget_range'])
-    const profession     = this.cell(row, idx['profession'])
-    const currentCity    = this.cell(row, idx['current_city'])
-    const currentArea    = this.cell(row, idx['current_area'])
-    const followUpDate   = this.parseDate(this.cell(row, idx['follow_up_date']))
-    const remarks        = this.cell(row, idx['remarks'])
+    // ── Step 2: Bulk duplicate check — 1 query ───────────────────────────────
+    const allPhones = parsed.map(r => r.phone)
+    const existingLeads = await this.db
+      .select({ phone: metaLeads.phone })
+      .from(metaLeads)
+      .where(inArray(metaLeads.phone, allPhones))
 
-    const callStatus = callStatusRaw ? (CALL_STATUS_MAP[callStatusRaw.toLowerCase()] ?? null) : null
-    const hwc        = hwcRaw        ? (HWC_MAP[hwcRaw.toLowerCase()] ?? null)        : null
+    const existingPhoneSet = new Set(existingLeads.map(r => r.phone).filter(Boolean) as string[])
+    const newRows = parsed.filter(r => {
+      if (existingPhoneSet.has(r.phone)) { result.skipped++; return false }
+      return true
+    })
 
-    const hasCrmData = !!(callStatus || hwc || budgetRange || profession || currentCity || currentArea || followUpDate || remarks)
-    if (hasCrmData) {
-      try {
-        await this.db.insert(leadCrmDetails).values({
-          leadId,
-          ...(callStatus    ? { callStatus: callStatus as 'spoken' | 'not_spoken' | 'call_back_later' } : {}),
-          ...(hwc           ? { hwc: hwc as 'hot' | 'warm' | 'cold' } : {}),
-          ...(budgetRange   ? { budgetRange }   : {}),
-          ...(profession    ? { profession }    : {}),
-          ...(currentCity   ? { currentCity }   : {}),
-          ...(currentArea   ? { currentArea }   : {}),
-          ...(followUpDate  ? { followUpDate }  : {}),
-          ...(remarks       ? { remarks }       : {}),
-        })
-      } catch {
-        // CRM details failure is non-fatal — lead is still inserted
+    if (newRows.length === 0) return result
+
+    // ── Step 3: Bulk fetch existing clients by phone — 1 query ──────────────
+    const newPhones = newRows.map(r => r.phone)
+    const existingClients = await this.db
+      .select({ id: clients.id, phone: clients.phone })
+      .from(clients)
+      .where(inArray(clients.phone, newPhones))
+
+    const existingClientMap = new Map(existingClients.map(c => [c.phone, c.id]))
+
+    // ── Step 4: Bulk insert meta leads — 1 query ─────────────────────────────
+    const insertedLeads = await this.db
+      .insert(metaLeads)
+      .values(newRows.map(r => ({
+        fullName:     r.fullName,
+        phone:        r.phone,
+        email:        r.email,
+        city:         r.city,
+        campaignName: r.campaignName,
+        source:       'migrated',
+        status:       'unassigned' as const,
+        receivedAt:   r.receivedAt,
+      })))
+      .returning({ id: metaLeads.id, phone: metaLeads.phone })
+
+    // Map phone → lead id for subsequent steps
+    const leadIdByPhone = new Map(insertedLeads.map(l => [l.phone, l.id]))
+
+    // ── Step 5: Bulk insert new clients (phones not already in clients) — 1 query
+    const phonesNeedingClient = newPhones.filter(p => !existingClientMap.has(p))
+    if (phonesNeedingClient.length > 0) {
+      const rowsByPhone = new Map(newRows.map(r => [r.phone, r]))
+      const insertedClients = await this.db
+        .insert(clients)
+        .values(phonesNeedingClient.map(phone => {
+          const r = rowsByPhone.get(phone)!
+          return { tenantId: DEFAULT_TENANT_ID, fullName: r.fullName, phone, email: r.email }
+        }))
+        .returning({ id: clients.id, phone: clients.phone })
+
+      for (const c of insertedClients) {
+        if (c.phone) existingClientMap.set(c.phone, c.id)
       }
     }
 
-    result.inserted++
-  }
-
-  private async ensureClient(lead: { id: string; phone: string; fullName: string | null; email: string | null }) {
-    const existing = await this.db.query.clients.findFirst({
-      where: eq(clients.phone, lead.phone),
-      columns: { id: true },
-    })
-    if (existing) {
-      await this.db.update(metaLeads).set({ clientId: existing.id }).where(eq(metaLeads.id, lead.id))
-      return
+    // ── Step 6: Bulk update clientId on all inserted leads — 1 query ─────────
+    // Group leads by clientId to minimise updates (one update per unique client)
+    const clientIdToLeadIds = new Map<string, string[]>()
+    for (const r of newRows) {
+      const clientId = existingClientMap.get(r.phone)
+      const leadId   = leadIdByPhone.get(r.phone)
+      if (!clientId || !leadId) continue
+      const list = clientIdToLeadIds.get(clientId) ?? []
+      list.push(leadId)
+      clientIdToLeadIds.set(clientId, list)
     }
-    const [client] = await this.db.insert(clients).values({
-      tenantId: DEFAULT_TENANT_ID,
-      fullName: lead.fullName,
-      phone:    lead.phone,
-      email:    lead.email,
-    }).returning({ id: clients.id })
-    await this.db.update(metaLeads).set({ clientId: client.id }).where(eq(metaLeads.id, lead.id))
+    // One update per distinct clientId (usually same count as new clients)
+    await Promise.all(
+      [...clientIdToLeadIds.entries()].map(([clientId, leadIds]) =>
+        this.db
+          .update(metaLeads)
+          .set({ clientId })
+          .where(inArray(metaLeads.id, leadIds))
+      )
+    )
+
+    // ── Step 7: Bulk insert CRM details for rows that have them — 1 query ───
+    const crmValues = newRows
+      .filter(r => r.callStatus || r.hwc || r.budgetRange || r.profession ||
+                   r.currentCity || r.currentArea || r.followUpDate || r.remarks)
+      .map(r => {
+        const leadId = leadIdByPhone.get(r.phone)
+        if (!leadId) return null
+        return {
+          leadId,
+          ...(r.callStatus   ? { callStatus:   r.callStatus   as 'spoken' | 'not_spoken' | 'call_back_later' } : {}),
+          ...(r.hwc          ? { hwc:          r.hwc          as 'hot' | 'warm' | 'cold' } : {}),
+          ...(r.budgetRange  ? { budgetRange:  r.budgetRange  } : {}),
+          ...(r.profession   ? { profession:   r.profession   } : {}),
+          ...(r.currentCity  ? { currentCity:  r.currentCity  } : {}),
+          ...(r.currentArea  ? { currentArea:  r.currentArea  } : {}),
+          ...(r.followUpDate ? { followUpDate: r.followUpDate } : {}),
+          ...(r.remarks      ? { remarks:      r.remarks      } : {}),
+        }
+      })
+      .filter(Boolean) as Record<string, unknown>[]
+
+    if (crmValues.length > 0) {
+      await this.db.insert(leadCrmDetails).values(crmValues as never[]).onConflictDoNothing()
+    }
+
+    result.inserted = insertedLeads.length
+    return result
   }
 
   generateMetaLeadsTemplate(): Buffer {

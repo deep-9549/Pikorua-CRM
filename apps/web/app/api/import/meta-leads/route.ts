@@ -2,8 +2,7 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiBaseUrl } from '@/lib/api/base-url'
 
-// Disable Next.js body parsing — we forward the raw multipart stream
-export const config = { api: { bodyParser: false } }
+export const maxDuration = 60 // Vercel Pro allows up to 300s; Hobby caps at 60s
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
