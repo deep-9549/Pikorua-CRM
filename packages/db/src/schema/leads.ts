@@ -8,7 +8,7 @@ import { employees } from './employees'
 
 export const leadStatusEnum = pgEnum('lead_status', ['new', 'contacted', 'qualified', 'negotiation', 'won', 'lost'])
 export const leadSourceEnum = pgEnum('lead_source', ['meta_ads', 'google_ads', 'referral', 'website', 'whatsapp', 'walk_in', 'manual'])
-export const metaLeadStatusEnum = pgEnum('meta_lead_status', ['unassigned', 'assigned', 'converted', 'rejected'])
+export const metaLeadStatusEnum = pgEnum('meta_lead_status', ['unassigned', 'assigned', 'converted', 'rejected', 'cold_pool'])
 export const callStatusEnum = pgEnum('call_status', ['spoken', 'not_spoken', 'call_back_later'])
 export const hwcEnum = pgEnum('hwc', ['hot', 'warm', 'cold'])
 export const buyingStatusEnum = pgEnum('buying_status', ['ready', 'exploring', 'not_ready'])
