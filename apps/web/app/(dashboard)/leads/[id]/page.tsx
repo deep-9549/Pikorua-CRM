@@ -311,7 +311,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [clientNote, setClientNote] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [savingStatus, setSavingStatus] = useState(false)
   const [saved, setSaved] = useState(false)
   const [activeTab, setActiveTab] = useState<"crm" | "history">("crm")
 
@@ -346,11 +345,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     load()
   }, [id])
 
-  async function handleSaveCrm() {
+  async function handleSaveAll() {
     setSaving(true)
     try {
-      // Explicitly pick only the fields the API accepts — avoids sending server
-      // fields like id / lead_id / updated_at that the DTO rejects.
+      // Explicitly pick only the fields the API accepts to avoid DTO rejections.
       const payload = {
         call_status: crm.call_status,
         first_call_date: crm.first_call_date,
@@ -373,40 +371,39 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
+      const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
         const msg = Array.isArray(json.message) ? json.message.join(", ") : (json.message ?? json.error ?? "Failed to save")
         throw new Error(msg)
       }
+
+      if (json.lead?.crm) setCrm(prev => ({ ...prev, ...json.lead.crm }))
+
+      if (client) {
+        const statusRes = await fetch(`/api/clients/${client.id}/status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: clientStatus, status_note: clientNote }),
+        })
+        const statusJson = await statusRes.json().catch(() => ({}))
+        if (!statusRes.ok) {
+          const msg = Array.isArray(statusJson.message)
+            ? statusJson.message.join(", ")
+            : (statusJson.message ?? statusJson.error ?? "Failed to save client status")
+          throw new Error(msg)
+        }
+        if (statusJson.client) {
+          setClient(statusJson.client)
+          setClientStatus(CLIENT_STATUS_VALUES.has(statusJson.client.status) ? statusJson.client.status : null)
+          setClientNote(statusJson.client.status_note ?? "")
+        }
+      }
+
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to save")
     } finally { setSaving(false) }
-  }
-
-  async function handleSaveClientStatus() {
-    if (!client) return
-    setSavingStatus(true)
-    try {
-      const res = await fetch(`/api/clients/${client.id}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: clientStatus, status_note: clientNote }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        const msg = Array.isArray(json.message) ? json.message.join(", ") : (json.message ?? json.error ?? "Failed to save client status")
-        throw new Error(msg)
-      }
-      if (json.client) {
-        setClient(json.client)
-        setClientStatus(CLIENT_STATUS_VALUES.has(json.client.status) ? json.client.status : null)
-        setClientNote(json.client.status_note ?? "")
-      }
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to save client status")
-    } finally { setSavingStatus(false) }
   }
 
   function toggleConfig(c: string) {
@@ -544,12 +541,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   value={clientNote} onChange={e => setClientNote(e.target.value)}
                   className="flex-1 h-8 px-3 rounded-lg text-xs bg-transparent"
                   style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
-                <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 shrink-0"
-                  onClick={handleSaveClientStatus} disabled={savingStatus}>
-                  {savingStatus
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <><Check className="w-3.5 h-3.5" />Save</>}
-                </Button>
               </div>
               {client?.status_updated_by_profile && client.status_updated_at && (
                 <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
@@ -706,12 +697,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     className="min-h-[90px] text-sm resize-none" />
                 </div>
 
-                <Button onClick={handleSaveCrm} disabled={saving}
+                <Button onClick={handleSaveAll} disabled={saving}
                   className="w-full h-10 font-semibold gold-gradient shadow-gold-sm"
                   style={{ color: "oklch(0.10 0.010 260)" }}>
                   {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
                     : saved ? <><Check className="w-4 h-4 mr-2" />Saved</>
-                    : <><Save className="w-4 h-4 mr-2" />Save Details</>}
+                    : <><Save className="w-4 h-4 mr-2" />Save All Changes</>}
                 </Button>
               </CardContent>
             </Card>
