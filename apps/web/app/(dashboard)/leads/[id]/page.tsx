@@ -108,13 +108,23 @@ const CLIENT_STATUSES = [
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Convert ISO timestamp or any string -> "YYYY-MM-DD" for date inputs
+function isoToDateInput(v: string | null): string {
+  if (!v) return ""
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v
+  const d = new Date(v)
+  if (isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 function DateField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>{label}</Label>
-      <input type="date" value={value} onChange={e => onChange(e.target.value)}
+      <Label className="text-xs font-medium" style={{ color: "var(--color-foreground)" }}>{label}</Label>
+      <input type="date" value={isoToDateInput(value)} onChange={e => onChange(e.target.value)}
         className="flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm bg-transparent"
-        style={{ borderColor: "var(--color-border)", color: "oklch(0.88 0.006 80)" }} />
+        style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} />
     </div>
   )
 }
@@ -137,7 +147,7 @@ function DateTimeField({ label, value, onChange }: { label: string; value: strin
         value={isoToLocalInput(value)}
         onChange={e => onChange(e.target.value ? new Date(e.target.value).toISOString() : null)}
         className="flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm bg-transparent"
-        style={{ borderColor: "var(--color-border)", color: "oklch(0.88 0.006 80)" }}
+        style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
       />
     </div>
   )
@@ -268,7 +278,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
               </div>
               {entry.crm?.remarks && (
                 <p className="text-xs italic px-3 py-2 rounded-lg"
-                  style={{ background: "oklch(0.18 0.012 260)", color: "oklch(0.70 0.006 80)" }}>
+                  style={{ background: "oklch(0.18 0.012 260)", color: "oklch(0.90 0.004 260)" }}>
                   &quot;{entry.crm.remarks}&quot;
                 </p>
               )}
@@ -338,10 +348,29 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   async function handleSaveCrm() {
     setSaving(true)
     try {
+      // Explicitly pick only the fields the API accepts — avoids sending server
+      // fields like id / lead_id / updated_at that the DTO rejects.
+      const payload = {
+        call_status: crm.call_status,
+        first_call_date: crm.first_call_date,
+        last_call_date: crm.last_call_date,
+        hwc: crm.hwc,
+        follow_up_date: crm.follow_up_date,
+        buying_status: crm.buying_status,
+        site_visit_status: crm.site_visit_status,
+        visit_date: crm.visit_date,
+        visit_confirmation_date: crm.visit_confirmation_date,
+        budget_range: crm.budget_range,
+        configuration: crm.configuration,
+        profession: crm.profession,
+        current_city: crm.current_city,
+        current_area: crm.current_area,
+        remarks: crm.remarks,
+      }
       const res = await fetch(`/api/leads/meta/${id}/crm`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(crm),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
@@ -493,7 +522,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       onClick={() => setClientStatus(active ? null : s.value)}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
                       style={active ? { background: s.bg, color: s.color, border: `1px solid ${s.color}60` }
-                        : { background: "oklch(0.185 0.015 260)", color: "var(--color-foreground)", border: "1px solid oklch(0.250 0.014 260)" }}>
+                        : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
                       <Icon className="w-3 h-3" />{s.label}
                     </button>
                   )
@@ -503,7 +532,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <input type="text" placeholder="Optional note..."
                   value={clientNote} onChange={e => setClientNote(e.target.value)}
                   className="flex-1 h-8 px-3 rounded-lg text-xs bg-transparent"
-                  style={{ border: "1px solid var(--color-border)", color: "oklch(0.82 0.006 80)" }} />
+                  style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
                 <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 shrink-0"
                   onClick={handleSaveClientStatus} disabled={savingStatus}>
                   {savingStatus
@@ -631,7 +660,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                         className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                         style={crm.budget_range === range
                           ? { background: "oklch(0.700 0.130 75 / 0.2)", color: "oklch(0.700 0.130 75)", border: "1px solid oklch(0.700 0.130 75 / 0.5)" }
-                          : { background: "oklch(0.185 0.015 260)", color: "var(--color-foreground)", border: "1px solid oklch(0.250 0.014 260)" }}>
+                          : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
                         {range}
                       </button>
                     ))}
@@ -648,7 +677,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                           className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                           style={selected
                             ? { background: "oklch(0.65 0.15 145 / 0.15)", color: "oklch(0.65 0.15 145)", border: "1px solid oklch(0.65 0.15 145 / 0.4)" }
-                            : { background: "oklch(0.185 0.015 260)", color: "var(--color-foreground)", border: "1px solid oklch(0.250 0.014 260)" }}>
+                            : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
                           {cfg}
                         </button>
                       )
