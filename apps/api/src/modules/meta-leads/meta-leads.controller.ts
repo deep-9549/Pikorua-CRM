@@ -26,7 +26,6 @@ export class MetaLeadsController {
     return this.metaLeadsService.findOne(id)
   }
 
-  @Patch(':id/assign')
   @Post(':id/assign')
   @ApiOperation({ summary: 'Assign a lead to an employee' })
   assign(
