@@ -105,3 +105,13 @@ export const metaLeadsRelations = relations(metaLeads, ({ one, many }) => ({
 export const leadCrmDetailsRelations = relations(leadCrmDetails, ({ one }) => ({
   metaLead: one(metaLeads, { fields: [leadCrmDetails.leadId], references: [metaLeads.id] }),
 }))
+
+export const leadNotesRelations = relations(leadNotes, ({ one }) => ({
+  metaLead: one(metaLeads, { fields: [leadNotes.leadId], references: [metaLeads.id] }),
+  employee: one(userProfiles, { fields: [leadNotes.employeeId], references: [userProfiles.id] }),
+}))
+
+export const leadInteractionsRelations = relations(leadInteractions, ({ one }) => ({
+  metaLead: one(metaLeads, { fields: [leadInteractions.leadId], references: [metaLeads.id] }),
+  employee: one(userProfiles, { fields: [leadInteractions.employeeId], references: [userProfiles.id] }),
+}))
