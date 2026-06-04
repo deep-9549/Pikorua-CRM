@@ -70,14 +70,15 @@ export class SiteVisitsService {
       orderBy: [desc(siteVisits.scheduledDate)],
     })
 
-    const now = Date.now()
     const filtered = visits.filter((visit) => {
       if (status === 'upcoming') {
-        return visit.status === 'scheduled' && visit.scheduledDate.getTime() >= now
+        // All scheduled visits are "upcoming"; overdue ones get the badge in the UI
+        return visit.status === 'scheduled'
       }
 
       if (status === 'past') {
-        return visit.status !== 'scheduled' || visit.scheduledDate.getTime() < now
+        // completed / cancelled / no_show
+        return visit.status !== 'scheduled'
       }
 
       return true

@@ -33,7 +33,6 @@ export class LeadsController {
     return this.leadsService.create(dto)
   }
 
-  @Patch(':id')
   @Put(':id')
   @ApiOperation({ summary: 'Update lead CRM details' })
   update(@Param('id') id: string, @Body() dto: UpdateLeadDto) {

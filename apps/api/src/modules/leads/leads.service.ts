@@ -71,12 +71,43 @@ export class LeadsService {
       where: eq(leadCrmDetails.leadId, id),
     })
 
+    // Map UI site_visit_status values to DB enum values
+    const SITE_VISIT_UI_TO_DB: Record<string, string> = {
+      yet_to_visit: 'not_scheduled',
+      visit_week_confirmed: 'scheduled',
+      visit_date_confirmed: 'scheduled',
+      visited: 'completed',
+      // pass through existing DB values
+      scheduled: 'scheduled',
+      completed: 'completed',
+      not_scheduled: 'not_scheduled',
+    }
+
+    // Map UI buying_status values to DB enum values
+    const BUYING_UI_TO_DB: Record<string, string> = {
+      still_searching: 'exploring',
+      postponed: 'not_ready',
+      bought: 'not_ready',
+      not_interested: 'not_ready',
+      // pass through existing DB values
+      ready: 'ready',
+      exploring: 'exploring',
+      not_ready: 'not_ready',
+    }
+
+    const dbSiteVisit = dto.site_visit_status !== undefined
+      ? (SITE_VISIT_UI_TO_DB[dto.site_visit_status] ?? null)
+      : undefined
+    const dbBuying = dto.buying_status !== undefined
+      ? (BUYING_UI_TO_DB[dto.buying_status] ?? null)
+      : undefined
+
     const payload = {
       ...(dto.call_status !== undefined && { callStatus: dto.call_status as never }),
       ...(dto.hwc !== undefined && { hwc: dto.hwc as never }),
-      ...(dto.follow_up_date !== undefined && { followUpDate: new Date(dto.follow_up_date) }),
-      ...(dto.buying_status !== undefined && { buyingStatus: dto.buying_status as never }),
-      ...(dto.site_visit_status !== undefined && { siteVisitStatus: dto.site_visit_status as never }),
+      ...(dto.follow_up_date !== undefined && { followUpDate: dto.follow_up_date ? new Date(dto.follow_up_date) : null }),
+      ...(dbBuying !== undefined && { buyingStatus: dbBuying as never }),
+      ...(dbSiteVisit !== undefined && { siteVisitStatus: dbSiteVisit as never }),
       ...(dto.budget_range !== undefined && { budgetRange: dto.budget_range }),
       ...(dto.profession !== undefined && { profession: dto.profession }),
       ...(dto.current_city !== undefined && { currentCity: dto.current_city }),

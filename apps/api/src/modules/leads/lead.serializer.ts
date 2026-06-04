@@ -9,8 +9,23 @@ function serializeProfile(profile: any) {
   }
 }
 
+// DB enum → UI value mappings (reverse of what LeadsService.update writes)
+const SITE_VISIT_DB_TO_UI: Record<string, string> = {
+  not_scheduled: 'yet_to_visit',
+  scheduled: 'visit_date_confirmed',
+  completed: 'visited',
+}
+const BUYING_DB_TO_UI: Record<string, string> = {
+  exploring: 'still_searching',
+  not_ready: 'postponed',
+  ready: 'ready',
+}
+
 export function serializeCrmDetails(crm: any) {
   if (!crm) return null
+
+  const rawSiteVisit = crm.siteVisitStatus ?? crm.site_visit_status ?? null
+  const rawBuying = crm.buyingStatus ?? crm.buying_status ?? null
 
   return {
     id: crm.id,
@@ -18,8 +33,8 @@ export function serializeCrmDetails(crm: any) {
     call_status: crm.callStatus ?? crm.call_status ?? null,
     hwc: crm.hwc ?? null,
     follow_up_date: crm.followUpDate ?? crm.follow_up_date ?? null,
-    buying_status: crm.buyingStatus ?? crm.buying_status ?? null,
-    site_visit_status: crm.siteVisitStatus ?? crm.site_visit_status ?? null,
+    buying_status: rawBuying ? (BUYING_DB_TO_UI[rawBuying] ?? rawBuying) : null,
+    site_visit_status: rawSiteVisit ? (SITE_VISIT_DB_TO_UI[rawSiteVisit] ?? rawSiteVisit) : null,
     budget_range: crm.budgetRange ?? crm.budget_range ?? null,
     profession: crm.profession ?? null,
     current_city: crm.currentCity ?? crm.current_city ?? null,

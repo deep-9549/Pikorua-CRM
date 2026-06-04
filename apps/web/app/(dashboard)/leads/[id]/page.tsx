@@ -338,13 +338,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   async function handleSaveCrm() {
     setSaving(true)
     try {
-      await fetch(`/api/leads/meta/${id}/crm`, {
+      const res = await fetch(`/api/leads/meta/${id}/crm`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(crm),
       })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        const msg = Array.isArray(json.message) ? json.message.join(", ") : (json.message ?? json.error ?? "Failed to save")
+        throw new Error(msg)
+      }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to save")
     } finally { setSaving(false) }
   }
 
