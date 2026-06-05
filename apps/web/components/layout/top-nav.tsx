@@ -172,9 +172,9 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
         transition={{ duration: 0.25, ease: "easeOut" }}
         className="sticky top-0 z-30 h-[60px] flex items-center justify-between px-6"
         style={{
-          background: "rgb(254 249 242 / 0.88)",
+          background: "rgb(6 5 4 / 0.9)",
           backdropFilter: "blur(20px) saturate(180%)",
-          borderBottom: "1px solid rgb(222 217 211 / 0.7)",
+          borderBottom: "1px solid rgb(212 175 55 / 0.22)",
         }}
       >
         {/* Breadcrumbs */}
@@ -185,8 +185,8 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
               <span className={cn(
                 "text-sm",
                 i === breadcrumbs.length - 1
-                  ? "font-semibold text-foreground"
-                  : "text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                  ? "font-semibold text-primary"
+                  : "text-muted-foreground hover:text-primary cursor-pointer transition-colors"
               )}>
                 {crumb.name}
               </span>
@@ -248,9 +248,9 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
           {/* Notifications */}
           <button
             onClick={() => setShowPanel(true)}
-            className="relative h-8 w-8 flex items-center justify-center rounded-lg transition-colors hover:bg-muted"
+            className="relative h-8 w-8 flex items-center justify-center rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-primary"
           >
-            <Bell className="w-4 h-4 text-muted-foreground" />
+            <Bell className="w-4 h-4" />
             <AnimatePresence>
               {unreadCount > 0 && (
                 <motion.span
