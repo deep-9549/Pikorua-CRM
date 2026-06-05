@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { eq, desc, and, isNull } from 'drizzle-orm'
+import { eq, desc, and, isNull, inArray } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { metaLeads, leadCrmDetails, leadNotes, leadInteractions, siteVisits } from '@pikorua/db'
+import {
+  metaLeads, leadCrmDetails, leadNotes, leadInteractions, siteVisits,
+  bookings, conversations, messages,
+} from '@pikorua/db'
 import { CreateLeadDto } from './dto/create-lead.dto'
 import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
@@ -172,19 +175,28 @@ export class LeadsService {
   }
 
   /**
-   * Permanently delete a lead and everything attached to it. The child tables
-   * (CRM details, notes, interactions, site visits) have NOT NULL foreign keys
-   * to meta_leads with no cascade, so they must be removed first. Wrapped in a
-   * transaction so a lead is never left half-deleted.
+   * Permanently delete a lead and everything attached to it. Every child table
+   * has a NOT NULL foreign key to meta_leads with no cascade, so they must be
+   * removed first — including chat messages, which hang off conversations.
+   * Wrapped in a transaction so a lead is never left half-deleted.
    */
   async remove(id: string) {
     await this.findOne(id) // 404s if the lead doesn't exist
 
     await this.db.transaction(async (tx) => {
-      await tx.delete(leadCrmDetails).where(eq(leadCrmDetails.leadId, id))
-      await tx.delete(leadNotes).where(eq(leadNotes.leadId, id))
-      await tx.delete(leadInteractions).where(eq(leadInteractions.leadId, id))
+      // messages → conversations (messages reference conversations, not the lead)
+      await tx.delete(messages).where(
+        inArray(
+          messages.conversationId,
+          tx.select({ id: conversations.id }).from(conversations).where(eq(conversations.leadId, id)),
+        ),
+      )
+      await tx.delete(conversations).where(eq(conversations.leadId, id))
+      await tx.delete(bookings).where(eq(bookings.leadId, id))
       await tx.delete(siteVisits).where(eq(siteVisits.leadId, id))
+      await tx.delete(leadInteractions).where(eq(leadInteractions.leadId, id))
+      await tx.delete(leadNotes).where(eq(leadNotes.leadId, id))
+      await tx.delete(leadCrmDetails).where(eq(leadCrmDetails.leadId, id))
       await tx.delete(metaLeads).where(eq(metaLeads.id, id))
     })
 

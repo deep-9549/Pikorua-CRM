@@ -194,71 +194,59 @@ export class ImportService {
 
     if (parsed.length === 0) return result
 
-    // ── Step 2: Insert every lead — 1 query ─────────────────────────────────
-    // Postgres returns rows in the same order as the VALUES list, so the
-    // result is index-aligned with `parsed` (this is what lets us keep
-    // duplicate phones — we never key leads by phone).
-    const insertedLeads = await this.db
-      .insert(metaLeads)
-      .values(parsed.map(r => ({
-        fullName:     r.fullName,
-        phone:        r.phone,
-        email:        r.email,
-        city:         r.city,
-        campaignName: r.campaignName,
-        source:       'migrated',
-        status:       'unassigned' as const,
-        receivedAt:   r.receivedAt,
-      })))
-      .returning({ id: metaLeads.id })
+    const CHUNK = 500
 
-    const leadIds = insertedLeads.map(l => l.id)
-
-    // ── Step 3: Resolve one client per UNIQUE phone — find or create ─────────
+    // ── Step 2: Resolve one client per UNIQUE phone (find-or-create) ────────
+    // Done BEFORE inserting leads so client_id is written at insert time. This
+    // replaces the old per-client UPDATE pass, which fired one query per client
+    // and timed out (504) on large files.
     const uniquePhones = [...new Set(parsed.map(r => r.phone))]
-    const existingClients = await this.db
-      .select({ id: clients.id, phone: clients.phone })
-      .from(clients)
-      .where(inArray(clients.phone, uniquePhones))
+    const clientIdByPhone = new Map<string, string>()
 
-    const clientIdByPhone = new Map(existingClients.map(c => [c.phone, c.id]))
+    for (const batch of this.chunk(uniquePhones, CHUNK)) {
+      const rows = await this.db
+        .select({ id: clients.id, phone: clients.phone })
+        .from(clients)
+        .where(inArray(clients.phone, batch))
+      for (const c of rows) if (c.phone) clientIdByPhone.set(c.phone, c.id)
+    }
 
+    const rowByPhone = new Map(parsed.map(r => [r.phone, r]))
     const phonesNeedingClient = uniquePhones.filter(p => !clientIdByPhone.has(p))
-    if (phonesNeedingClient.length > 0) {
-      const rowByPhone = new Map(parsed.map(r => [r.phone, r]))
-      const insertedClients = await this.db
+    for (const batch of this.chunk(phonesNeedingClient, CHUNK)) {
+      const inserted = await this.db
         .insert(clients)
-        .values(phonesNeedingClient.map(phone => {
+        .values(batch.map(phone => {
           const r = rowByPhone.get(phone)!
           return { tenantId: DEFAULT_TENANT_ID, fullName: r.fullName, phone, email: r.email }
         }))
         .returning({ id: clients.id, phone: clients.phone })
-
-      for (const c of insertedClients) {
-        if (c.phone) clientIdByPhone.set(c.phone, c.id)
-      }
+      for (const c of inserted) if (c.phone) clientIdByPhone.set(c.phone, c.id)
     }
 
-    // ── Step 4: Link every lead to its client (repeats share one client) ────
-    const leadIdsByClient = new Map<string, string[]>()
-    parsed.forEach((r, i) => {
-      const clientId = clientIdByPhone.get(r.phone)
-      const leadId   = leadIds[i]
-      if (!clientId || !leadId) return
-      const list = leadIdsByClient.get(clientId) ?? []
-      list.push(leadId)
-      leadIdsByClient.set(clientId, list)
-    })
-    await Promise.all(
-      [...leadIdsByClient.entries()].map(([clientId, ids]) =>
-        this.db
-          .update(metaLeads)
-          .set({ clientId })
-          .where(inArray(metaLeads.id, ids))
-      )
-    )
+    // ── Step 3: Insert leads (client_id already set) — chunked ──────────────
+    // Rows go in `parsed` order, so the returned ids stay index-aligned with
+    // `parsed` (duplicate phones each keep their own lead id).
+    const leadIds: string[] = []
+    for (const batch of this.chunk(parsed, CHUNK)) {
+      const inserted = await this.db
+        .insert(metaLeads)
+        .values(batch.map(r => ({
+          fullName:     r.fullName,
+          phone:        r.phone,
+          email:        r.email,
+          city:         r.city,
+          campaignName: r.campaignName,
+          clientId:     clientIdByPhone.get(r.phone) ?? null,
+          source:       'migrated',
+          status:       'unassigned' as const,
+          receivedAt:   r.receivedAt,
+        })))
+        .returning({ id: metaLeads.id })
+      for (const l of inserted) leadIds.push(l.id)
+    }
 
-    // ── Step 5: Bulk insert CRM details for rows that have them — 1 query ───
+    // ── Step 4: CRM details for rows that have them — chunked ───────────────
     const crmValues = parsed
       .map((r, i) => {
         const leadId = leadIds[i]
@@ -280,12 +268,18 @@ export class ImportService {
       })
       .filter(Boolean) as Record<string, unknown>[]
 
-    if (crmValues.length > 0) {
-      await this.db.insert(leadCrmDetails).values(crmValues as never[]).onConflictDoNothing()
+    for (const batch of this.chunk(crmValues, CHUNK)) {
+      await this.db.insert(leadCrmDetails).values(batch as never[]).onConflictDoNothing()
     }
 
     result.inserted = leadIds.length
     return result
+  }
+
+  private chunk<T>(arr: T[], size: number): T[][] {
+    const out: T[][] = []
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+    return out
   }
 
   generateMetaLeadsTemplate(): Buffer {
