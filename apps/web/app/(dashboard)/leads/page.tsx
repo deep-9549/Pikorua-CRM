@@ -8,6 +8,7 @@ import {
   Thermometer, Snowflake, ChevronRight, Loader2, AlertCircle,
   RefreshCw, Calendar, Star, Download, Filter, X
 } from "lucide-react"
+import { formatPhone } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -359,7 +360,7 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     {lead.phone && (
                       <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
-                        <Phone className="w-3 h-3" />{lead.phone}
+                        <Phone className="w-3 h-3" />{formatPhone(lead.phone)}
                       </span>
                     )}
                     {lead.city && (

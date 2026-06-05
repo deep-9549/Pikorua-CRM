@@ -114,7 +114,7 @@ export function ImportLeadsDialog({
             Import Leads from Excel
           </DialogTitle>
           <DialogDescription>
-            Upload a .xlsx or .csv file to bulk-import historical leads. Duplicates (same phone number) are automatically skipped.
+            Upload a .xlsx or .csv file to bulk-import historical leads. Repeat phone numbers are kept as separate enquiries and grouped under the same client's history.
           </DialogDescription>
         </DialogHeader>
 

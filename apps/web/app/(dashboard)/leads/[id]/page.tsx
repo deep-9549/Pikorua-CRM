@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import { formatPhone, phoneHref } from "@/lib/utils"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -486,11 +487,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             {/* Contact */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {lead.phone && (
-                <a href={`tel:${lead.phone}`}
+                <a href={phoneHref(lead.phone)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
                   style={{ border: "1px solid var(--color-border)" }}>
                   <Phone className="w-4 h-4 shrink-0" style={{ color: "oklch(0.700 0.130 75)" }} />
-                  <span className="text-sm" style={{ color: "var(--color-foreground)" }}>{lead.phone}</span>
+                  <span className="text-sm" style={{ color: "var(--color-foreground)" }}>{formatPhone(lead.phone)}</span>
                 </a>
               )}
               {lead.email && (

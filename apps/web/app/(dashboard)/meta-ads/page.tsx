@@ -7,6 +7,7 @@ import {
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
   Plus, PenLine, Snowflake, X, FileUp
 } from "lucide-react"
+import { formatPhone } from "@/lib/utils"
 import { ImportLeadsDialog } from "@/components/import-leads-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -306,7 +307,7 @@ function LeadRow({
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
           {lead.phone && (
             <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
-              <Phone className="w-3 h-3" />{lead.phone}
+              <Phone className="w-3 h-3" />{formatPhone(lead.phone)}
             </span>
           )}
           {lead.email && (

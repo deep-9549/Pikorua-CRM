@@ -156,8 +156,9 @@ export class ImportService {
     const result: ImportResultDto = { total: rawRows.length, inserted: 0, skipped: 0, errors: [] }
 
     // ── Step 1: Parse all rows in memory (no DB calls) ──────────────────────
+    // Duplicates are intentionally KEPT — every row becomes its own enquiry so
+    // repeat leads (same phone) surface in the client's history.
     const parsed: ParsedRow[] = []
-    const seenPhones = new Set<string>() // catch within-file duplicates
 
     for (const [i, row] of rawRows.entries()) {
       const rowNum = i + 2
@@ -167,11 +168,6 @@ export class ImportService {
         continue
       }
       const phone = this.normalizePhone(rawPhone)
-      if (seenPhones.has(phone)) {
-        result.skipped++
-        continue
-      }
-      seenPhones.add(phone)
 
       const callStatusRaw = this.cell(row, idx['call_status'])
       const hwcRaw        = this.cell(row, idx['hwc'])
@@ -198,34 +194,13 @@ export class ImportService {
 
     if (parsed.length === 0) return result
 
-    // ── Step 2: Bulk duplicate check — 1 query ───────────────────────────────
-    const allPhones = parsed.map(r => r.phone)
-    const existingLeads = await this.db
-      .select({ phone: metaLeads.phone })
-      .from(metaLeads)
-      .where(inArray(metaLeads.phone, allPhones))
-
-    const existingPhoneSet = new Set(existingLeads.map(r => r.phone).filter(Boolean) as string[])
-    const newRows = parsed.filter(r => {
-      if (existingPhoneSet.has(r.phone)) { result.skipped++; return false }
-      return true
-    })
-
-    if (newRows.length === 0) return result
-
-    // ── Step 3: Bulk fetch existing clients by phone — 1 query ──────────────
-    const newPhones = newRows.map(r => r.phone)
-    const existingClients = await this.db
-      .select({ id: clients.id, phone: clients.phone })
-      .from(clients)
-      .where(inArray(clients.phone, newPhones))
-
-    const existingClientMap = new Map(existingClients.map(c => [c.phone, c.id]))
-
-    // ── Step 4: Bulk insert meta leads — 1 query ─────────────────────────────
+    // ── Step 2: Insert every lead — 1 query ─────────────────────────────────
+    // Postgres returns rows in the same order as the VALUES list, so the
+    // result is index-aligned with `parsed` (this is what lets us keep
+    // duplicate phones — we never key leads by phone).
     const insertedLeads = await this.db
       .insert(metaLeads)
-      .values(newRows.map(r => ({
+      .values(parsed.map(r => ({
         fullName:     r.fullName,
         phone:        r.phone,
         email:        r.email,
@@ -235,56 +210,61 @@ export class ImportService {
         status:       'unassigned' as const,
         receivedAt:   r.receivedAt,
       })))
-      .returning({ id: metaLeads.id, phone: metaLeads.phone })
+      .returning({ id: metaLeads.id })
 
-    // Map phone → lead id for subsequent steps
-    const leadIdByPhone = new Map(insertedLeads.map(l => [l.phone, l.id]))
+    const leadIds = insertedLeads.map(l => l.id)
 
-    // ── Step 5: Bulk insert new clients (phones not already in clients) — 1 query
-    const phonesNeedingClient = newPhones.filter(p => !existingClientMap.has(p))
+    // ── Step 3: Resolve one client per UNIQUE phone — find or create ─────────
+    const uniquePhones = [...new Set(parsed.map(r => r.phone))]
+    const existingClients = await this.db
+      .select({ id: clients.id, phone: clients.phone })
+      .from(clients)
+      .where(inArray(clients.phone, uniquePhones))
+
+    const clientIdByPhone = new Map(existingClients.map(c => [c.phone, c.id]))
+
+    const phonesNeedingClient = uniquePhones.filter(p => !clientIdByPhone.has(p))
     if (phonesNeedingClient.length > 0) {
-      const rowsByPhone = new Map(newRows.map(r => [r.phone, r]))
+      const rowByPhone = new Map(parsed.map(r => [r.phone, r]))
       const insertedClients = await this.db
         .insert(clients)
         .values(phonesNeedingClient.map(phone => {
-          const r = rowsByPhone.get(phone)!
+          const r = rowByPhone.get(phone)!
           return { tenantId: DEFAULT_TENANT_ID, fullName: r.fullName, phone, email: r.email }
         }))
         .returning({ id: clients.id, phone: clients.phone })
 
       for (const c of insertedClients) {
-        if (c.phone) existingClientMap.set(c.phone, c.id)
+        if (c.phone) clientIdByPhone.set(c.phone, c.id)
       }
     }
 
-    // ── Step 6: Bulk update clientId on all inserted leads — 1 query ─────────
-    // Group leads by clientId to minimise updates (one update per unique client)
-    const clientIdToLeadIds = new Map<string, string[]>()
-    for (const r of newRows) {
-      const clientId = existingClientMap.get(r.phone)
-      const leadId   = leadIdByPhone.get(r.phone)
-      if (!clientId || !leadId) continue
-      const list = clientIdToLeadIds.get(clientId) ?? []
+    // ── Step 4: Link every lead to its client (repeats share one client) ────
+    const leadIdsByClient = new Map<string, string[]>()
+    parsed.forEach((r, i) => {
+      const clientId = clientIdByPhone.get(r.phone)
+      const leadId   = leadIds[i]
+      if (!clientId || !leadId) return
+      const list = leadIdsByClient.get(clientId) ?? []
       list.push(leadId)
-      clientIdToLeadIds.set(clientId, list)
-    }
-    // One update per distinct clientId (usually same count as new clients)
+      leadIdsByClient.set(clientId, list)
+    })
     await Promise.all(
-      [...clientIdToLeadIds.entries()].map(([clientId, leadIds]) =>
+      [...leadIdsByClient.entries()].map(([clientId, ids]) =>
         this.db
           .update(metaLeads)
           .set({ clientId })
-          .where(inArray(metaLeads.id, leadIds))
+          .where(inArray(metaLeads.id, ids))
       )
     )
 
-    // ── Step 7: Bulk insert CRM details for rows that have them — 1 query ───
-    const crmValues = newRows
-      .filter(r => r.callStatus || r.hwc || r.budgetRange || r.profession || r.companyName ||
-                   r.currentCity || r.currentArea || r.followUpDate || r.remarks)
-      .map(r => {
-        const leadId = leadIdByPhone.get(r.phone)
+    // ── Step 5: Bulk insert CRM details for rows that have them — 1 query ───
+    const crmValues = parsed
+      .map((r, i) => {
+        const leadId = leadIds[i]
         if (!leadId) return null
+        if (!(r.callStatus || r.hwc || r.budgetRange || r.profession || r.companyName ||
+              r.currentCity || r.currentArea || r.followUpDate || r.remarks)) return null
         return {
           leadId,
           ...(r.callStatus   ? { callStatus:   r.callStatus   as 'spoken' | 'not_spoken' | 'call_back_later' } : {}),
@@ -304,7 +284,7 @@ export class ImportService {
       await this.db.insert(leadCrmDetails).values(crmValues as never[]).onConflictDoNothing()
     }
 
-    result.inserted = insertedLeads.length
+    result.inserted = leadIds.length
     return result
   }
 
