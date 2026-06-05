@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, leadCrmDetails, clients } from '@pikorua/db'
 import { ImportResultDto } from './dto/import-result.dto'
-import { normalizeMetaBudget, stripPhonePrefix } from '../../common/utils/meta-format'
+import { normalizeMetaBudget, normalizeCampaignName, stripPhonePrefix } from '../../common/utils/meta-format'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -182,7 +182,7 @@ export class ImportService {
         fullName:     this.cell(row, idx['full_name']),
         email:        this.cell(row, idx['email']),
         city:         this.cell(row, idx['city']),
-        campaignName: this.cell(row, idx['campaign_name']),
+        campaignName: normalizeCampaignName(this.cell(row, idx['campaign_name'])),
         receivedAt:   this.parseDate(this.cell(row, idx['received_at'])) ?? new Date(),
         callStatus:   callStatusRaw ? (CALL_STATUS_MAP[callStatusRaw.toLowerCase()] ?? null) : null,
         hwc:          hwcRaw        ? (HWC_MAP[hwcRaw.toLowerCase()] ?? null)        : null,

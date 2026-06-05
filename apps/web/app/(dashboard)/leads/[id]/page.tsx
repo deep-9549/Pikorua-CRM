@@ -476,7 +476,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   )}
                 </div>
                 {lead.campaign_name && (
-                  <Badge variant="secondary" className="text-[10px] mt-1">{lead.campaign_name}</Badge>
+                  <Badge variant="secondary" className="text-sm mt-1 px-2.5 py-0.5">{lead.campaign_name}</Badge>
                 )}
               </div>
             </div>

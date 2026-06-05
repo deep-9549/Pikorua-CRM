@@ -54,3 +54,34 @@ export function normalizeMetaBudget(raw: string | null | undefined): string | nu
 export function stripPhonePrefix(raw: string): string {
   return raw.replace(/^\s*p:\s*/i, '').trim()
 }
+
+// Friendly campaign labels shown to sales execs. The raw Meta/Excel campaign
+// name is matched (case-insensitive) against each rule's substrings — first
+// match wins. Add a rule here to map a new campaign; unmatched campaign names
+// pass through unchanged.
+const CAMPAIGN_NAME_RULES: { match: string[]; label: string }[] = [
+  { match: ['laarge apt', 'large apt'], label: 'Large Apartments' },
+  { match: ['godrej'],                  label: 'Godrej' },
+  { match: ['nn new leads'],            label: 'Nehru Nagar' },
+  { match: ['bunglow', 'bungalow'],     label: 'Bungalows' },
+]
+
+/**
+ * Map a raw campaign name to its friendly label, e.g.
+ *   "laarge apts campaign 07/07/2024"      -> "Large Apartments"
+ *   "bunglow Ahmedabad general - quality"  -> "Bungalows"
+ *   "Godrej vastrapr - appartments"        -> "Godrej"
+ *   "NN new leads campaign"                -> "Nehru Nagar"
+ * Returns the original (trimmed) name when no rule matches.
+ */
+export function normalizeCampaignName(raw: string | null | undefined): string | null {
+  if (raw == null) return null
+  const trimmed = String(raw).trim()
+  if (trimmed === '') return null
+
+  const lc = trimmed.toLowerCase()
+  for (const rule of CAMPAIGN_NAME_RULES) {
+    if (rule.match.some(m => lc.includes(m))) return rule.label
+  }
+  return trimmed
+}

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, leadCrmDetails } from '@pikorua/db'
-import { normalizeMetaBudget, stripPhonePrefix } from '../../common/utils/meta-format'
+import { normalizeMetaBudget, normalizeCampaignName, stripPhonePrefix } from '../../common/utils/meta-format'
 
 @Injectable()
 export class WebhooksService {
@@ -33,7 +33,7 @@ export class WebhooksService {
         const [lead] = await this.db.insert(metaLeads).values({
           formId: value.form_id as string ?? null,
           adId: value.ad_id as string ?? null,
-          campaignName: value.campaign_name as string ?? null,
+          campaignName: normalizeCampaignName(value.campaign_name as string ?? null),
           fullName: fields['full_name'] ?? fields['name'] ?? null,
           phone: rawPhone ? stripPhonePrefix(rawPhone) : null,
           email: fields['email'] ?? null,
