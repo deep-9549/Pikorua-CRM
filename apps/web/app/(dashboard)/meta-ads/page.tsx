@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine, Snowflake, X, FileUp
+  Plus, PenLine, Snowflake, X, FileUp, Search
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ImportLeadsDialog } from "@/components/import-leads-dialog"
@@ -396,6 +396,9 @@ export default function MetaAdsPage() {
   const [bulkExec, setBulkExec] = useState("")
   const [bulkAssigning, setBulkAssigning] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [search, setSearch] = useState("")
+  const [sourceFilter, setSourceFilter] = useState("")
+  const [campaignFilter, setCampaignFilter] = useState("")
 
   const fetchLeads = useCallback(async (status?: string) => {
     setLoading(true)
@@ -507,6 +510,31 @@ export default function MetaAdsPage() {
   // Bulk select is available where leads await (re)assignment
   const selectable = isSuperAdmin && (activeTab === "unassigned" || activeTab === "cold_pool")
 
+  // Distinct campaign names present in the current queue (for the filter)
+  const campaigns = useMemo(() => {
+    const set = new Set<string>()
+    leads.forEach(l => { if (l.campaign_name) set.add(l.campaign_name) })
+    return Array.from(set).sort()
+  }, [leads])
+
+  // Apply search + filters to the loaded queue
+  const filteredLeads = useMemo(() => leads.filter(l => {
+    if (search) {
+      const q = search.toLowerCase()
+      const hit = l.full_name?.toLowerCase().includes(q)
+        || l.phone?.toLowerCase().includes(q)
+        || l.email?.toLowerCase().includes(q)
+        || l.city?.toLowerCase().includes(q)
+        || l.campaign_name?.toLowerCase().includes(q)
+      if (!hit) return false
+    }
+    if (sourceFilter && l.source !== sourceFilter) return false
+    if (campaignFilter && l.campaign_name !== campaignFilter) return false
+    return true
+  }), [leads, search, sourceFilter, campaignFilter])
+
+  const hasActiveFilter = Boolean(search || sourceFilter || campaignFilter)
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -592,6 +620,51 @@ export default function MetaAdsPage() {
               <TabsTrigger value="all">All</TabsTrigger>
             </TabsList>
 
+            {/* Search + filters */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--color-muted-foreground)" }} />
+                <Input
+                  placeholder="Search by name, phone, email, city, campaign..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
+              <select
+                value={sourceFilter}
+                onChange={e => setSourceFilter(e.target.value)}
+                className="h-9 rounded-lg px-2.5 text-xs bg-transparent cursor-pointer"
+                style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+              >
+                <option value="">All Sources</option>
+                <option value="meta_ad">Meta Ad</option>
+                <option value="manual">Manual</option>
+                <option value="migrated">Migrated</option>
+              </select>
+              {campaigns.length > 0 && (
+                <select
+                  value={campaignFilter}
+                  onChange={e => setCampaignFilter(e.target.value)}
+                  className="h-9 rounded-lg px-2.5 text-xs bg-transparent cursor-pointer max-w-[200px]"
+                  style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                >
+                  <option value="">All Campaigns</option>
+                  {campaigns.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              )}
+              {hasActiveFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 h-9 text-xs shrink-0"
+                  onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter("") }}
+                >
+                  <X className="w-3.5 h-3.5" /> Clear
+                </Button>
+              )}
+            </div>
+
             {error && (
               <div className="flex items-center gap-2 px-4 py-3 rounded-lg mb-4 text-sm"
                 style={{ background: "rgb(185 28 28 / 0.10)", color: "var(--color-destructive)", border: "1px solid rgb(185 28 28 / 0.24)" }}>
@@ -640,30 +713,50 @@ export default function MetaAdsPage() {
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--color-primary)" }} />
                 </div>
-              ) : leads.length === 0 ? (
+              ) : filteredLeads.length === 0 ? (
                 <div className="text-center py-16 space-y-3">
-                  {activeTab === "cold_pool"
-                    ? <Snowflake className="w-8 h-8 mx-auto opacity-30" />
-                    : <Users className="w-8 h-8 mx-auto opacity-30" />}
-                  <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-                    {activeTab === "cold_pool" ? "No leads in the cold pool" : `No ${activeTab !== "all" ? activeTab : ""} leads`}
-                  </p>
-                  {activeTab === "unassigned" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-2 mx-auto"
-                      onClick={() => setAddOpen(true)}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add your first lead manually
-                    </Button>
+                  {hasActiveFilter ? (
+                    <>
+                      <Search className="w-8 h-8 mx-auto opacity-30" />
+                      <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+                        No leads match your search or filters
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 mx-auto"
+                        onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter("") }}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Clear filters
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      {activeTab === "cold_pool"
+                        ? <Snowflake className="w-8 h-8 mx-auto opacity-30" />
+                        : <Users className="w-8 h-8 mx-auto opacity-30" />}
+                      <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+                        {activeTab === "cold_pool" ? "No leads in the cold pool" : `No ${activeTab !== "all" ? activeTab : ""} leads`}
+                      </p>
+                      {activeTab === "unassigned" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-2 mx-auto"
+                          onClick={() => setAddOpen(true)}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Add your first lead manually
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (
                 <AnimatePresence initial={false}>
                   <div className="space-y-2">
-                    {leads.map(lead => (
+                    {filteredLeads.map(lead => (
                       <LeadRow
                         key={lead.id}
                         lead={lead}
