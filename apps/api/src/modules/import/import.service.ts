@@ -194,7 +194,10 @@ export class ImportService {
 
     if (parsed.length === 0) return result
 
-    const CHUNK = 500
+    // Larger chunks = fewer DB round-trips (the dominant cost on serverless,
+    // especially if the function and DB are in different regions). Kept well
+    // under Postgres's 65535 bind-parameter limit (≈9 cols × 1000 = 9k params).
+    const CHUNK = 1000
 
     // ── Step 2: Resolve one client per UNIQUE phone (find-or-create) ────────
     // Done BEFORE inserting leads so client_id is written at insert time. This

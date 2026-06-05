@@ -3,7 +3,7 @@
   "buildCommand": "cd ../.. && pnpm --filter @pikorua/shared build && pnpm --filter @pikorua/db build && pnpm --filter @pikorua/api build",
   "functions": {
     "api/index.js": {
-      "maxDuration": 30,
+      "maxDuration": 60,
       "memory": 1024
     }
   },
