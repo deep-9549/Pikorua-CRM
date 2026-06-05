@@ -7,7 +7,7 @@ import {
   ArrowLeft, Phone, Mail, MapPin, Calendar, Loader2, Save,
   Check, Flame, Thermometer, Snowflake, User, History,
   AlertTriangle, Briefcase, Building, TrendingDown,
-  PhoneOff, Clock, ChevronDown, ChevronUp
+  PhoneOff, Clock, ChevronDown, ChevronUp, Trash2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +18,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { formatPhone, phoneHref } from "@/lib/utils"
+import { getAuthUser } from "@/lib/auth/cookies"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -321,6 +326,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [activeTab, setActiveTab] = useState<"crm" | "history">("crm")
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    setIsSuperAdmin(getAuthUser()?.role === "super_admin")
+  }, [])
 
   useEffect(() => {
     async function load() {
@@ -422,6 +434,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     })
   }
 
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/leads/meta/${id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.message ?? json.error ?? "Failed to delete lead")
+      }
+      router.push("/leads")
+      router.refresh()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to delete lead")
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -447,9 +476,21 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 pb-12">
-      <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.back()}>
-        <ArrowLeft className="w-4 h-4" /> Back to Leads
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.back()}>
+          <ArrowLeft className="w-4 h-4" /> Back to Leads
+        </Button>
+        {isSuperAdmin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 className="w-4 h-4" /> Delete Lead
+          </Button>
+        )}
+      </div>
 
       {/* ── Client identity card ── */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
@@ -750,6 +791,28 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertDialog open={confirmDelete} onOpenChange={o => !deleting && setConfirmDelete(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this lead permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes {lead.full_name ?? "this lead"} and all of its CRM details, notes,
+              interactions and site visits from the database. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={(e) => { e.preventDefault(); handleDelete() }}
+              disabled={deleting}
+            >
+              {deleting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting...</> : "Delete Lead"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

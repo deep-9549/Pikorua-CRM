@@ -7,3 +7,5 @@ export const GET = async (req: NextRequest, { params }: Ctx) =>
   proxyToApi(req, `/meta-leads/${(await params).id}`)
 export const PATCH = async (req: NextRequest, { params }: Ctx) =>
   proxyToApi(req, `/leads/${(await params).id}`)
+export const DELETE = async (req: NextRequest, { params }: Ctx) =>
+  proxyToApi(req, `/leads/${(await params).id}`)

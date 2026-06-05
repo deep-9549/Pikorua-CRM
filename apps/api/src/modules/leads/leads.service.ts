@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { eq, desc, and, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { metaLeads, leadCrmDetails, leadNotes, siteVisits } from '@pikorua/db'
+import { metaLeads, leadCrmDetails, leadNotes, leadInteractions, siteVisits } from '@pikorua/db'
 import { CreateLeadDto } from './dto/create-lead.dto'
 import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
@@ -169,6 +169,26 @@ export class LeadsService {
         status: dbStatus as never,
       })
     }
+  }
+
+  /**
+   * Permanently delete a lead and everything attached to it. The child tables
+   * (CRM details, notes, interactions, site visits) have NOT NULL foreign keys
+   * to meta_leads with no cascade, so they must be removed first. Wrapped in a
+   * transaction so a lead is never left half-deleted.
+   */
+  async remove(id: string) {
+    await this.findOne(id) // 404s if the lead doesn't exist
+
+    await this.db.transaction(async (tx) => {
+      await tx.delete(leadCrmDetails).where(eq(leadCrmDetails.leadId, id))
+      await tx.delete(leadNotes).where(eq(leadNotes.leadId, id))
+      await tx.delete(leadInteractions).where(eq(leadInteractions.leadId, id))
+      await tx.delete(siteVisits).where(eq(siteVisits.leadId, id))
+      await tx.delete(metaLeads).where(eq(metaLeads.id, id))
+    })
+
+    return { deleted: true }
   }
 
   async getNotes(leadId: string) {

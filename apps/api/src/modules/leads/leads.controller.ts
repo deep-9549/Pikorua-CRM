@@ -1,15 +1,17 @@
-import { Controller, Get, Post, Patch, Put, Param, Body, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { LeadsService } from './leads.service'
 import { CreateLeadDto } from './dto/create-lead.dto'
 import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { RolesGuard } from '../../common/guards/roles.guard'
+import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 
 @ApiTags('Leads')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('leads')
 export class LeadsController {
   constructor(private readonly leadsService: LeadsService) {}
@@ -41,6 +43,13 @@ export class LeadsController {
     @CurrentUser() user: { id: string },
   ) {
     return this.leadsService.update(id, dto, user.id)
+  }
+
+  @Delete(':id')
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Permanently delete a lead and all its related records' })
+  remove(@Param('id') id: string) {
+    return this.leadsService.remove(id)
   }
 
   @Get(':id/notes')
