@@ -393,7 +393,7 @@ export default function SiteVisitsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--color-primary)" }}>
             Site Visits
@@ -402,7 +402,7 @@ export default function SiteVisitsPage() {
             {isSuperAdmin ? "All site visits across the team" : "Your scheduled and past site visits"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button variant="outline" size="sm" className="gap-2" onClick={() => fetchVisits(tab)} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Refresh

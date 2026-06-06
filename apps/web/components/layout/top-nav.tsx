@@ -9,7 +9,7 @@ import {
   MessageSquare, Phone, CheckCircle2, Clock, Users, Eye,
   Trash2, X, Filter, AlertCircle, ListTodo, UserPlus,
   PhoneCall, Building2, MapPin, IndianRupee, Send, FileText,
-  ExternalLink, Flame, Star, TrendingUp, Zap
+  ExternalLink, Flame, Star, TrendingUp, Zap, Menu
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -116,7 +116,13 @@ function ActionButton({
   )
 }
 
-export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => void }) {
+export function TopNav({
+  onCommandPaletteOpen,
+  onMenuClick,
+}: {
+  onCommandPaletteOpen?: () => void
+  onMenuClick?: () => void
+}) {
   const pathname = usePathname()
   const [notifications, setNotifications] = React.useState(initialNotifications)
   const [showPanel, setShowPanel] = React.useState(false)
@@ -204,7 +210,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
-        className="sticky top-0 z-30 h-[60px] flex items-center justify-between px-6"
+        className="sticky top-0 z-30 h-[60px] flex items-center justify-between gap-3 px-3 sm:px-4 lg:px-6"
         style={{
           background: "rgb(254 249 242 / 0.88)",
           backdropFilter: "blur(20px) saturate(180%)",
@@ -212,12 +218,16 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
         }}
       >
         {/* Breadcrumbs */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 md:hidden" onClick={onMenuClick}>
+            <Menu className="h-4 w-4" />
+          </Button>
           {breadcrumbs.map((crumb, i) => (
             <React.Fragment key={crumb.path}>
               {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
               <span className={cn(
-                "text-sm",
+                "min-w-0 truncate text-sm",
+                i < breadcrumbs.length - 2 && "hidden sm:inline",
                 i === breadcrumbs.length - 1
                   ? "font-semibold text-foreground"
                   : "text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
@@ -229,7 +239,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {/* Search */}
           <button
             onClick={onCommandPaletteOpen}
@@ -319,11 +329,11 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 40 }}
               transition={{ duration: 0.28, ease: "easeOut" }}
-              className="fixed right-0 top-0 z-50 h-screen flex"
-              style={{ width: selected ? 840 : 420 }}
+              className="fixed right-0 top-0 z-50 h-screen flex w-full max-w-full sm:w-auto"
+              style={{ width: selected ? "min(840px, 100vw)" : "min(420px, 100vw)" }}
             >
               {/* Left: Notification List */}
-              <div className="w-[420px] h-full flex flex-col"
+              <div className={cn("h-full flex-col", selected ? "hidden sm:flex sm:w-[420px]" : "flex w-full sm:w-[420px]")}
                 style={{ background: "var(--color-card)", borderLeft: "1px solid var(--color-border)" }}>
 
                 {/* Header */}
@@ -465,7 +475,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ duration: 0.22, ease: "easeOut" }}
-                    className="w-[420px] h-full flex flex-col"
+                    className="h-full w-full flex flex-col sm:w-[420px]"
                     style={{
                       background: "var(--color-background)",
                       borderLeft: "1px solid var(--color-border)"

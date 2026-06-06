@@ -432,7 +432,7 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--color-primary)" }}>
             Team Management
@@ -452,7 +452,7 @@ export default function EmployeesPage() {
 
       {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Super Admins ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4" style={{ color: "var(--color-primary)" }} />
             <h2 className="text-sm font-semibold tracking-wide" style={{ color: "var(--color-primary)" }}>
@@ -504,7 +504,7 @@ export default function EmployeesPage() {
 
       {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Sales Executives ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Briefcase className="w-4 h-4" style={{ color: "var(--color-success)" }} />
             <h2 className="text-sm font-semibold tracking-wide" style={{ color: "var(--color-success)" }}>

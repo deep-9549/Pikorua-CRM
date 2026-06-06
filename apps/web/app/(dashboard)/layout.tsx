@@ -11,17 +11,32 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false)
+  const sidebarOffset = sidebarCollapsed ? 68 : 256
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppSidebar />
-      {/* Offset matches sidebar default width of 256px */}
+    <div
+      className="min-h-screen bg-background"
+      style={{ "--sidebar-offset": `${sidebarOffset}px` } as React.CSSProperties}
+    >
+      <AppSidebar
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileSidebarOpen}
+        onCollapsedChange={setSidebarCollapsed}
+        onMobileOpenChange={setMobileSidebarOpen}
+      />
       <div
-        className="transition-all duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
-        style={{ marginLeft: 256, minHeight: "100vh" }}
+        className="min-h-screen transition-all duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] md:ml-[var(--sidebar-offset)]"
       >
-        <TopNav onCommandPaletteOpen={() => setCommandPaletteOpen(true)} />
-        <main className="p-6 page-enter">
+        <TopNav
+          onCommandPaletteOpen={() => setCommandPaletteOpen(true)}
+          onMenuClick={() => {
+            setSidebarCollapsed(false)
+            setMobileSidebarOpen(true)
+          }}
+        />
+        <main className="p-4 sm:p-5 lg:p-6 page-enter overflow-x-hidden">
           {children}
         </main>
       </div>

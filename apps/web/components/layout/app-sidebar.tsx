@@ -86,8 +86,19 @@ interface UserProfile {
   role: "super_admin" | "sales_executive"
 }
 
-export function AppSidebar() {
-  const [collapsed, setCollapsed] = React.useState(false)
+interface AppSidebarProps {
+  collapsed: boolean
+  mobileOpen?: boolean
+  onCollapsedChange: (collapsed: boolean) => void
+  onMobileOpenChange?: (open: boolean) => void
+}
+
+export function AppSidebar({
+  collapsed,
+  mobileOpen = false,
+  onCollapsedChange,
+  onMobileOpenChange,
+}: AppSidebarProps) {
   const [profile, setProfile] = React.useState<UserProfile | null>(null)
   const pathname = usePathname()
   const router = useRouter()
@@ -108,13 +119,35 @@ export function AppSidebar() {
   const displayRole = profile?.role === "super_admin" ? "Super Admin" : profile?.role === "sales_executive" ? "Sales Executive" : ""
   const avatarInitials = profile?.full_name?.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) ?? "…"
 
+  const isMobileOpen = mobileOpen && !collapsed
+  const sidebarWidth = collapsed ? 68 : 256
+
+  React.useEffect(() => {
+    onMobileOpenChange?.(false)
+  }, [pathname, onMobileOpenChange])
+
   return (
     <TooltipProvider delayDuration={0}>
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.div
+            key="sidebar-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-30 bg-black/35 backdrop-blur-sm md:hidden"
+            onClick={() => onMobileOpenChange?.(false)}
+          />
+        )}
+      </AnimatePresence>
       <motion.aside
         initial={false}
-        animate={{ width: collapsed ? 68 : 256 }}
+        animate={{ width: sidebarWidth }}
         transition={{ duration: 0.28, ease: "easeOut" }}
-        className="fixed left-0 top-0 z-40 h-screen flex flex-col overflow-hidden"
+        className={cn(
+          "fixed left-0 top-0 z-40 h-screen flex flex-col overflow-hidden transition-transform duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
         style={{ background: "var(--color-sidebar)" }}
       >
         {/* Top border accent */}
@@ -152,7 +185,7 @@ export function AppSidebar() {
             ) : (
               <motion.button key="logo-collapsed"
                 type="button"
-                onClick={() => setCollapsed(false)}
+                onClick={() => onCollapsedChange(false)}
                 aria-label="Expand sidebar"
                 title="Expand sidebar"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -165,7 +198,7 @@ export function AppSidebar() {
           {!collapsed && (
             <button
               type="button"
-              onClick={() => setCollapsed(true)}
+              onClick={() => onCollapsedChange(true)}
               aria-label="Collapse sidebar"
               title="Collapse sidebar"
               className="ml-3 h-8 w-8 shrink-0 rounded-lg flex items-center justify-center transition-all duration-150 hover:shadow-gold-sm"

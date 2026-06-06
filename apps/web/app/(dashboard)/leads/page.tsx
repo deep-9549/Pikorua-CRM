@@ -200,7 +200,7 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--color-primary)" }}>
             Leads
@@ -209,7 +209,7 @@ export default function LeadsPage() {
             {filtered.length} of {leads.length} lead{leads.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button variant="outline" size="sm" className="gap-2"
             onClick={() => exportLeadsToExcel(filtered, "leads")}
             disabled={filtered.length === 0}>
@@ -345,7 +345,7 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
         {leads.map((lead, i) => (
           <motion.div key={lead.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
             <Link href={`/leads/${lead.id}`}>
-              <div className="flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-150 hover:scale-[1.005] cursor-pointer"
+              <div className="flex flex-col gap-3 px-4 py-3.5 rounded-xl transition-all duration-150 hover:scale-[1.005] cursor-pointer sm:flex-row sm:items-center sm:gap-4"
                 style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
                 {/* Avatar */}
                 <Avatar className="h-10 w-10 shrink-0">
@@ -385,9 +385,9 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                 </div>
 
                 {/* Right side */}
-                <div className="shrink-0 text-right space-y-1 min-w-0">
+                <div className="w-full shrink-0 space-y-1 min-w-0 sm:w-auto sm:text-right">
                   {lead.assigned_to_profile && (
-                    <div className="flex items-center justify-end gap-1.5">
+                    <div className="flex items-center gap-1.5 sm:justify-end">
                       <span className="text-[11px] truncate max-w-[100px]" style={{ color: "oklch(0.65 0.15 145)" }}>
                         {lead.assigned_to_profile.full_name}
                       </span>
@@ -401,7 +401,7 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                   )}
                   <CallStatusBadge status={lead.crm?.call_status} />
                   {lead.crm?.follow_up_date && (
-                    <p className="flex items-center justify-end gap-1 text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
+                    <p className="flex items-center gap-1 text-[10px] sm:justify-end" style={{ color: "var(--color-muted-foreground)" }}>
                       <Calendar className="w-3 h-3" />
                       {new Date(lead.crm.follow_up_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </p>
@@ -413,7 +413,7 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                   )}
                 </div>
 
-                <ChevronRight className="w-4 h-4 shrink-0" style={{ color: "var(--color-muted-foreground)" }} />
+                <ChevronRight className="hidden w-4 h-4 shrink-0 sm:block" style={{ color: "var(--color-muted-foreground)" }} />
               </div>
             </Link>
           </motion.div>

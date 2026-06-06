@@ -781,14 +781,14 @@ export default function PropertiesPage() {
       className="space-y-6"
     >
       {/* Header */}
-      <motion.div variants={item} className="flex items-center justify-between">
+      <motion.div variants={item} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Property Explorer</h1>
           <p className="text-muted-foreground mt-1">
             {filteredProperties.length} luxury properties
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <Button 
             variant="outline" 
             className="gap-2"
@@ -806,8 +806,8 @@ export default function PropertiesPage() {
       </motion.div>
 
       {/* Filters Bar */}
-      <motion.div variants={item} className="flex items-center gap-4 flex-wrap">
-        <div className="relative flex-1 max-w-md">
+      <motion.div variants={item} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+        <div className="relative w-full sm:flex-1 sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search properties..."
@@ -818,7 +818,7 @@ export default function PropertiesPage() {
         </div>
 
         <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger className="w-40 bg-muted/50">
+          <SelectTrigger className="w-full bg-muted/50 sm:w-40">
             <SelectValue placeholder="Location" />
           </SelectTrigger>
           <SelectContent className="glass">
@@ -830,7 +830,7 @@ export default function PropertiesPage() {
         </Select>
 
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-40 bg-muted/50">
+          <SelectTrigger className="w-full bg-muted/50 sm:w-40">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent className="glass">
@@ -842,7 +842,7 @@ export default function PropertiesPage() {
         </Select>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-36 bg-muted/50">
+          <SelectTrigger className="w-full bg-muted/50 sm:w-36">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent className="glass">

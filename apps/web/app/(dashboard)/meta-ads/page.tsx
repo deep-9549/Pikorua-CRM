@@ -578,7 +578,7 @@ export default function MetaAdsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--color-primary)" }}>
             Leads
@@ -587,7 +587,7 @@ export default function MetaAdsPage() {
             Meta Ads - Manual entries - assign to your sales team
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button
             variant="outline"
             size="sm"
@@ -686,7 +686,7 @@ export default function MetaAdsPage() {
                 <select
                   value={campaignFilter}
                   onChange={e => setCampaignFilter(e.target.value)}
-                  className="h-9 rounded-lg px-2.5 text-xs bg-transparent cursor-pointer max-w-[200px]"
+                  className="h-9 w-full rounded-lg px-2.5 text-xs bg-transparent cursor-pointer sm:max-w-[200px]"
                   style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
                 >
                   <option value="">All Campaigns</option>

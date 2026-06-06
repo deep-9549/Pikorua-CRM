@@ -188,6 +188,19 @@
     width: 0;
     height: 0;
   }
+
+  @media (max-width: 639px) {
+    [class*="grid-cols-2"],
+    [class*="grid-cols-3"],
+    [class*="grid-cols-4"] {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    [class*="max-w-"],
+    [class*="w-["] {
+      max-width: 100%;
+    }
+  }
 }
 
 @layer utilities {
