@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   LayoutDashboard, Users, MessageSquare, Building2, Sparkles,
   CalendarCheck, BarChart3, Bot, CreditCard, UserCog, Crown,
-  FileText, Settings, ChevronLeft, ChevronRight, Search,
+  FileText, Settings, ChevronLeft, Search,
   PieChart, FileSpreadsheet, LogOut, Gem
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -123,14 +123,18 @@ export function AppSidebar() {
         }} />
 
         {/* Logo */}
-        <div className="flex h-[60px] shrink-0 items-center justify-between px-4"
+        <div
+          className={cn(
+            "flex h-[60px] shrink-0 items-center",
+            collapsed ? "justify-center px-2" : "justify-between px-4"
+          )}
           style={{ borderBottom: "1px solid var(--color-sidebar-border)" }}>
           <AnimatePresence mode="wait">
             {!collapsed ? (
               <motion.div key="logo-full"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="flex items-center gap-3 min-w-0">
+                className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center gold-gradient shadow-gold-sm">
                   <Gem className="w-4 h-4 text-primary-foreground" />
                 </div>
@@ -146,14 +150,33 @@ export function AppSidebar() {
                 </div>
               </motion.div>
             ) : (
-              <motion.div key="logo-collapsed"
+              <motion.button key="logo-collapsed"
+                type="button"
+                onClick={() => setCollapsed(false)}
+                aria-label="Expand sidebar"
+                title="Expand sidebar"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="w-8 h-8 rounded-lg mx-auto flex items-center justify-center gold-gradient shadow-gold-sm">
+                className="w-8 h-8 rounded-lg flex items-center justify-center gold-gradient shadow-gold-sm transition-transform duration-150 hover:scale-105">
                 <Gem className="w-4 h-4 text-primary-foreground" />
-              </motion.div>
+              </motion.button>
             )}
           </AnimatePresence>
+          {!collapsed && (
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+              className="ml-3 h-8 w-8 shrink-0 rounded-lg flex items-center justify-center transition-all duration-150 hover:shadow-gold-sm"
+              style={{
+                background: "rgb(254 249 242 / 0.10)",
+                border: "1px solid rgb(254 249 242 / 0.18)",
+                color: "rgb(254 249 242 / 0.76)"
+              }}>
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Search hint */}
@@ -352,16 +375,6 @@ export function AppSidebar() {
             )}
           </AnimatePresence>
         </div>
-
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-[72px] z-50 h-6 w-6 rounded-full flex items-center justify-center transition-all duration-150 shadow-card hover:shadow-gold-sm"
-          style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
-          {collapsed
-            ? <ChevronRight className="w-3 h-3 text-muted-foreground" />
-            : <ChevronLeft className="w-3 h-3 text-muted-foreground" />}
-        </button>
       </motion.aside>
     </TooltipProvider>
   )
