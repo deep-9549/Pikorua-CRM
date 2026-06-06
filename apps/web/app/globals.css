@@ -41,6 +41,7 @@
   --border:           #ded9d3;
   --input:            #ded9d3;
   --ring:             #c2410c;
+  --placeholder:      rgb(154 52 18 / 0.34);
 
   --chart-1: #c2410c;
   --chart-2: #9a3412;
@@ -92,6 +93,7 @@
   --border:           #7c2d12;
   --input:            #7c2d12;
   --ring:             #fb923c;
+  --placeholder:      rgb(254 215 170 / 0.42);
   --chart-1: #fb923c;
   --chart-2: #fdba74;
   --chart-3: #fef9f2;
@@ -173,6 +175,19 @@
   * { @apply border-border outline-ring/50; }
   body { @apply bg-background text-foreground antialiased; }
   html { scroll-behavior: smooth; }
+
+  *, html, body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar,
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
 }
 
 @layer utilities {
@@ -256,22 +271,37 @@
     100% { background-position: -200% 0; }
   }
 
-  .scrollbar-luxury {
-    scrollbar-width: thin;
-    scrollbar-color: #ded9d3 transparent;
+  input::placeholder,
+  textarea::placeholder,
+  [cmdk-input]::placeholder {
+    color: var(--placeholder) !important;
+    opacity: 1;
   }
-  .scrollbar-luxury::-webkit-scrollbar       { width: 5px; height: 5px; }
+
+  [data-slot="select-trigger"][data-placeholder] {
+    color: var(--placeholder) !important;
+  }
+
+  [data-slot="scroll-area-scrollbar"] {
+    display: none;
+  }
+
+  .scrollbar-luxury {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-luxury::-webkit-scrollbar       { display: none; width: 0; height: 0; }
   .scrollbar-luxury::-webkit-scrollbar-track  { background: transparent; }
-  .scrollbar-luxury::-webkit-scrollbar-thumb  { background: #ded9d3; border-radius: 3px; }
-  .scrollbar-luxury::-webkit-scrollbar-thumb:hover { background: #9a3412; }
+  .scrollbar-luxury::-webkit-scrollbar-thumb  { background: transparent; }
+  .scrollbar-luxury::-webkit-scrollbar-thumb:hover { background: transparent; }
 
   .scrollbar-sidebar {
-    scrollbar-width: thin;
-    scrollbar-color: #7c2d12 transparent;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-  .scrollbar-sidebar::-webkit-scrollbar      { width: 4px; }
+  .scrollbar-sidebar::-webkit-scrollbar      { display: none; width: 0; height: 0; }
   .scrollbar-sidebar::-webkit-scrollbar-track { background: transparent; }
-  .scrollbar-sidebar::-webkit-scrollbar-thumb { background: #7c2d12; border-radius: 2px; }
+  .scrollbar-sidebar::-webkit-scrollbar-thumb { background: transparent; }
 
   .page-enter { animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes pageEnter {
