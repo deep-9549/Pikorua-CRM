@@ -244,7 +244,7 @@ export function TopNav({
           {/* Search */}
           <button
             onClick={onCommandPaletteOpen}
-            className="hidden sm:flex items-center gap-2.5 h-8 w-56 px-3 rounded-lg text-sm transition-all duration-150"
+            className="hidden sm:flex items-center gap-2 h-8 w-64 px-3 rounded-lg text-sm transition-all duration-150"
             style={{
               background: "var(--color-muted)",
               border: "1px solid var(--color-border)",
@@ -252,8 +252,8 @@ export function TopNav({
             }}
           >
             <Search className="w-3.5 h-3.5 shrink-0" />
-            <span className="flex-1 text-left text-[13px]">Search anything...</span>
-            <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+            <span className="min-w-0 flex-1 truncate whitespace-nowrap text-left text-[13px] leading-none">Search anything...</span>
+            <kbd className="shrink-0 whitespace-nowrap text-[10px] font-mono px-1.5 py-0.5 rounded"
               style={{ background: "var(--color-card)", color: "var(--color-muted-foreground)", border: "1px solid var(--color-border)" }}>
               Ctrl + K
             </kbd>
