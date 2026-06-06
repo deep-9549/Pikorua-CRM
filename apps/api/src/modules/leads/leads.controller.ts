@@ -19,8 +19,11 @@ export class LeadsController {
   @Get()
   @ApiOperation({ summary: 'List all leads' })
   @ApiQuery({ name: 'status', required: false })
-  findAll(@Query('status') status?: string) {
-    return this.leadsService.findAll(status)
+  findAll(
+    @CurrentUser() user: { id: string; role: string },
+    @Query('status') status?: string,
+  ) {
+    return this.leadsService.findAll(status, user)
   }
 
   @Get(':id')

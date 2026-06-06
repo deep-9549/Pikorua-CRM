@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Param, Body, Query, UseGuards } from '@nestjs/common'
+import { Controller, ForbiddenException, Get, Patch, Post, Param, Body, Query, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { MetaLeadsService } from './meta-leads.service'
 import { AssignLeadDto } from './dto/assign-lead.dto'
@@ -18,14 +18,22 @@ export class MetaLeadsController {
   @Get()
   @ApiOperation({ summary: 'List meta leads (optionally filter by status)' })
   @ApiQuery({ name: 'status', required: false, enum: ['unassigned', 'assigned', 'converted', 'rejected'] })
-  findAll(@Query('status') status?: string) {
-    return this.metaLeadsService.findAll(status)
+  findAll(
+    @CurrentUser() user: { id: string; role: string },
+    @Query('status') status?: string,
+  ) {
+    return this.metaLeadsService.findAll(status, user)
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get meta lead by ID' })
-  findOne(@Param('id') id: string) {
-    return this.metaLeadsService.findOne(id)
+  async findOne(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
+    const result = await this.metaLeadsService.findOne(id)
+    // A sales executive may only open leads assigned to them.
+    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id) {
+      throw new ForbiddenException('You can only view leads assigned to you')
+    }
+    return result
   }
 
   @Post(':id/assign')

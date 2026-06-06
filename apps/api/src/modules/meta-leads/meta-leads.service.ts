@@ -61,9 +61,11 @@ export class MetaLeadsService {
     return clientId
   }
 
-  async findAll(status?: string) {
+  async findAll(status: string | undefined, user: { id: string; role: string }) {
     const conditions = [isNull(metaLeads.deletedAt)]
     if (status) conditions.push(eq(metaLeads.status, status as never))
+    // Sales executives may only ever see leads assigned to them.
+    if (user.role !== 'super_admin') conditions.push(eq(metaLeads.assignedTo, user.id))
 
     const leads = await this.db.query.metaLeads.findMany({
       where: and(...conditions),
