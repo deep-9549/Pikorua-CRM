@@ -125,6 +125,7 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
   const [typeFilter, setTypeFilter] = React.useState<string>("all")
   const [readFilter, setReadFilter] = React.useState<"all" | "unread">("all")
   const [assignedEmployee, setAssignedEmployee] = React.useState("")
+  const [leadBreadcrumbName, setLeadBreadcrumbName] = React.useState<string | null>(null)
 
   const unreadCount = notifications.filter(n => !n.read).length
   const filtered = notifications.filter(n => {
@@ -133,13 +134,46 @@ export function TopNav({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => 
     return true
   })
   const activeEmployees = employees.filter(e => e.status === "online" || e.status === "busy")
+  const leadDetailId = React.useMemo(() => {
+    const match = pathname.match(/^\/leads\/([^/]+)$/)
+    return match?.[1] ?? null
+  }, [pathname])
+
+  React.useEffect(() => {
+    if (!leadDetailId) {
+      setLeadBreadcrumbName(null)
+      return
+    }
+
+    let cancelled = false
+    setLeadBreadcrumbName("Lead Details")
+
+    async function loadLeadName() {
+      try {
+        const res = await fetch(`/api/leads/meta/${leadDetailId}`)
+        const json = await res.json().catch(() => ({}))
+        const name = typeof json.lead?.full_name === "string" ? json.lead.full_name.trim() : ""
+        if (!cancelled) setLeadBreadcrumbName(name || "Lead Details")
+      } catch {
+        if (!cancelled) setLeadBreadcrumbName("Lead Details")
+      }
+    }
+
+    loadLeadName()
+
+    return () => {
+      cancelled = true
+    }
+  }, [leadDetailId])
 
   const breadcrumbs = React.useMemo(() => {
     return pathname.split("/").filter(Boolean).map((seg, i, arr) => {
       const path = "/" + arr.slice(0, i + 1).join("/")
-      return { name: pageNames[path] || seg.charAt(0).toUpperCase() + seg.slice(1), path }
+      const fallbackName = pageNames[path] || seg.charAt(0).toUpperCase() + seg.slice(1)
+      const name = leadDetailId && path === `/leads/${leadDetailId}` ? leadBreadcrumbName || "Lead Details" : fallbackName
+      return { name, path }
     })
-  }, [pathname])
+  }, [leadBreadcrumbName, leadDetailId, pathname])
 
   const markRead = (id: string) => setNotifications(p => p.map(n => n.id === id ? { ...n, read: true } : n))
   const markAllRead = () => setNotifications(p => p.map(n => ({ ...n, read: true })))
