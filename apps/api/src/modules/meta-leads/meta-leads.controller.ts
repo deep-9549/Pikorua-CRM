@@ -46,6 +46,13 @@ export class MetaLeadsController {
     return this.metaLeadsService.bulkAssign(user.id, dto)
   }
 
+  @Post(':id/unassign')
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Unassign a lead and return it to the unassigned queue' })
+  unassign(@Param('id') id: string) {
+    return this.metaLeadsService.unassign(id)
+  }
+
   @Patch(':id/convert')
   @ApiOperation({ summary: 'Convert meta lead to CRM lead' })
   convert(@Param('id') id: string) {

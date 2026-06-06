@@ -143,6 +143,17 @@ export class MetaLeadsService {
     return { updated: updated.length }
   }
 
+  async unassign(id: string) {
+    await this.findOne(id)
+    const [updated] = await this.db
+      .update(metaLeads)
+      .set({ assignedTo: null, assignedBy: null, assignedAt: null, status: 'unassigned', updatedAt: new Date() })
+      .where(eq(metaLeads.id, id))
+      .returning()
+    if (!updated) throw new NotFoundException(`Meta lead ${id} not found`)
+    return this.findOne(id)
+  }
+
   async convertToCrm(id: string) {
     await this.findOne(id)
     const [updated] = await this.db

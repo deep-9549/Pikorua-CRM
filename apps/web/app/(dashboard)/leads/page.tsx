@@ -183,11 +183,19 @@ export default function LeadsPage() {
     return true
   }), [leads, search, filters])
 
+  // Surface leads the exec hasn't acted on yet: anything without a logged call
+  // status sorts to the top so fresh leads are the first thing they see.
+  // (Stable sort keeps the server's received-date order within each group.)
+  const interactionSorted = useMemo(() => {
+    const contacted = (l: MetaLead) => (l.crm?.call_status ? 1 : 0)
+    return [...filtered].sort((a, b) => contacted(a) - contacted(b))
+  }, [filtered])
+
   // Group by follow-up urgency
   const today = new Date().toISOString().split("T")[0]
-  const overdue = filtered.filter(l => l.crm?.follow_up_date && l.crm.follow_up_date < today)
-  const dueToday = filtered.filter(l => l.crm?.follow_up_date === today)
-  const rest = filtered.filter(l => !l.crm?.follow_up_date || l.crm.follow_up_date > today)
+  const overdue = interactionSorted.filter(l => l.crm?.follow_up_date && l.crm.follow_up_date < today)
+  const dueToday = interactionSorted.filter(l => l.crm?.follow_up_date === today)
+  const rest = interactionSorted.filter(l => !l.crm?.follow_up_date || l.crm.follow_up_date > today)
 
   return (
     <div className="space-y-6">

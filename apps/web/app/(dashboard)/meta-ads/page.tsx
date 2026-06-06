@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine, Snowflake, X, FileUp, Search
+  Plus, PenLine, Snowflake, X, FileUp, Search, Undo2
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ImportLeadsDialog } from "@/components/import-leads-dialog"
@@ -249,6 +249,8 @@ function LeadRow({
   employees,
   assigningId,
   onAssign,
+  unassigningId,
+  onUnassign,
   canAssign = false,
   selectable = false,
   selected = false,
@@ -258,6 +260,8 @@ function LeadRow({
   employees: Employee[]
   assigningId: string | null
   onAssign: (leadId: string, empId: string) => void
+  unassigningId?: string | null
+  onUnassign?: (leadId: string) => void
   canAssign?: boolean
   selectable?: boolean
   selected?: boolean
@@ -347,7 +351,22 @@ function LeadRow({
           <span className="text-xs hidden md:block" style={{ color: "var(--color-success)" }}>
             {lead.assigned_to_profile.full_name}
           </span>
-          <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-success)" }} />
+          {canAssign ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary"
+              title="Unassign — return to queue"
+              disabled={unassigningId === lead.id}
+              onClick={() => onUnassign?.(lead.id)}
+            >
+              {unassigningId === lead.id
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Undo2 className="w-3.5 h-3.5" />}
+            </Button>
+          ) : (
+            <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-success)" }} />
+          )}
         </div>
       ) : canAssign ? (
         <DropdownMenu>
@@ -389,6 +408,7 @@ export default function MetaAdsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [assigningId, setAssigningId] = useState<string | null>(null)
+  const [unassigningId, setUnassigningId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("unassigned")
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -489,6 +509,26 @@ export default function MetaAdsPage() {
       alert(e instanceof Error ? e.message : "Assignment failed")
     } finally {
       setAssigningId(null)
+    }
+  }
+
+  async function handleUnassign(leadId: string) {
+    if (!isSuperAdmin) return
+    setUnassigningId(leadId)
+    try {
+      const res = await fetch(`/api/leads/meta/${leadId}/unassign`, { method: "POST" })
+      if (!res.ok) throw new Error(await readApiError(res, "Unassign failed"))
+      // On the "assigned" tab the lead leaves the view; elsewhere flip it back
+      // to unassigned in place.
+      setLeads(prev => activeTab === "assigned"
+        ? prev.filter(l => l.id !== leadId)
+        : prev.map(l => l.id === leadId
+            ? { ...l, status: "unassigned", assigned_to_profile: null, assigned_at: null }
+            : l))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Unassign failed")
+    } finally {
+      setUnassigningId(null)
     }
   }
 
@@ -763,6 +803,8 @@ export default function MetaAdsPage() {
                         employees={employees}
                         assigningId={assigningId}
                         onAssign={handleAssign}
+                        unassigningId={unassigningId}
+                        onUnassign={handleUnassign}
                         canAssign={isSuperAdmin}
                         selectable={selectable}
                         selected={selected.has(lead.id)}
