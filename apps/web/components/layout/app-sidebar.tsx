@@ -230,7 +230,7 @@ export function AppSidebar({
                 <span className="text-[12px] flex-1">Search...</span>
                 <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded"
                   style={{ background: "rgb(67 20 7 / 0.45)", color: "rgb(254 249 242 / 0.72)" }}>
-                  ⌘K
+                  Ctrl + K
                 </kbd>
               </button>
             </motion.div>

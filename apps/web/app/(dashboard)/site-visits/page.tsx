@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Calendar, Clock, Phone, Plus, CheckCircle2,
@@ -353,12 +354,19 @@ function VisitCard({ v, showOwner }: { v: VisitRow; showOwner: boolean }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SiteVisitsPage() {
+  const searchParams = useSearchParams()
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming")
   const [visits, setVisits] = useState<VisitRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get("quickAdd") === "visit") {
+      setDialogOpen(true)
+    }
+  }, [searchParams])
 
   // Determine current user's role for "Owned by" line visibility
   useEffect(() => {

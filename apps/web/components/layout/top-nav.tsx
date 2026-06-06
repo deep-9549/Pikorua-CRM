@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -124,6 +124,7 @@ export function TopNav({
   onMenuClick?: () => void
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [notifications, setNotifications] = React.useState(initialNotifications)
   const [showPanel, setShowPanel] = React.useState(false)
   const [showReminders, setShowReminders] = React.useState(false)
@@ -254,7 +255,7 @@ export function TopNav({
             <span className="flex-1 text-left text-[13px]">Search anything...</span>
             <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded"
               style={{ background: "var(--color-card)", color: "var(--color-muted-foreground)", border: "1px solid var(--color-border)" }}>
-              Ctrl K
+              Ctrl + K
             </kbd>
           </button>
 
@@ -277,8 +278,8 @@ export function TopNav({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {[
-                { icon: Sparkles, label: "New Lead", color: "text-primary" },
-                { icon: Calendar, label: "Schedule Visit", color: "text-emerald-600" },
+                { icon: Sparkles, label: "New Lead", color: "text-primary", onClick: () => router.push(`/meta-ads?quickAdd=lead&t=${Date.now()}`) },
+                { icon: Calendar, label: "Schedule Visit", color: "text-emerald-600", onClick: () => router.push(`/site-visits?quickAdd=visit&t=${Date.now()}`) },
                 { icon: MessageSquare, label: "Send Message", color: "text-blue-600" },
                 { icon: Clock, label: "Add Reminder", color: "text-primary", onClick: () => setShowReminders(true) },
               ].map(({ icon: Icon, label, color, onClick }) => (
