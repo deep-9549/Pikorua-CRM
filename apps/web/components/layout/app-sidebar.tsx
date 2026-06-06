@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   LayoutDashboard, Users, MessageSquare, Building2, Sparkles,
   CalendarCheck, BarChart3, Bot, CreditCard, UserCog, Crown,
-  FileText, Settings, ChevronLeft, Search,
+  FileText, Settings, ChevronLeft,
   PieChart, FileSpreadsheet, LogOut, Gem
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -168,26 +168,31 @@ export function AppSidebar({
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center gold-gradient shadow-gold-sm">
-                  <Gem className="w-4 h-4 text-primary-foreground" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[13px] font-semibold tracking-wide truncate"
-                    style={{ color: "var(--color-sidebar-foreground)" }}>
-                    PIKORUA
-                  </span>
-                  <span className="text-[9px] tracking-[0.18em] uppercase truncate"
-                    style={{ color: "#fdba74" }}>
-                    Realty CRM
-                  </span>
-                </div>
+                <Link href="/dashboard" className="flex min-w-0 items-center gap-3 rounded-lg transition-opacity hover:opacity-90">
+                  <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center gold-gradient shadow-gold-sm">
+                    <Gem className="w-4 h-4 text-primary-foreground" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[13px] font-semibold tracking-wide truncate"
+                      style={{ color: "var(--color-sidebar-foreground)" }}>
+                      PIKORUA
+                    </span>
+                    <span className="text-[9px] tracking-[0.18em] uppercase truncate"
+                      style={{ color: "#fdba74" }}>
+                      Realty CRM
+                    </span>
+                  </div>
+                </Link>
               </motion.div>
             ) : (
               <motion.button key="logo-collapsed"
                 type="button"
-                onClick={() => onCollapsedChange(false)}
-                aria-label="Expand sidebar"
-                title="Expand sidebar"
+                onClick={() => {
+                  router.push("/dashboard")
+                  onCollapsedChange(false)
+                }}
+                aria-label="Open dashboard"
+                title="Open dashboard"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className="w-8 h-8 rounded-lg flex items-center justify-center gold-gradient shadow-gold-sm transition-transform duration-150 hover:scale-105">
@@ -211,31 +216,6 @@ export function AppSidebar({
             </button>
           )}
         </div>
-
-        {/* Search hint */}
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="px-3 pt-3 pb-1">
-              <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors"
-                style={{
-                  background: "var(--color-sidebar-accent)",
-                  color: "rgb(254 249 242 / 0.72)",
-                  border: "1px solid var(--color-sidebar-border)"
-                }}>
-                <Search className="w-3.5 h-3.5 shrink-0" />
-                <span className="text-[12px] flex-1">Search...</span>
-                <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                  style={{ background: "rgb(67 20 7 / 0.45)", color: "rgb(254 249 242 / 0.72)" }}>
-                  Ctrl + K
-                </kbd>
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto scrollbar-sidebar py-2 px-2">

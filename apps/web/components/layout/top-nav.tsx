@@ -226,15 +226,24 @@ export function TopNav({
           {breadcrumbs.map((crumb, i) => (
             <React.Fragment key={crumb.path}>
               {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
-              <span className={cn(
-                "min-w-0 truncate text-sm",
-                i < breadcrumbs.length - 2 && "hidden sm:inline",
-                i === breadcrumbs.length - 1
-                  ? "font-semibold text-foreground"
-                  : "text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-              )}>
-                {crumb.name}
-              </span>
+              {i === breadcrumbs.length - 1 ? (
+                <span className={cn(
+                  "min-w-0 truncate text-sm font-semibold text-foreground",
+                  i < breadcrumbs.length - 2 && "hidden sm:inline"
+                )}>
+                  {crumb.name}
+                </span>
+              ) : (
+                <Link
+                  href={crumb.path}
+                  className={cn(
+                    "min-w-0 truncate text-sm text-muted-foreground hover:text-foreground transition-colors",
+                    i < breadcrumbs.length - 2 && "hidden sm:inline"
+                  )}
+                >
+                  {crumb.name}
+                </Link>
+              )}
             </React.Fragment>
           ))}
         </div>
