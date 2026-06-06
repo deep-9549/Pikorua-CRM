@@ -31,6 +31,32 @@ const rise = {
   show:   { opacity: 1, y: 0, transition: { duration: 0.45 } }
 }
 
+function DashboardCardHeader({
+  title,
+  subtitle,
+  action = false,
+}: {
+  title: string
+  subtitle: string
+  action?: boolean
+}) {
+  return (
+    <CardHeader className="flex flex-row items-start justify-between pb-2 pt-5 px-5">
+      <div className="min-w-0">
+        <CardTitle className="text-[15px] font-semibold tracking-tight">{title}</CardTitle>
+        <p className="text-[12px] text-muted-foreground mt-0.5">{subtitle}</p>
+      </div>
+      {action ? (
+        <Button variant="ghost" size="sm" className="h-7 text-[12px] text-primary gap-1 -mt-0.5">
+          View All <ArrowUpRight className="w-3 h-3" />
+        </Button>
+      ) : (
+        <div className="h-7 w-[72px] shrink-0" aria-hidden />
+      )}
+    </CardHeader>
+  )
+}
+
 /* â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 interface StatCardProps {
   title: string
@@ -180,15 +206,7 @@ function RecentLeads() {
   return (
     <motion.div variants={rise}>
       <Card className="shadow-card border-0">
-        <CardHeader className="flex flex-row items-start justify-between pb-2 pt-5 px-5">
-          <div>
-            <CardTitle className="text-[15px] font-semibold tracking-tight">Recent Leads</CardTitle>
-            <p className="text-[12px] text-muted-foreground mt-0.5">Latest inquiries</p>
-          </div>
-          <Button variant="ghost" size="sm" className="h-7 text-[12px] text-primary gap-1 -mt-0.5">
-            View All <ArrowUpRight className="w-3 h-3" />
-          </Button>
-        </CardHeader>
+        <DashboardCardHeader title="Recent Leads" subtitle="Latest inquiries" action />
         <CardContent className="px-4 pb-4 pt-1">
           <div className="space-y-0.5">
             {recent.map((lead) => (
@@ -235,10 +253,7 @@ function TeamLeaderboard() {
   return (
     <motion.div variants={rise}>
       <Card className="shadow-card border-0">
-        <CardHeader className="pb-2 pt-5 px-5">
-          <CardTitle className="text-[15px] font-semibold tracking-tight">Team Leaderboard</CardTitle>
-          <p className="text-[12px] text-muted-foreground">Top performers this month</p>
-        </CardHeader>
+        <DashboardCardHeader title="Team Leaderboard" subtitle="Top performers this month" />
         <CardContent className="px-4 pb-4 pt-1">
           <div className="space-y-1">
             {sorted.map((emp, i) => (
@@ -278,15 +293,7 @@ function UpcomingVisits() {
   return (
     <motion.div variants={rise}>
       <Card className="shadow-card border-0">
-        <CardHeader className="flex flex-row items-start justify-between pb-2 pt-5 px-5">
-          <div>
-            <CardTitle className="text-[15px] font-semibold tracking-tight">Site Visits</CardTitle>
-            <p className="text-[12px] text-muted-foreground mt-0.5">Upcoming this week</p>
-          </div>
-          <Button variant="ghost" size="sm" className="h-7 text-[12px] text-primary gap-1 -mt-0.5">
-            View All <ArrowUpRight className="w-3 h-3" />
-          </Button>
-        </CardHeader>
+        <DashboardCardHeader title="Site Visits" subtitle="Upcoming this week" action />
         <CardContent className="px-4 pb-4 pt-1 space-y-2">
           {visits.map(v => (
             <div key={v.id}
