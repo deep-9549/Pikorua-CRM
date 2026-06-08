@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { inArray } from 'drizzle-orm'
+import { and, inArray, isNull } from 'drizzle-orm'
 import * as XLSX from 'xlsx'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, leadCrmDetails, clients } from '@pikorua/db'
@@ -125,6 +125,21 @@ export class ImportService {
     return stripPhonePrefix(raw).replace(/[\s\-().+]/g, '')
   }
 
+  private dateKey(date: Date): string {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  private leadIdentityKey(row: Pick<ParsedRow, 'phone' | 'campaignName' | 'receivedAt'>): string {
+    return JSON.stringify([
+      row.phone,
+      (row.campaignName ?? '').trim().toLowerCase(),
+      this.dateKey(row.receivedAt),
+    ])
+  }
+
   async importMetaLeads(file: Express.Multer.File): Promise<ImportResultDto> {
     if (!file) throw new BadRequestException('No file uploaded')
 
@@ -156,9 +171,9 @@ export class ImportService {
     const result: ImportResultDto = { total: rawRows.length, inserted: 0, skipped: 0, errors: [] }
 
     // ── Step 1: Parse all rows in memory (no DB calls) ──────────────────────
-    // Duplicates are intentionally KEPT — every row becomes its own enquiry so
-    // repeat leads (same phone) surface in the client's history.
-    const parsed: ParsedRow[] = []
+    // Repeat leads are kept unless the same phone appears for the same campaign
+    // on the same calendar date.
+    let parsed: ParsedRow[] = []
 
     for (const [i, row] of rawRows.entries()) {
       const rowNum = i + 2
@@ -198,15 +213,54 @@ export class ImportService {
     // especially if the function and DB are in different regions). Kept well
     // under Postgres's 65535 bind-parameter limit (≈9 cols × 1000 = 9k params).
     const CHUNK = 1000
+    const uniquePhones = [...new Set(parsed.map(r => r.phone))]
 
-    // ── Step 2: Resolve one client per UNIQUE phone (find-or-create) ────────
+    // ── Step 2: Omit duplicate enquiries by phone + campaign + received date ──
+    const seenLeadKeys = new Set<string>()
+
+    for (const batch of this.chunk(uniquePhones, CHUNK)) {
+      const rows = await this.db
+        .select({
+          phone: metaLeads.phone,
+          campaignName: metaLeads.campaignName,
+          receivedAt: metaLeads.receivedAt,
+        })
+        .from(metaLeads)
+        .where(and(inArray(metaLeads.phone, batch), isNull(metaLeads.deletedAt)))
+
+      for (const lead of rows) {
+        if (!lead.phone) continue
+        seenLeadKeys.add(this.leadIdentityKey({
+          phone: lead.phone,
+          campaignName: normalizeCampaignName(lead.campaignName),
+          receivedAt: lead.receivedAt,
+        }))
+      }
+    }
+
+    const uniqueParsed: ParsedRow[] = []
+    for (const row of parsed) {
+      const key = this.leadIdentityKey(row)
+      if (seenLeadKeys.has(key)) {
+        result.skipped += 1
+        continue
+      }
+      seenLeadKeys.add(key)
+      uniqueParsed.push(row)
+    }
+
+    parsed = uniqueParsed
+
+    if (parsed.length === 0) return result
+
+    // ── Step 3: Resolve one client per UNIQUE phone (find-or-create) ────────
     // Done BEFORE inserting leads so client_id is written at insert time. This
     // replaces the old per-client UPDATE pass, which fired one query per client
     // and timed out (504) on large files.
-    const uniquePhones = [...new Set(parsed.map(r => r.phone))]
+    const uniqueImportPhones = [...new Set(parsed.map(r => r.phone))]
     const clientIdByPhone = new Map<string, string>()
 
-    for (const batch of this.chunk(uniquePhones, CHUNK)) {
+    for (const batch of this.chunk(uniqueImportPhones, CHUNK)) {
       const rows = await this.db
         .select({ id: clients.id, phone: clients.phone })
         .from(clients)
@@ -215,7 +269,7 @@ export class ImportService {
     }
 
     const rowByPhone = new Map(parsed.map(r => [r.phone, r]))
-    const phonesNeedingClient = uniquePhones.filter(p => !clientIdByPhone.has(p))
+    const phonesNeedingClient = uniqueImportPhones.filter(p => !clientIdByPhone.has(p))
     for (const batch of this.chunk(phonesNeedingClient, CHUNK)) {
       const inserted = await this.db
         .insert(clients)
@@ -227,7 +281,7 @@ export class ImportService {
       for (const c of inserted) if (c.phone) clientIdByPhone.set(c.phone, c.id)
     }
 
-    // ── Step 3: Insert leads (client_id already set) — chunked ──────────────
+    // ── Step 4: Insert leads (client_id already set) — chunked ──────────────
     // Rows go in `parsed` order, so the returned ids stay index-aligned with
     // `parsed` (duplicate phones each keep their own lead id).
     const leadIds: string[] = []
@@ -249,7 +303,7 @@ export class ImportService {
       for (const l of inserted) leadIds.push(l.id)
     }
 
-    // ── Step 4: CRM details for rows that have them — chunked ───────────────
+    // ── Step 5: CRM details for rows that have them — chunked ───────────────
     const crmValues = parsed
       .map((r, i) => {
         const leadId = leadIds[i]

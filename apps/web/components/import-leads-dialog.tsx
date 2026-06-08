@@ -114,7 +114,7 @@ export function ImportLeadsDialog({
             Import Leads from Excel
           </DialogTitle>
           <DialogDescription>
-            Upload a .xlsx or .csv file to bulk-import historical leads. Repeat phone numbers are kept as separate enquiries and grouped under the same client's history.
+            Upload a .xlsx or .csv file to bulk-import historical leads. Repeat phone numbers are kept unless the same phone appears on the same date for the same campaign.
           </DialogDescription>
         </DialogHeader>
 
@@ -123,7 +123,7 @@ export function ImportLeadsDialog({
           <div className="flex items-center justify-between px-3 py-2.5 rounded-lg"
             style={{ background: "rgb(194 65 12 / 0.06)", border: "1px solid rgb(194 65 12 / 0.18)" }}>
             <div>
-              <p className="text-xs font-medium" style={{ color: "var(--color-foreground)" }}>Don't have a template?</p>
+              <p className="text-xs font-medium" style={{ color: "var(--color-foreground)" }}>Need a template?</p>
               <p className="text-[11px] mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
                 Download the pre-formatted Excel template with sample data
               </p>
@@ -213,7 +213,7 @@ export function ImportLeadsDialog({
 
               {result.skipped > 0 && (
                 <p className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
-                  {result.skipped} row{result.skipped !== 1 ? "s" : ""} skipped — phone number already exists in the system.
+                  {result.skipped} row{result.skipped !== 1 ? "s" : ""} skipped - same phone, campaign, and date already exists.
                 </p>
               )}
 
