@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine, Snowflake, X, FileUp, Search, Undo2
+  Plus, PenLine, Snowflake, X, FileUp, Search, Undo2, ListChecks
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ImportLeadsDialog } from "@/components/import-leads-dialog"
@@ -581,6 +581,16 @@ export default function MetaAdsPage() {
   }), [leads, search, sourceFilter, campaignFilter])
 
   const hasActiveFilter = Boolean(search || sourceFilter || campaignFilter)
+  const shownLeadIds = useMemo(() => filteredLeads.map(lead => lead.id), [filteredLeads])
+  const shownSelectionOnly = useMemo(
+    () => shownLeadIds.length > 0 && selected.size === shownLeadIds.length && shownLeadIds.every(id => selected.has(id)),
+    [shownLeadIds, selected],
+  )
+
+  function selectShownLeads() {
+    if (!selectable) return
+    setSelected(new Set(shownLeadIds))
+  }
 
   return (
     <div className="space-y-6">
@@ -699,6 +709,18 @@ export default function MetaAdsPage() {
                   <option value="">All Campaigns</option>
                   {campaigns.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
+              )}
+              {selectable && filteredLeads.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-9 text-xs shrink-0"
+                  disabled={shownSelectionOnly}
+                  onClick={selectShownLeads}
+                >
+                  <ListChecks className="w-3.5 h-3.5" />
+                  Select shown
+                </Button>
               )}
               {hasActiveFilter && (
                 <Button
