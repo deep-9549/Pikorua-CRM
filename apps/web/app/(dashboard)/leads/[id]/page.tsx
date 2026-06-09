@@ -7,7 +7,7 @@ import {
   ArrowLeft, Phone, Mail, MapPin, Calendar, Loader2, Save,
   Check, Flame, Thermometer, Snowflake, User, History,
   AlertTriangle, Briefcase, Building, TrendingDown,
-  PhoneOff, Clock, ChevronDown, ChevronUp, Trash2
+  PhoneOff, Clock, ChevronDown, ChevronUp, Trash2, type LucideIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -192,6 +192,48 @@ function StatusPill({ status }: { status: string | null }) {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+}
+
+function LeadInfoCard({ label, value, icon: Icon, href }: {
+  label: string
+  value: string
+  icon: LucideIcon
+  href?: string
+}) {
+  const content = (
+    <>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+        style={{ background: "oklch(0.700 0.130 75 / 0.12)", color: "oklch(0.700 0.130 75)" }}>
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.12em]"
+          style={{ color: "oklch(0.54 0.10 45)" }}>
+          {label}
+        </span>
+        <span className="block truncate text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
+          {value}
+        </span>
+      </span>
+    </>
+  )
+
+  const className = "flex min-h-[62px] items-center gap-3 rounded-xl px-3.5 py-2.5 transition-colors"
+  const style = { border: "1px solid var(--color-border)", background: "color-mix(in oklab, var(--color-card), var(--color-muted) 18%)" }
+
+  if (href) {
+    return (
+      <a href={href} className={`${className} hover:bg-white/60`} style={style}>
+        {content}
+      </a>
+    )
+  }
+
+  return (
+    <div className={className} style={style}>
+      {content}
+    </div>
+  )
 }
 
 // History Card
@@ -524,73 +566,42 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </CardHeader>
 
           <CardContent className="space-y-3">
-            {/* Contact */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {lead.phone && (
-                <a href={phoneHref(lead.phone)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
-                  style={{ border: "1px solid var(--color-border)" }}>
-                  <Phone className="w-4 h-4 shrink-0" style={{ color: "oklch(0.700 0.130 75)" }} />
-                  <span className="text-sm" style={{ color: "var(--color-foreground)" }}>{formatPhone(lead.phone)}</span>
-                </a>
+                <LeadInfoCard label="Phone" value={formatPhone(lead.phone)} icon={Phone} href={phoneHref(lead.phone)} />
               )}
               {lead.email && (
-                <a href={`mailto:${lead.email}`}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
-                  style={{ border: "1px solid var(--color-border)" }}>
-                  <Mail className="w-4 h-4 shrink-0" style={{ color: "oklch(0.700 0.130 75)" }} />
-                  <span className="text-sm truncate" style={{ color: "var(--color-foreground)" }}>{lead.email}</span>
-                </a>
+                <LeadInfoCard label="Email" value={lead.email} icon={Mail} href={`mailto:${lead.email}`} />
               )}
             </div>
 
             {(crm.profession || crm.company_name || crm.current_city || crm.budget_range) && (
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {crm.profession && (
-                  <div className="rounded-lg px-3 py-2" style={{ border: "1px solid var(--color-border)" }}>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-muted-foreground)" }}>Profession</p>
-                    <p className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{crm.profession}</p>
-                  </div>
+                  <LeadInfoCard label="Profession" value={crm.profession} icon={Briefcase} />
                 )}
                 {crm.company_name && (
-                  <div className="rounded-lg px-3 py-2" style={{ border: "1px solid var(--color-border)" }}>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-muted-foreground)" }}>Company</p>
-                    <p className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{crm.company_name}</p>
-                  </div>
+                  <LeadInfoCard label="Company" value={crm.company_name} icon={Building} />
                 )}
                 {crm.current_city && (
-                  <div className="rounded-lg px-3 py-2" style={{ border: "1px solid var(--color-border)" }}>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-muted-foreground)" }}>Current City</p>
-                    <p className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{crm.current_city}</p>
-                  </div>
+                  <LeadInfoCard label="Current City" value={crm.current_city} icon={MapPin} />
                 )}
                 {crm.budget_range && (
-                  <div className="rounded-lg px-3 py-2" style={{ border: "1px solid var(--color-border)" }}>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-muted-foreground)" }}>Budget</p>
-                    <p className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{crm.budget_range}</p>
-                  </div>
+                  <LeadInfoCard label="Budget" value={crm.budget_range} icon={AlertTriangle} />
                 )}
               </div>
             )}
 
-            <div className="flex flex-wrap gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {lead.city && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
-                  <MapPin className="w-3.5 h-3.5" />{lead.city}
-                </span>
+                <LeadInfoCard label="Location" value={lead.city} icon={MapPin} />
               )}
-              <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
-                <Calendar className="w-3.5 h-3.5" />Received {formatDate(lead.received_at)}
-              </span>
+              <LeadInfoCard label="Received" value={formatDate(lead.received_at)} icon={Calendar} />
               {lead.assigned_to_profile && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
-                  <User className="w-3.5 h-3.5" />{lead.assigned_to_profile.full_name}
-                </span>
+                <LeadInfoCard label="Assigned To" value={lead.assigned_to_profile.full_name} icon={User} />
               )}
               {client && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
-                  <Clock className="w-3.5 h-3.5" />First seen {formatDate(client.first_seen_at)}
-                </span>
+                <LeadInfoCard label="First Seen" value={formatDate(client.first_seen_at)} icon={Clock} />
               )}
             </div>
 
