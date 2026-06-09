@@ -592,16 +592,24 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="flex flex-wrap gap-3 pt-1">
               {lead.city && (
-                <LeadInfoCard label="Location" value={lead.city} icon={MapPin} />
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
+                  <MapPin className="w-3.5 h-3.5" />{lead.city}
+                </span>
               )}
-              <LeadInfoCard label="Received" value={formatDate(lead.received_at)} icon={Calendar} />
+              <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
+                <Calendar className="w-3.5 h-3.5" />Received {formatDate(lead.received_at)}
+              </span>
               {lead.assigned_to_profile && (
-                <LeadInfoCard label="Assigned To" value={lead.assigned_to_profile.full_name} icon={User} />
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
+                  <User className="w-3.5 h-3.5" />{lead.assigned_to_profile.full_name}
+                </span>
               )}
               {client && (
-                <LeadInfoCard label="First Seen" value={formatDate(client.first_seen_at)} icon={Clock} />
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
+                  <Clock className="w-3.5 h-3.5" />First seen {formatDate(client.first_seen_at)}
+                </span>
               )}
             </div>
 
