@@ -544,27 +544,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               )}
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              {lead.city && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
-                  <MapPin className="w-3.5 h-3.5" />{lead.city}
-                </span>
-              )}
-              <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
-                <Calendar className="w-3.5 h-3.5" />Received {formatDate(lead.received_at)}
-              </span>
-              {lead.assigned_to_profile && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
-                  <User className="w-3.5 h-3.5" />{lead.assigned_to_profile.full_name}
-                </span>
-              )}
-              {client && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
-                  <Clock className="w-3.5 h-3.5" />First seen {formatDate(client.first_seen_at)}
-                </span>
-              )}
-            </div>
-
             {(crm.profession || crm.company_name || crm.current_city || crm.budget_range) && (
               <div className="grid grid-cols-2 gap-2 pt-1">
                 {crm.profession && (
@@ -593,6 +572,27 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 )}
               </div>
             )}
+
+            <div className="flex flex-wrap gap-3 pt-1">
+              {lead.city && (
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
+                  <MapPin className="w-3.5 h-3.5" />{lead.city}
+                </span>
+              )}
+              <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
+                <Calendar className="w-3.5 h-3.5" />Received {formatDate(lead.received_at)}
+              </span>
+              {lead.assigned_to_profile && (
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
+                  <User className="w-3.5 h-3.5" />{lead.assigned_to_profile.full_name}
+                </span>
+              )}
+              {client && (
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
+                  <Clock className="w-3.5 h-3.5" />First seen {formatDate(client.first_seen_at)}
+                </span>
+              )}
+            </div>
 
           </CardContent>
         </Card>
