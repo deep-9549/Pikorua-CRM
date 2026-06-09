@@ -25,7 +25,7 @@ import {
 import { formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// Types
 
 interface MetaLead {
   id: string
@@ -95,7 +95,7 @@ interface CrmDetails {
   remarks: string | null
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// Constants
 
 const BUDGET_RANGES = [
   "1–2 Cr","2–3 Cr","3–5 Cr","5–7 Cr",
@@ -115,7 +115,7 @@ const CLIENT_STATUSES = [
 ]
 const CLIENT_STATUS_VALUES = new Set(CLIENT_STATUSES.map(status => status.value))
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Helpers
 
 // Convert ISO timestamp or any string -> "YYYY-MM-DD" for date inputs
 function isoToDateInput(v: string | null): string {
@@ -194,7 +194,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
 }
 
-// ─── History Card ─────────────────────────────────────────────────────────────
+// History Card
 
 function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: boolean }) {
   const [open, setOpen] = useState(false)
@@ -304,7 +304,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// Page
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -492,7 +492,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         )}
       </div>
 
-      {/* ── Client identity card ── */}
+      {/* Client identity card */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="shadow-card" style={{
           borderColor: repeatClient ? "oklch(0.75 0.18 35 / 0.4)" : "oklch(0.700 0.130 75 / 0.3)"
@@ -508,7 +508,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   <h2 className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>
                     {lead.full_name ?? "Unknown"}
                   </h2>
-                  {clientStatus && <StatusPill status={clientStatus} />}
                   {repeatClient && (
                     <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
                       style={{ background: "oklch(0.75 0.18 35 / 0.15)", color: "oklch(0.75 0.18 35)", border: "1px solid oklch(0.75 0.18 35 / 0.3)" }}>
@@ -566,43 +565,40 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               )}
             </div>
 
-            {/* Client status picker */}
-            <div className="pt-1 space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
-                Client Status
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {CLIENT_STATUSES.map(s => {
-                  const Icon = s.icon
-                  const active = clientStatus === s.value
-                  return (
-                    <button key={s.value}
-                      onClick={() => setClientStatus(active ? null : s.value)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
-                      style={active ? { background: s.bg, color: s.color, border: `1px solid ${s.color}60` }
-                        : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
-                      <Icon className="w-3 h-3" />{s.label}
-                    </button>
-                  )
-                })}
+            {(crm.profession || crm.company_name || crm.current_city || crm.budget_range) && (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {crm.profession && (
+                  <div className="rounded-lg px-3 py-2" style={{ border: "1px solid var(--color-border)" }}>
+                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-muted-foreground)" }}>Profession</p>
+                    <p className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{crm.profession}</p>
+                  </div>
+                )}
+                {crm.company_name && (
+                  <div className="rounded-lg px-3 py-2" style={{ border: "1px solid var(--color-border)" }}>
+                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-muted-foreground)" }}>Company</p>
+                    <p className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{crm.company_name}</p>
+                  </div>
+                )}
+                {crm.current_city && (
+                  <div className="rounded-lg px-3 py-2" style={{ border: "1px solid var(--color-border)" }}>
+                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-muted-foreground)" }}>Current City</p>
+                    <p className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{crm.current_city}</p>
+                  </div>
+                )}
+                {crm.budget_range && (
+                  <div className="rounded-lg px-3 py-2" style={{ border: "1px solid var(--color-border)" }}>
+                    <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-muted-foreground)" }}>Budget</p>
+                    <p className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{crm.budget_range}</p>
+                  </div>
+                )}
               </div>
-              <div className="flex gap-2">
-                <input type="text" placeholder="Optional note..."
-                  value={clientNote} onChange={e => setClientNote(e.target.value)}
-                  className="flex-1 h-8 px-3 rounded-lg text-xs bg-transparent"
-                  style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
-              </div>
-              {client?.status_updated_by_profile && client.status_updated_at && (
-                <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
-                  Updated by {client.status_updated_by_profile.full_name} · {formatDate(client.status_updated_at)}
-                </p>
-              )}
-            </div>
+            )}
+
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* ── Tab switcher ── */}
+      {/* Tab switcher */}
       <div className="flex gap-1 p-1 rounded-xl"
         style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
         {([
@@ -620,7 +616,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <AnimatePresence mode="wait">
-        {/* ── CRM tab ── */}
+        {/* CRM tab */}
         {activeTab === "crm" && (
           <motion.div key="crm" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <Card className="shadow-card">
@@ -628,6 +624,38 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <CardTitle className="text-base">CRM Details — This Lead</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
+                    Client Status
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {CLIENT_STATUSES.map(s => {
+                      const Icon = s.icon
+                      const active = clientStatus === s.value
+                      return (
+                        <button key={s.value}
+                          onClick={() => setClientStatus(active ? null : s.value)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
+                          style={active ? { background: s.bg, color: s.color, border: `1px solid ${s.color}60` }
+                            : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
+                          <Icon className="w-3 h-3" />{s.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="flex gap-2">
+                    <input type="text" placeholder="Optional note..."
+                      value={clientNote} onChange={e => setClientNote(e.target.value)}
+                      className="flex-1 h-8 px-3 rounded-lg text-xs bg-transparent"
+                      style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
+                  </div>
+                  {client?.status_updated_by_profile && client.status_updated_at && (
+                    <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
+                      Updated by {client.status_updated_by_profile.full_name} - {formatDate(client.status_updated_at)}
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-3">
                   <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
                     Client Details
@@ -761,7 +789,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </motion.div>
         )}
 
-        {/* ── History tab ── */}
+        {/* History tab */}
         {activeTab === "history" && (
           <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <Card className="shadow-card">

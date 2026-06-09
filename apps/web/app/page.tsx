@@ -51,7 +51,7 @@ export default function SplashPage() {
             transition={{ duration: 0.6, delay: 0.5 }}
           >
             <h1 className="text-5xl font-bold tracking-tight mb-2">
-              <span className="gold-text">Pikorua</span>
+              <span className="gold-text">PIKORUA</span>
             </h1>
             <p className="text-lg text-muted-foreground tracking-widest uppercase">
               Realty CRM
