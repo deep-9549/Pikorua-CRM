@@ -16,13 +16,23 @@ import { Card, CardContent } from "@/components/ui/card"
 import { exportLeadsToExcel } from "@/lib/export-leads"
 
 interface Crm {
+  first_call_date?: string | null
+  last_call_date?: string | null
   call_status: string | null
   hwc: string | null
   follow_up_date: string | null
   buying_status: string | null
+  site_visit_status?: string | null
+  visit_date?: string | null
+  visit_confirmation_date?: string | null
+  budget_range?: string | null
+  configuration?: string[] | null
   profession?: string | null
+  company_name?: string | null
   current_city?: string | null
   current_area?: string | null
+  remarks?: string | null
+  updated_at?: string | null
 }
 
 interface MetaLead {
@@ -33,12 +43,13 @@ interface MetaLead {
   city: string | null
   campaign_name: string | null
   source: string
-  status: "unassigned" | "assigned" | "cold_pool"
+  status: string
   received_at: string
   assigned_at: string | null
   assigned_to_profile: { id: string; full_name: string } | null
   crm?: Crm | null
   client_status?: string | null
+  client_status_note?: string | null
 }
 
 function initials(name: string | null) {
@@ -117,9 +128,63 @@ const EMPTY_FILTERS = {
   hwc: "", callStatus: "", source: "", assignedTo: "", dateFrom: "", dateTo: "",
 }
 
+type LeadFilters = typeof EMPTY_FILTERS
+type ApiMetaLead = MetaLead & { crm?: Crm | Crm[] | null }
+
+function normalizeLeads(rawLeads: ApiMetaLead[]): MetaLead[] {
+  return rawLeads.map((lead) => ({
+    ...lead,
+    crm: Array.isArray(lead.crm) ? (lead.crm[0] ?? null) : (lead.crm ?? null),
+  }))
+}
+
+async function loadMetaLeads() {
+  const res = await fetch("/api/leads/meta", { cache: "no-store" })
+  if (!res.ok) throw new Error("Failed to load leads")
+  const json = await res.json()
+  return normalizeLeads(json.leads ?? [])
+}
+
+function filterLeads(leads: MetaLead[], search: string, filters: LeadFilters) {
+  return leads.filter(l => {
+    if (search) {
+      const q = search.toLowerCase()
+      const hit = l.full_name?.toLowerCase().includes(q)
+        || l.phone?.toLowerCase().includes(q)
+        || l.email?.toLowerCase().includes(q)
+        || l.city?.toLowerCase().includes(q)
+        || l.campaign_name?.toLowerCase().includes(q)
+      if (!hit) return false
+    }
+    if (filters.hwc && (l.crm?.hwc ?? "") !== filters.hwc) return false
+    if (filters.callStatus) {
+      if (filters.callStatus === "fresh" && !isFresh(l)) return false
+      if (filters.callStatus !== "fresh" && (l.crm?.call_status ?? "") !== filters.callStatus) return false
+    }
+    if (filters.source && l.source !== filters.source) return false
+    if (filters.assignedTo && l.assigned_to_profile?.id !== filters.assignedTo) return false
+    if (filters.dateFrom && l.received_at < filters.dateFrom) return false
+    if (filters.dateTo && l.received_at > filters.dateTo + "T23:59:59") return false
+    return true
+  })
+}
+
+function dateKey(value: string | Date | null | undefined) {
+  if (!value) return ""
+  if (typeof value === "string") {
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})/)
+    if (match) return match[1]
+  }
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 export default function LeadsPage() {
   const [leads, setLeads] = useState<MetaLead[]>([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS })
@@ -129,15 +194,7 @@ export default function LeadsPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/leads/meta")
-      if (!res.ok) throw new Error("Failed to load leads")
-      const json = await res.json()
-      // Supabase returns the embedded crm as an array; normalize to a single object
-      const normalized: MetaLead[] = (json.leads ?? []).map((l: MetaLead & { crm?: Crm | Crm[] | null }) => ({
-        ...l,
-        crm: Array.isArray(l.crm) ? (l.crm[0] ?? null) : (l.crm ?? null),
-      }))
-      setLeads(normalized)
+      setLeads(await loadMetaLeads())
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error")
     } finally {
@@ -161,27 +218,20 @@ export default function LeadsPage() {
   }
   const activeFilterCount = Object.values(filters).filter(Boolean).length
 
-  const filtered = useMemo(() => leads.filter(l => {
-    if (search) {
-      const q = search.toLowerCase()
-      const hit = l.full_name?.toLowerCase().includes(q)
-        || l.phone?.toLowerCase().includes(q)
-        || l.email?.toLowerCase().includes(q)
-        || l.city?.toLowerCase().includes(q)
-        || l.campaign_name?.toLowerCase().includes(q)
-      if (!hit) return false
+  const filtered = useMemo(() => filterLeads(leads, search, filters), [leads, search, filters])
+
+  const handleExport = useCallback(async () => {
+    setExporting(true)
+    try {
+      const latest = await loadMetaLeads()
+      setLeads(latest)
+      exportLeadsToExcel(filterLeads(latest, search, filters), "leads")
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to export latest leads")
+    } finally {
+      setExporting(false)
     }
-    if (filters.hwc && (l.crm?.hwc ?? "") !== filters.hwc) return false
-    if (filters.callStatus) {
-      if (filters.callStatus === "fresh" && !isFresh(l)) return false
-      if (filters.callStatus !== "fresh" && (l.crm?.call_status ?? "") !== filters.callStatus) return false
-    }
-    if (filters.source && l.source !== filters.source) return false
-    if (filters.assignedTo && l.assigned_to_profile?.id !== filters.assignedTo) return false
-    if (filters.dateFrom && l.received_at < filters.dateFrom) return false
-    if (filters.dateTo && l.received_at > filters.dateTo + "T23:59:59") return false
-    return true
-  }), [leads, search, filters])
+  }, [filters, search])
 
   // Surface leads the exec hasn't acted on yet: anything without a logged call
   // status sorts to the top so fresh leads are the first thing they see.
@@ -192,10 +242,16 @@ export default function LeadsPage() {
   }, [filtered])
 
   // Group by follow-up urgency
-  const today = new Date().toISOString().split("T")[0]
-  const overdue = interactionSorted.filter(l => l.crm?.follow_up_date && l.crm.follow_up_date < today)
-  const dueToday = interactionSorted.filter(l => l.crm?.follow_up_date === today)
-  const rest = interactionSorted.filter(l => !l.crm?.follow_up_date || l.crm.follow_up_date > today)
+  const today = dateKey(new Date())
+  const overdue = interactionSorted.filter(l => {
+    const followUp = dateKey(l.crm?.follow_up_date)
+    return followUp && followUp < today
+  })
+  const dueToday = interactionSorted.filter(l => dateKey(l.crm?.follow_up_date) === today)
+  const rest = interactionSorted.filter(l => {
+    const followUp = dateKey(l.crm?.follow_up_date)
+    return !followUp || followUp > today
+  })
 
   return (
     <div className="space-y-6">
@@ -211,9 +267,10 @@ export default function LeadsPage() {
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button variant="outline" size="sm" className="gap-2"
-            onClick={() => exportLeadsToExcel(filtered, "leads")}
-            disabled={filtered.length === 0}>
-            <Download className="w-4 h-4" /> Export
+            onClick={handleExport}
+            disabled={filtered.length === 0 || exporting}>
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {exporting ? "Exporting" : "Export"}
           </Button>
           <Button variant="outline" size="sm" className="gap-2" onClick={fetchLeads} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -326,8 +383,8 @@ export default function LeadsPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {overdue.length > 0 && <Section title="Overdue Follow-ups" accentColor="var(--color-destructive)" leads={overdue} />}
           {dueToday.length > 0 && <Section title="Follow up Today" accentColor="var(--color-warning)" leads={dueToday} />}
+          {overdue.length > 0 && <Section title="Overdue Follow-ups" accentColor="var(--color-destructive)" leads={overdue} />}
           {rest.length > 0 && <Section title={overdue.length + dueToday.length > 0 ? "Others" : "All Leads"} accentColor="var(--color-primary)" leads={rest} />}
         </div>
       )}

@@ -101,7 +101,7 @@ const BUDGET_RANGES = [
   "1–2 Cr","2–3 Cr","3–5 Cr","5–7 Cr",
   "7–10 Cr","10–15 Cr","15–21 Cr","21 Cr+",
 ]
-const CONFIGURATIONS = ["3 BHK","4 BHK","5 BHK","Penthouse","Villa","Plot","Other"]
+const CONFIGURATIONS = ["3 BHK","4 BHK","5 BHK","Penthouse","Bungalows","Villa","Plot","Other"]
 
 const CLIENT_STATUSES = [
   { value: "hot",   label: "Hot",   icon: Flame,         color: "oklch(0.75 0.18 35)",  bg: "oklch(0.75 0.18 35 / 0.15)"  },
@@ -515,6 +515,39 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const showSiteVisit = crm.call_status === "spoken"
   const showVisitDate = crm.site_visit_status === "visited"
   const showConfirmDate = crm.site_visit_status === "visit_date_confirmed"
+  const clientStatusSection = (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
+        Client Status
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {CLIENT_STATUSES.map(s => {
+          const Icon = s.icon
+          const active = clientStatus === s.value
+          return (
+            <button key={s.value}
+              onClick={() => setClientStatus(active ? null : s.value)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
+              style={active ? { background: s.bg, color: s.color, border: `1px solid ${s.color}60` }
+                : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
+              <Icon className="w-3 h-3" />{s.label}
+            </button>
+          )
+        })}
+      </div>
+      <div className="flex gap-2">
+        <input type="text" placeholder="Optional note..."
+          value={clientNote} onChange={e => setClientNote(e.target.value)}
+          className="flex-1 h-8 px-3 rounded-lg text-xs bg-transparent"
+          style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
+      </div>
+      {client?.status_updated_by_profile && client.status_updated_at && (
+        <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
+          Updated by {client.status_updated_by_profile.full_name} - {formatDate(client.status_updated_at)}
+        </p>
+      )}
+    </div>
+  )
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 pb-12">
@@ -575,7 +608,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               )}
             </div>
 
-            {(crm.profession || crm.company_name || crm.current_city || crm.budget_range) && (
+            {(crm.profession || crm.company_name || crm.current_city || crm.budget_range || lead.city) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {crm.profession && (
                   <LeadInfoCard label="Profession" value={crm.profession} icon={Briefcase} />
@@ -583,21 +616,19 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 {crm.company_name && (
                   <LeadInfoCard label="Company" value={crm.company_name} icon={Building} />
                 )}
-                {crm.current_city && (
-                  <LeadInfoCard label="Current City" value={crm.current_city} icon={MapPin} />
-                )}
                 {crm.budget_range && (
                   <LeadInfoCard label="Budget" value={crm.budget_range} icon={AlertTriangle} />
+                )}
+                {lead.city && (
+                  <LeadInfoCard label="City" value={lead.city} icon={MapPin} />
+                )}
+                {crm.current_city && (
+                  <LeadInfoCard label="Current City" value={crm.current_city} icon={MapPin} />
                 )}
               </div>
             )}
 
             <div className="flex flex-wrap gap-3 pt-1">
-              {lead.city && (
-                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
-                  <MapPin className="w-3.5 h-3.5" />{lead.city}
-                </span>
-              )}
               <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-foreground)" }}>
                 <Calendar className="w-3.5 h-3.5" />Received {formatDate(lead.received_at)}
               </span>
@@ -643,38 +674,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <CardTitle className="text-base">CRM Details — This Lead</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
-                    Client Status
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {CLIENT_STATUSES.map(s => {
-                      const Icon = s.icon
-                      const active = clientStatus === s.value
-                      return (
-                        <button key={s.value}
-                          onClick={() => setClientStatus(active ? null : s.value)}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
-                          style={active ? { background: s.bg, color: s.color, border: `1px solid ${s.color}60` }
-                            : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
-                          <Icon className="w-3 h-3" />{s.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <div className="flex gap-2">
-                    <input type="text" placeholder="Optional note..."
-                      value={clientNote} onChange={e => setClientNote(e.target.value)}
-                      className="flex-1 h-8 px-3 rounded-lg text-xs bg-transparent"
-                      style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
-                  </div>
-                  {client?.status_updated_by_profile && client.status_updated_at && (
-                    <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
-                      Updated by {client.status_updated_by_profile.full_name} - {formatDate(client.status_updated_at)}
-                    </p>
-                  )}
-                </div>
-
                 <div className="space-y-3">
                   <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
                     Client Details
@@ -752,20 +751,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Budget Range</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {BUDGET_RANGES.map(range => (
-                      <button key={range} type="button"
-                        onClick={() => setCrm(p => ({ ...p, budget_range: p.budget_range === range ? null : range }))}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={crm.budget_range === range
-                          ? { background: "oklch(0.700 0.130 75 / 0.2)", color: "oklch(0.700 0.130 75)", border: "1px solid oklch(0.700 0.130 75 / 0.5)" }
-                          : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
-                        {range}
-                      </button>
-                    ))}
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Budget</Label>
+                  <Select value={crm.budget_range ?? "__none"} onValueChange={v => setCrm(p => ({ ...p, budget_range: v === "__none" ? null : v }))}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Select budget..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">Not set</SelectItem>
+                      {crm.budget_range && !BUDGET_RANGES.includes(crm.budget_range) && (
+                        <SelectItem value={crm.budget_range}>{crm.budget_range}</SelectItem>
+                      )}
+                      {BUDGET_RANGES.map(range => (
+                        <SelectItem key={range} value={range}>{range}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -788,6 +787,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
                 <DateField label="Follow-up Date" value={crm.follow_up_date ?? ""}
                   onChange={v => setCrm(p => ({ ...p, follow_up_date: v || null }))} />
+
+                {clientStatusSection}
 
                 <div className="space-y-1.5">
                   <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Qualitative Remarks</Label>

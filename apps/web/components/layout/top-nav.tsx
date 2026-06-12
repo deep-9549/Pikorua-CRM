@@ -77,6 +77,89 @@ interface Notification {
 
 const initialNotifications: Notification[] = []
 
+interface FollowUpLead {
+  id: string
+  full_name: string | null
+  phone: string | null
+  city: string | null
+  crm?: {
+    follow_up_date?: string | null
+    budget_range?: string | null
+    configuration?: string[] | null
+  } | null
+}
+
+function dateKey(value: string | Date | null | undefined) {
+  if (!value) return ""
+  if (typeof value === "string") {
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})/)
+    if (match) return match[1]
+  }
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function leadNames(leads: FollowUpLead[]) {
+  return leads
+    .slice(0, 3)
+    .map(lead => lead.full_name || lead.phone || "Unnamed lead")
+    .join(", ")
+}
+
+function buildFollowUpNotifications(leads: FollowUpLead[]): Notification[] {
+  const today = dateKey(new Date())
+  const dueToday = leads.filter(lead => dateKey(lead.crm?.follow_up_date) === today)
+  const overdue = leads.filter(lead => {
+    const followUp = dateKey(lead.crm?.follow_up_date)
+    return followUp && followUp < today
+  })
+
+  const notifications: Notification[] = []
+  if (dueToday.length > 0) {
+    const firstLead = dueToday[0]
+    notifications.push({
+      id: "followups-today",
+      title: `${dueToday.length} follow-up${dueToday.length === 1 ? "" : "s"} due today`,
+      message: leadNames(dueToday),
+      time: "Today",
+      type: "call",
+      read: false,
+      priority: "high",
+      actionUrl: "/leads",
+      leadData: {
+        name: firstLead.full_name || "Follow-up lead",
+        phone: firstLead.phone || "",
+        budget: firstLead.crm?.budget_range ?? undefined,
+        location: firstLead.city ?? undefined,
+        propertyInterest: firstLead.crm?.configuration?.join(", ") || undefined,
+      },
+      suggestedActions: [
+        { label: "Open follow-ups", icon: PhoneCall, action: "open-followups", variant: "primary" },
+      ],
+    })
+  }
+
+  if (overdue.length > 0) {
+    notifications.push({
+      id: "followups-overdue",
+      title: `${overdue.length} overdue follow-up${overdue.length === 1 ? "" : "s"}`,
+      message: leadNames(overdue),
+      time: "Needs attention",
+      type: "call",
+      read: false,
+      priority: "high",
+      actionUrl: "/leads",
+      suggestedActions: [
+        { label: "Review overdue calls", icon: PhoneCall, action: "open-followups", variant: "warning" },
+      ],
+    })
+  }
+
+  return notifications
+}
+
 function getTypeConfig(type: Notification["type"]) {
   const configs = {
     lead:    { icon: Sparkles,     bg: "bg-primary/10",    color: "text-primary" },
@@ -173,6 +256,45 @@ export function TopNav({
     }
   }, [leadDetailId])
 
+  React.useEffect(() => {
+    let cancelled = false
+
+    async function loadFollowUpNotifications() {
+      try {
+        const res = await fetch("/api/leads/meta", { cache: "no-store" })
+        if (!res.ok) return
+        const json = await res.json().catch(() => ({}))
+        const leads: FollowUpLead[] = (json.leads ?? []).map((lead: FollowUpLead & { crm?: FollowUpLead["crm"] | FollowUpLead["crm"][] }) => ({
+          ...lead,
+          crm: Array.isArray(lead.crm) ? (lead.crm[0] ?? null) : (lead.crm ?? null),
+        }))
+        const generated = buildFollowUpNotifications(leads)
+        if (cancelled) return
+
+        setNotifications(previous => {
+          const generatedIds = new Set(["followups-today", "followups-overdue"])
+          const readById = new Map(previous.map(notification => [notification.id, notification.read]))
+          const manualNotifications = previous.filter(notification => !generatedIds.has(notification.id))
+          return [
+            ...generated.map(notification => ({
+              ...notification,
+              read: readById.get(notification.id) ?? notification.read,
+            })),
+            ...manualNotifications,
+          ]
+        })
+      } catch {
+        // Notifications are helpful, but the nav must remain non-blocking.
+      }
+    }
+
+    loadFollowUpNotifications()
+
+    return () => {
+      cancelled = true
+    }
+  }, [pathname])
+
   const breadcrumbs = React.useMemo(() => {
     return pathname.split("/").filter(Boolean).map((seg, i, arr) => {
       const path = "/" + arr.slice(0, i + 1).join("/")
@@ -196,7 +318,12 @@ export function TopNav({
     setAssignedEmployee("")
   }
 
-  const handleAction = (_action: string) => {
+  const handleAction = (action: string) => {
+    if (action === "open-followups") {
+      router.push("/leads")
+      closePanel()
+      return
+    }
     setSelected(null)
   }
 

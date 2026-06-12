@@ -75,20 +75,24 @@ export class MetaLeadsService {
 
     // Build phone list for client status lookup (works even when clientId is not yet set)
     const phones = [...new Set(leads.map(l => l.phone).filter(Boolean))] as string[]
-    const phoneStatusMap = new Map<string, string | null>()
+    const phoneClientMap = new Map<string, { status: string | null; statusNote: string | null }>()
     if (phones.length > 0) {
       const rows = await this.db.query.clients.findMany({
         where: inArray(clients.phone, phones),
       })
       for (const row of rows) {
-        if (row.phone) phoneStatusMap.set(row.phone, row.status)
+        if (row.phone) phoneClientMap.set(row.phone, {
+          status: row.status,
+          statusNote: row.statusNote,
+        })
       }
     }
 
     return {
       leads: leads.map(l => serializeMetaLead({
         ...l,
-        clientStatus: l.phone ? (phoneStatusMap.get(l.phone) ?? null) : null,
+        clientStatus: l.phone ? (phoneClientMap.get(l.phone)?.status ?? null) : null,
+        clientStatusNote: l.phone ? (phoneClientMap.get(l.phone)?.statusNote ?? null) : null,
       })),
     }
   }
@@ -111,14 +115,16 @@ export class MetaLeadsService {
 
     // Fetch current client status (for the response)
     let clientStatus: string | null = null
+    let clientStatusNote: string | null = null
     if (clientId) {
       const client = await this.db.query.clients.findFirst({
         where: eq(clients.id, clientId),
       })
       clientStatus = client?.status ?? null
+      clientStatusNote = client?.statusNote ?? null
     }
 
-    return { lead: serializeMetaLead({ ...lead, clientId, clientStatus }) }
+    return { lead: serializeMetaLead({ ...lead, clientId, clientStatus, clientStatusNote }) }
   }
 
   async assign(id: string, assignedBy: string, dto: AssignLeadDto) {
