@@ -97,9 +97,9 @@ interface CrmDetails {
 
 // Constants
 
-const BUDGET_RANGES = [
-  "1–2 Cr","2–3 Cr","3–5 Cr","5–7 Cr",
-  "7–10 Cr","10–15 Cr","15–21 Cr","21 Cr+",
+const BUDGET_OPTIONS = [
+  ...Array.from({ length: 20 }, (_, i) => `${i + 1} Cr`),
+  "21 Cr+",
 ]
 const CONFIGURATIONS = ["3 BHK","4 BHK","5 BHK","Penthouse","Bungalows","Villa","Plot","Other"]
 
@@ -753,18 +753,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
                 <div className="space-y-1.5">
                   <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Budget</Label>
-                  <Select value={crm.budget_range ?? "__none"} onValueChange={v => setCrm(p => ({ ...p, budget_range: v === "__none" ? null : v }))}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Select budget..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">Not set</SelectItem>
-                      {crm.budget_range && !BUDGET_RANGES.includes(crm.budget_range) && (
-                        <SelectItem value={crm.budget_range}>{crm.budget_range}</SelectItem>
-                      )}
-                      {BUDGET_RANGES.map(range => (
-                        <SelectItem key={range} value={range}>{range}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    list="budget-options"
+                    value={crm.budget_range ?? ""}
+                    placeholder="Type or choose budget..."
+                    onChange={e => setCrm(p => ({ ...p, budget_range: e.target.value || null }))}
+                    className="h-9 text-sm"
+                  />
+                  <datalist id="budget-options">
+                    {BUDGET_OPTIONS.map(option => (
+                      <option key={option} value={option} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div className="space-y-2">
