@@ -755,24 +755,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
                 <div className="space-y-1.5">
                   <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Budget</Label>
-                  <Input
-                    value={crm.budget_range ?? ""}
-                    placeholder="e.g. 5 Cr"
-                    onChange={e => setCrm(p => ({ ...p, budget_range: e.target.value || null }))}
-                    className="h-9 text-sm"
-                  />
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {BUDGET_OPTIONS.map(option => (
-                      <button key={option} type="button"
-                        onClick={() => setCrm(p => ({ ...p, budget_range: option }))}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={crm.budget_range === option
-                          ? { background: "oklch(0.700 0.130 75 / 0.2)", color: "oklch(0.700 0.130 75)", border: "1px solid oklch(0.700 0.130 75 / 0.5)" }
-                          : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
-                        {option}
-                      </button>
-                    ))}
-                  </div>
+                  <Select value={crm.budget_range ?? ""} onValueChange={v => setCrm(p => ({ ...p, budget_range: v || null }))}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Select budget..." /></SelectTrigger>
+                    <SelectContent>
+                      {BUDGET_OPTIONS.map(option => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
