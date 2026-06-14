@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
+import { ProtectedPhone } from "@/components/security/protected-phone"
 
 // Types
 
@@ -196,11 +197,12 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
 }
 
-function LeadInfoCard({ label, value, icon: Icon, href }: {
+function LeadInfoCard({ label, value, icon: Icon, href, protectedValue }: {
   label: string
   value: string
   icon: LucideIcon
   href?: string
+  protectedValue?: string | null
 }) {
   const content = (
     <>
@@ -213,9 +215,15 @@ function LeadInfoCard({ label, value, icon: Icon, href }: {
           style={{ color: "oklch(0.54 0.10 45)" }}>
           {label}
         </span>
-        <span className="block truncate text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
-          {value}
-        </span>
+        {protectedValue ? (
+          <ProtectedPhone value={protectedValue} className="block truncate text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
+            {value}
+          </ProtectedPhone>
+        ) : (
+          <span className="block truncate text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
+            {value}
+          </span>
+        )}
       </span>
     </>
   )
@@ -603,7 +611,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {lead.phone && (
-                <LeadInfoCard label="Phone" value={formatPhone(lead.phone)} icon={Phone} href={phoneHref(lead.phone)} />
+                <LeadInfoCard label="Phone" value={formatPhone(lead.phone)} icon={Phone} href={phoneHref(lead.phone)} protectedValue={lead.phone} />
               )}
               {lead.email && (
                 <LeadInfoCard label="Email" value={lead.email} icon={Mail} href={`mailto:${lead.email}`} />

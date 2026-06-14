@@ -7,6 +7,7 @@ import {
   AlertCircle, Loader2, RefreshCw, MapPin, User, Search, X
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
+import { ProtectedPhone } from "@/components/security/protected-phone"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -212,7 +213,9 @@ function ScheduleVisitDialog({
                         {l.full_name ?? "Unknown"}
                       </p>
                       {l.phone && (
-                        <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>{formatPhone(l.phone)}</p>
+                        <ProtectedPhone value={l.phone} className="block text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
+                          {formatPhone(l.phone)}
+                        </ProtectedPhone>
                       )}
                     </div>
                   </button>
@@ -316,9 +319,9 @@ function VisitCard({ v, showOwner }: { v: VisitRow; showOwner: boolean }) {
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
           {v.lead.phone && (
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
+            <ProtectedPhone value={v.lead.phone} className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
               <Phone className="w-3 h-3" />{formatPhone(v.lead.phone)}
-            </span>
+            </ProtectedPhone>
           )}
           {v.lead.city && (
             <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>

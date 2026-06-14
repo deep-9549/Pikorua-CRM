@@ -20,6 +20,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { hniClients } from "@/lib/data"
+import { ProtectedPhone } from "@/components/security/protected-phone"
 
 const tierConfig = {
   platinum: { color: "text-slate-300", bgColor: "bg-gradient-to-r from-slate-400 to-slate-600", icon: Gem },
@@ -217,7 +218,7 @@ export default function HNIClientsPage() {
                     <Card className="border-border/50 shadow-card border-0">
                       <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><User className="w-5 h-5 text-primary" />Contact Information</CardTitle></CardHeader>
                       <CardContent className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm"><Phone className="w-4 h-4 text-muted-foreground" />{detailClient.phone}</div>
+                        <ProtectedPhone value={detailClient.phone} className="flex items-center gap-2 text-sm"><Phone className="w-4 h-4 text-muted-foreground" />{detailClient.phone}</ProtectedPhone>
                         <div className="flex items-center gap-2 text-sm"><Mail className="w-4 h-4 text-muted-foreground" />{detailClient.email}</div>
                         <div className="flex items-center gap-2 text-sm"><MapPin className="w-4 h-4 text-muted-foreground" />{detailClient.location}</div>
                         <div className="flex items-center gap-2 text-sm"><Building2 className="w-4 h-4 text-muted-foreground" />{detailClient.occupation}</div>

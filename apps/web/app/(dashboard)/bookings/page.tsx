@@ -28,6 +28,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { bookings, leads, properties, employees } from "@/lib/data"
+import { ProtectedPhone } from "@/components/security/protected-phone"
 
 const revenueData: { month: string; revenue: number; bookings: number }[] = []
 
@@ -80,7 +81,7 @@ export default function BookingsPage() {
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader><DialogTitle>Create New Booking</DialogTitle><DialogDescription>Record a new property booking</DialogDescription></DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid gap-2"><Label>Select Lead</Label><Select><SelectTrigger><SelectValue placeholder="Choose a lead" /></SelectTrigger><SelectContent>{leads.map(lead => (<SelectItem key={lead.id} value={lead.id}>{lead.name} - {lead.phone}</SelectItem>))}</SelectContent></Select></div>
+                <div className="grid gap-2"><Label>Select Lead</Label><Select><SelectTrigger><SelectValue placeholder="Choose a lead" /></SelectTrigger><SelectContent>{leads.map(lead => (<SelectItem key={lead.id} value={lead.id}>{lead.name} - <ProtectedPhone value={lead.phone}>{lead.phone}</ProtectedPhone></SelectItem>))}</SelectContent></Select></div>
                 <div className="grid gap-2"><Label>Select Property</Label><Select><SelectTrigger><SelectValue placeholder="Choose a property" /></SelectTrigger><SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{p.name} - Ã¢â€šÂ¹{formatPrice(p.price)}</SelectItem>))}</SelectContent></Select></div>
                 <div className="grid grid-cols-2 gap-4"><div className="grid gap-2"><Label>Booking Amount</Label><Input type="number" placeholder="Enter amount" /></div><div className="grid gap-2"><Label>Commission %</Label><Input type="number" placeholder="2.5" defaultValue="2.5" /></div></div>
                 <div className="grid gap-2"><Label>Payment Mode</Label><Select><SelectTrigger><SelectValue placeholder="Select payment mode" /></SelectTrigger><SelectContent><SelectItem value="bank">Bank Transfer</SelectItem><SelectItem value="cheque">Cheque</SelectItem><SelectItem value="cash">Cash</SelectItem></SelectContent></Select></div>
@@ -239,7 +240,7 @@ export default function BookingsPage() {
                             <div><p className="font-semibold">{lead.name}</p><p className="text-sm text-muted-foreground">{lead.location}</p></div>
                           </div>
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="w-3.5 h-3.5" />{lead.phone}</div>
+                            <ProtectedPhone value={lead.phone} className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="w-3.5 h-3.5" />{lead.phone}</ProtectedPhone>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Mail className="w-3.5 h-3.5" />{lead.email}</div>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Building2 className="w-3.5 h-3.5" />{lead.propertyInterest.join(", ")}</div>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="w-3.5 h-3.5" />{lead.location}</div>

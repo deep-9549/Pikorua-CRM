@@ -4,6 +4,7 @@ import * as React from "react"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { TopNav } from "@/components/layout/top-nav"
 import { CommandPalette } from "@/components/layout/command-palette"
+import { PrivacyGuard } from "@/components/security/privacy-guard"
 
 export default function DashboardLayout({
   children,
@@ -44,6 +45,7 @@ export default function DashboardLayout({
         open={commandPaletteOpen}
         onOpenChange={setCommandPaletteOpen}
       />
+      <PrivacyGuard />
     </div>
   )
 }

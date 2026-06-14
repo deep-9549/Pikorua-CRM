@@ -25,6 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { ReminderDialog } from "@/components/reminder-dialog"
+import { ProtectedPhone } from "@/components/security/protected-phone"
 import { employees } from "@/lib/data"
 
 const pageNames: Record<string, string> = {
@@ -104,7 +105,7 @@ function dateKey(value: string | Date | null | undefined) {
 function leadNames(leads: FollowUpLead[]) {
   return leads
     .slice(0, 3)
-    .map(lead => lead.full_name || lead.phone || "Unnamed lead")
+    .map(lead => lead.full_name || "Unnamed lead")
     .join(", ")
 }
 
@@ -664,7 +665,7 @@ export function TopNav({
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-[12px] text-muted-foreground">{selected.leadData.phone}</p>
+                                <ProtectedPhone value={selected.leadData.phone} className="block text-[12px] text-muted-foreground" />
                               </div>
                               {selected.leadData.aiScore && (
                                 <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl shrink-0"

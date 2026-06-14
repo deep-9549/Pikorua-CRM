@@ -9,10 +9,12 @@ import {
   RefreshCw, Calendar, Star, Download, Filter, X
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
+import { getAuthUser } from "@/lib/auth/cookies"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
+import { ProtectedPhone } from "@/components/security/protected-phone"
 import { exportLeadsToExcel } from "@/lib/export-leads"
 
 interface Crm {
@@ -189,6 +191,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("")
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS })
   const [showFilters, setShowFilters] = useState(false)
+  const isSuperAdmin = getAuthUser()?.role === "super_admin"
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
@@ -221,6 +224,7 @@ export default function LeadsPage() {
   const filtered = useMemo(() => filterLeads(leads, search, filters), [leads, search, filters])
 
   const handleExport = useCallback(async () => {
+    if (!isSuperAdmin) return
     setExporting(true)
     try {
       const latest = await loadMetaLeads()
@@ -231,7 +235,7 @@ export default function LeadsPage() {
     } finally {
       setExporting(false)
     }
-  }, [filters, search])
+  }, [filters, isSuperAdmin, search])
 
   // Surface leads the exec hasn't acted on yet: anything without a logged call
   // status sorts to the top so fresh leads are the first thing they see.
@@ -266,12 +270,14 @@ export default function LeadsPage() {
           </p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          <Button variant="outline" size="sm" className="gap-2"
-            onClick={handleExport}
-            disabled={filtered.length === 0 || exporting}>
-            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            {exporting ? "Exporting" : "Export"}
-          </Button>
+          {isSuperAdmin && (
+            <Button variant="outline" size="sm" className="gap-2"
+              onClick={handleExport}
+              disabled={filtered.length === 0 || exporting}>
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {exporting ? "Exporting" : "Export"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-2" onClick={fetchLeads} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Refresh
@@ -424,9 +430,9 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     {lead.phone && (
-                      <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
+                      <ProtectedPhone value={lead.phone} className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
                         <Phone className="w-3 h-3" />{formatPhone(lead.phone)}
-                      </span>
+                      </ProtectedPhone>
                     )}
                     {lead.city && (
                       <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
