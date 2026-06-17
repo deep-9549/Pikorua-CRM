@@ -390,26 +390,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     async function load() {
       setLoading(true)
       try {
-        const [leadRes, crmRes] = await Promise.all([
-          fetch(`/api/leads/meta/${id}`),
-          fetch(`/api/leads/meta/${id}/crm`),
-        ])
-        const [leadJson, crmJson] = await Promise.all([leadRes.json(), crmRes.json()])
+        // One request fetches the lead, its CRM, the client profile and history.
+        const res = await fetch(`/api/leads/meta/${id}/detail`)
+        const json = await res.json().catch(() => ({}))
 
-        if (leadJson.lead) {
-          setLead(leadJson.lead)
-          if (leadJson.lead.client_id) {
-            const clientRes = await fetch(`/api/clients/${leadJson.lead.client_id}`)
-            const clientJson = await clientRes.json()
-            if (clientJson.client) {
-              setClient(clientJson.client)
-              setClientStatus(CLIENT_STATUS_VALUES.has(clientJson.client.status) ? clientJson.client.status : null)
-              setClientNote(clientJson.client.status_note ?? "")
-            }
-            if (clientJson.leads) setHistory(clientJson.leads)
-          }
+        if (json.lead) setLead(json.lead)
+        if (json.crm) setCrm(prev => ({ ...prev, ...json.crm }))
+        if (json.client) {
+          setClient(json.client)
+          setClientStatus(CLIENT_STATUS_VALUES.has(json.client.status) ? json.client.status : null)
+          setClientNote(json.client.status_note ?? "")
         }
-        if (crmJson.crm) setCrm(prev => ({ ...prev, ...crmJson.crm }))
+        if (json.history) setHistory(json.history)
       } finally {
         setLoading(false)
       }
@@ -439,11 +431,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         current_area: crm.current_area,
         remarks: crm.remarks,
       }
-      const res = await fetch(`/api/leads/meta/${id}/crm`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+      // Fire the CRM save and the client-status save together instead of waiting
+      // for one before starting the other.
+      const [res, statusRes] = await Promise.all([
+        fetch(`/api/leads/meta/${id}/crm`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }),
+        client
+          ? fetch(`/api/clients/${client.id}/status`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: clientStatus, status_note: clientNote }),
+            })
+          : Promise.resolve(null),
+      ])
+
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
         const msg = Array.isArray(json.message) ? json.message.join(", ") : (json.message ?? json.error ?? "Failed to save")
@@ -452,12 +456,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
       if (json.lead?.crm) setCrm(prev => ({ ...prev, ...json.lead.crm }))
 
-      if (client) {
-        const statusRes = await fetch(`/api/clients/${client.id}/status`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: clientStatus, status_note: clientNote }),
-        })
+      if (statusRes) {
         const statusJson = await statusRes.json().catch(() => ({}))
         if (!statusRes.ok) {
           const msg = Array.isArray(statusJson.message)

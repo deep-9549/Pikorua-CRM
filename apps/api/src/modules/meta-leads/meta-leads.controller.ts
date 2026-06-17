@@ -36,6 +36,17 @@ export class MetaLeadsController {
     return result
   }
 
+  @Get(':id/detail')
+  @ApiOperation({ summary: 'Get a lead with CRM, client profile and history in one call' })
+  async detail(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
+    const result = await this.metaLeadsService.detail(id)
+    // A sales executive may only open leads assigned to them.
+    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id) {
+      throw new ForbiddenException('You can only view leads assigned to you')
+    }
+    return result
+  }
+
   @Post(':id/assign')
   @Roles('super_admin')
   @ApiOperation({ summary: 'Assign a lead to an employee' })

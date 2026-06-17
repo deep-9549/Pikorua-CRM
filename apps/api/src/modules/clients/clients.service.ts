@@ -37,17 +37,20 @@ export class ClientsService {
   private get db() { return this.database.db }
 
   async findOne(id: string) {
-    const client = await this.db.query.clients.findFirst({
-      where: eq(clients.id, id),
-      with: { statusUpdatedByProfile: true },
-    })
+    // The client row and its lead history are independent reads — run them in
+    // parallel so we pay one round-trip of latency instead of two.
+    const [client, leads] = await Promise.all([
+      this.db.query.clients.findFirst({
+        where: eq(clients.id, id),
+        with: { statusUpdatedByProfile: true },
+      }),
+      this.db.query.metaLeads.findMany({
+        where: eq(metaLeads.clientId, id),
+        with: { assignedToProfile: true, crmDetails: true },
+        orderBy: (t, { desc }) => [desc(t.receivedAt)],
+      }),
+    ])
     if (!client) throw new NotFoundException(`Client ${id} not found`)
-
-    const leads = await this.db.query.metaLeads.findMany({
-      where: eq(metaLeads.clientId, id),
-      with: { assignedToProfile: true, crmDetails: true },
-      orderBy: (t, { desc }) => [desc(t.receivedAt)],
-    })
 
     // Compute derived fields from leads
     const firstLead = leads[leads.length - 1]

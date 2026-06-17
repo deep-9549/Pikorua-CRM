@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo } from "react"
+import { useMetaLeads } from "@/hooks/use-meta-leads"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -131,21 +132,8 @@ const EMPTY_FILTERS = {
 }
 
 type LeadFilters = typeof EMPTY_FILTERS
-type ApiMetaLead = MetaLead & { crm?: Crm | Crm[] | null }
 
-function normalizeLeads(rawLeads: ApiMetaLead[]): MetaLead[] {
-  return rawLeads.map((lead) => ({
-    ...lead,
-    crm: Array.isArray(lead.crm) ? (lead.crm[0] ?? null) : (lead.crm ?? null),
-  }))
-}
-
-async function loadMetaLeads() {
-  const res = await fetch("/api/leads/meta", { cache: "no-store" })
-  if (!res.ok) throw new Error("Failed to load leads")
-  const json = await res.json()
-  return normalizeLeads(json.leads ?? [])
-}
+const EMPTY_LEADS: MetaLead[] = []
 
 function filterLeads(leads: MetaLead[], search: string, filters: LeadFilters) {
   return leads.filter(l => {
@@ -184,28 +172,14 @@ function dateKey(value: string | Date | null | undefined) {
 }
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<MetaLead[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading: loading, error: queryError, refetch } = useMetaLeads<MetaLead>()
+  const leads = data ?? EMPTY_LEADS
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "Unknown error") : null
   const [exporting, setExporting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS })
   const [showFilters, setShowFilters] = useState(false)
   const isSuperAdmin = getAuthUser()?.role === "super_admin"
-
-  const fetchLeads = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      setLeads(await loadMetaLeads())
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { fetchLeads() }, [fetchLeads])
 
   // Unique executives present in the data (for the assigned-to filter)
   const execs = useMemo(() => {
@@ -227,15 +201,15 @@ export default function LeadsPage() {
     if (!isSuperAdmin) return
     setExporting(true)
     try {
-      const latest = await loadMetaLeads()
-      setLeads(latest)
+      const result = await refetch()
+      const latest = (result.data ?? []) as MetaLead[]
       exportLeadsToExcel(filterLeads(latest, search, filters), "leads")
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to export latest leads")
     } finally {
       setExporting(false)
     }
-  }, [filters, isSuperAdmin, search])
+  }, [filters, isSuperAdmin, search, refetch])
 
   // Surface leads the exec hasn't acted on yet: anything without a logged call
   // status sorts to the top so fresh leads are the first thing they see.
@@ -278,7 +252,7 @@ export default function LeadsPage() {
               {exporting ? "Exporting" : "Export"}
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-2" onClick={fetchLeads} disabled={loading}>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => refetch()} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Refresh
           </Button>

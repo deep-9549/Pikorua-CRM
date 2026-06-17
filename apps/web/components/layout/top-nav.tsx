@@ -27,6 +27,7 @@ import {
 import { ReminderDialog } from "@/components/reminder-dialog"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { employees } from "@/lib/data"
+import { useMetaLeads } from "@/hooks/use-meta-leads"
 
 const pageNames: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -257,44 +258,28 @@ export function TopNav({
     }
   }, [leadDetailId])
 
+  // Follow-up notifications are derived from the shared, cached leads query —
+  // the same one the leads page uses — so the nav no longer refetches every
+  // navigation.
+  const { data: metaLeads } = useMetaLeads<FollowUpLead>()
+
   React.useEffect(() => {
-    let cancelled = false
+    if (!metaLeads) return
+    const generated = buildFollowUpNotifications(metaLeads)
 
-    async function loadFollowUpNotifications() {
-      try {
-        const res = await fetch("/api/leads/meta", { cache: "no-store" })
-        if (!res.ok) return
-        const json = await res.json().catch(() => ({}))
-        const leads: FollowUpLead[] = (json.leads ?? []).map((lead: FollowUpLead & { crm?: FollowUpLead["crm"] | FollowUpLead["crm"][] }) => ({
-          ...lead,
-          crm: Array.isArray(lead.crm) ? (lead.crm[0] ?? null) : (lead.crm ?? null),
-        }))
-        const generated = buildFollowUpNotifications(leads)
-        if (cancelled) return
-
-        setNotifications(previous => {
-          const generatedIds = new Set(["followups-today", "followups-overdue"])
-          const readById = new Map(previous.map(notification => [notification.id, notification.read]))
-          const manualNotifications = previous.filter(notification => !generatedIds.has(notification.id))
-          return [
-            ...generated.map(notification => ({
-              ...notification,
-              read: readById.get(notification.id) ?? notification.read,
-            })),
-            ...manualNotifications,
-          ]
-        })
-      } catch {
-        // Notifications are helpful, but the nav must remain non-blocking.
-      }
-    }
-
-    loadFollowUpNotifications()
-
-    return () => {
-      cancelled = true
-    }
-  }, [pathname])
+    setNotifications(previous => {
+      const generatedIds = new Set(["followups-today", "followups-overdue"])
+      const readById = new Map(previous.map(notification => [notification.id, notification.read]))
+      const manualNotifications = previous.filter(notification => !generatedIds.has(notification.id))
+      return [
+        ...generated.map(notification => ({
+          ...notification,
+          read: readById.get(notification.id) ?? notification.read,
+        })),
+        ...manualNotifications,
+      ]
+    })
+  }, [metaLeads])
 
   const breadcrumbs = React.useMemo(() => {
     return pathname.split("/").filter(Boolean).map((seg, i, arr) => {

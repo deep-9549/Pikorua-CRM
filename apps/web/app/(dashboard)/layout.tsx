@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar"
 import { TopNav } from "@/components/layout/top-nav"
 import { CommandPalette } from "@/components/layout/command-palette"
 import { PrivacyGuard } from "@/components/security/privacy-guard"
+import { QueryProvider } from "@/components/providers/query-provider"
 
 export default function DashboardLayout({
   children,
@@ -17,6 +18,7 @@ export default function DashboardLayout({
   const sidebarOffset = sidebarCollapsed ? 68 : 256
 
   return (
+    <QueryProvider>
     <div
       className="min-h-screen bg-background"
       style={{ "--sidebar-offset": `${sidebarOffset}px` } as React.CSSProperties}
@@ -47,6 +49,7 @@ export default function DashboardLayout({
       />
       <PrivacyGuard />
     </div>
+    </QueryProvider>
   )
 }
 

@@ -71,7 +71,9 @@ export class LeadsService {
   }
 
   async update(id: string, dto: UpdateLeadDto, userId?: string) {
-    await this.findOne(id)
+    // Fetch the lead once (404s if missing) and reuse it for the response so we
+    // don't re-query the whole lead graph after writing.
+    const lead = await this.findOne(id)
     const existing = await this.db.query.leadCrmDetails.findFirst({
       where: eq(leadCrmDetails.leadId, id),
     })
@@ -134,10 +136,15 @@ export class LeadsService {
       await this.db.insert(leadCrmDetails).values({ leadId: id, ...payload })
     }
 
-    // Sync to siteVisits table so the site visits page reflects CRM changes
-    await this.syncSiteVisit(id, dto, userId)
+    // Sync to siteVisits table only when a site-visit field was actually part of
+    // this update — a plain CRM save shouldn't touch the site_visits table.
+    if (dto.site_visit_status !== undefined) {
+      await this.syncSiteVisit(id, dto, userId)
+    }
 
-    return this.findOne(id)
+    // Return the updated lead built from data already in hand — no extra query.
+    const mergedCrm = serializeCrmDetails({ ...(existing ?? {}), ...payload })
+    return { ...lead, crm: mergedCrm }
   }
 
   private async syncSiteVisit(leadId: string, dto: UpdateLeadDto, userId?: string) {

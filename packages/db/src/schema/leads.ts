@@ -1,5 +1,5 @@
 import {
-  pgTable, uuid, text, timestamp, jsonb, boolean, integer, numeric, pgEnum,
+  pgTable, uuid, text, timestamp, jsonb, boolean, integer, numeric, pgEnum, index,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { userProfiles } from './users'
@@ -35,7 +35,13 @@ export const metaLeads = pgTable('meta_leads', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
-})
+}, (t) => [
+  // Sales execs filter by assignee; the list orders by received_at over live rows.
+  index('meta_leads_assigned_to_idx').on(t.assignedTo),
+  index('meta_leads_client_id_idx').on(t.clientId),
+  index('meta_leads_phone_idx').on(t.phone),
+  index('meta_leads_deleted_received_idx').on(t.deletedAt, t.receivedAt),
+])
 
 // CRM details attached to a meta_lead after assignment
 export const leadCrmDetails = pgTable('lead_crm_details', {
@@ -85,7 +91,9 @@ export const leadNotes = pgTable('lead_notes', {
   content: text('content').notNull(),
   type: text('type').default('general'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-})
+}, (t) => [
+  index('lead_notes_lead_id_idx').on(t.leadId),
+])
 
 export const leadInteractions = pgTable('lead_interactions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -97,7 +105,9 @@ export const leadInteractions = pgTable('lead_interactions', {
   duration: integer('duration'),
   timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-})
+}, (t) => [
+  index('lead_interactions_lead_id_idx').on(t.leadId),
+])
 
 // ── Relations ─────────────────────────────────────────────────────────────────
 

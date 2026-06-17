@@ -4,13 +4,17 @@ import { DatabaseService } from '../../database/database.service'
 import { metaLeads, userProfiles, clients } from '@pikorua/db'
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
-import { serializeMetaLead } from '../leads/lead.serializer'
+import { serializeMetaLead, serializeCrmDetails } from '../leads/lead.serializer'
+import { ClientsService } from '../clients/clients.service'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
 @Injectable()
 export class MetaLeadsService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly clientsService: ClientsService,
+  ) {}
 
   private get db() { return this.database.db }
 
@@ -125,6 +129,55 @@ export class MetaLeadsService {
     }
 
     return { lead: serializeMetaLead({ ...lead, clientId, clientStatus, clientStatusNote }) }
+  }
+
+  /**
+   * Everything the lead detail page needs in a single request: the lead (with
+   * CRM, notes, interactions), its client profile, and the client's full lead
+   * history. Replaces the old three sequential browser round-trips
+   * (/meta/:id + /meta/:id/crm + /clients/:id).
+   */
+  async detail(id: string) {
+    const lead = await this.db.query.metaLeads.findFirst({
+      where: and(eq(metaLeads.id, id), isNull(metaLeads.deletedAt)),
+      with: {
+        assignedToProfile: true,
+        assignedByProfile: true,
+        crmDetails: true,
+        notes: true,
+        interactions: true,
+      },
+    })
+    if (!lead) throw new NotFoundException(`Meta lead ${id} not found`)
+
+    // Link a client if needed (cheap no-op once the lead is already linked).
+    const clientId = await this.ensureClient(lead)
+
+    let client: unknown = null
+    let history: unknown[] = []
+    let clientStatus: string | null = null
+    let clientStatusNote: string | null = null
+    if (clientId) {
+      // A missing client shouldn't take down the whole lead page — degrade to
+      // showing the lead without its profile/history (matches the old behaviour).
+      try {
+        const profile = await this.clientsService.findOne(clientId)
+        client = profile.client
+        history = profile.leads
+        clientStatus = profile.client?.status ?? null
+        clientStatusNote = profile.client?.status_note ?? null
+      } catch {
+        client = null
+        history = []
+      }
+    }
+
+    return {
+      lead: serializeMetaLead({ ...lead, clientId, clientStatus, clientStatusNote }),
+      crm: serializeCrmDetails(lead.crmDetails),
+      client,
+      history,
+    }
   }
 
   async assign(id: string, assignedBy: string, dto: AssignLeadDto) {
