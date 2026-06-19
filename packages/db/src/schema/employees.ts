@@ -4,7 +4,8 @@ import { userProfiles } from './users'
 
 export const employees = pgTable('employees', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => userProfiles.id).notNull().unique(),
+  // Keep the employee audit row after an account is hard-deleted.
+  userId: uuid('user_id').references(() => userProfiles.id, { onDelete: 'set null' }).unique(),
   tenantId: uuid('tenant_id').notNull(),
   employeeCode: text('employee_code'),
   role: text('role').notNull(),

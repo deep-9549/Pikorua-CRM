@@ -3,6 +3,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { IsString, IsOptional } from 'class-validator'
 import { ClientsService } from './clients.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { RolesGuard } from '../../common/guards/roles.guard'
+import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 
 class UpdateStatusDto {
@@ -12,7 +14,7 @@ class UpdateStatusDto {
 
 @ApiTags('Clients')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('clients')
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
@@ -22,6 +24,7 @@ export class ClientsController {
   findOne(@Param('id') id: string) { return this.clientsService.findOne(id) }
 
   @Put(':id/status')
+  @Roles('super_admin')
   @ApiOperation({ summary: 'Update client status' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateStatusDto, @CurrentUser() user: { id: string }) {
     return this.clientsService.updateStatus(id, user.id, dto.status ?? null, dto.status_note)

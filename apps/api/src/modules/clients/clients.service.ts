@@ -1,13 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { eq, and } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { clients, metaLeads } from '@pikorua/db'
 import { serializeMetaLead } from '../leads/lead.serializer'
-
-function serializeProfile(profile: any) {
-  if (!profile) return null
-  return { full_name: profile.fullName ?? profile.full_name ?? null }
-}
+import { serializeProfile } from '../../common/serializers/profile.serializer'
 
 function serializeClient(client: any) {
   return {
@@ -32,6 +28,8 @@ function serializeClient(client: any) {
 
 @Injectable()
 export class ClientsService {
+  private readonly logger = new Logger(ClientsService.name)
+
   constructor(private readonly database: DatabaseService) {}
 
   private get db() { return this.database.db }
@@ -112,6 +110,8 @@ export class ClientsService {
           eq(metaLeads.status, 'cold_pool' as never),
         ))
     }
+
+    this.logger.log(`Client ${id} status changed to '${status ?? 'none'}' by ${updatedBy}`)
 
     const full = await this.db.query.clients.findFirst({
       where: eq(clients.id, id),

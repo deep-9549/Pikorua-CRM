@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, jsonb, pgEnum, index } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { metaLeads } from './leads'
 import { userProfiles } from './users'
@@ -17,12 +17,15 @@ export const conversations = pgTable('conversations', {
   lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-})
+}, (t) => [
+  // Conversations are looked up and access-filtered by their lead.
+  index('conversations_lead_id_idx').on(t.leadId),
+])
 
 export const messages = pgTable('messages', {
   id: uuid('id').primaryKey().defaultRandom(),
   conversationId: uuid('conversation_id').references(() => conversations.id).notNull(),
-  senderId: uuid('sender_id').references(() => userProfiles.id),
+  senderId: uuid('sender_id').references(() => userProfiles.id, { onDelete: 'set null' }),
   senderType: messageSenderEnum('sender_type').notNull(),
   type: messageTypeEnum('type').default('text').notNull(),
   content: text('content'),
@@ -30,7 +33,10 @@ export const messages = pgTable('messages', {
   aiAnalysis: jsonb('ai_analysis'),
   sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-})
+}, (t) => [
+  // Messages are always fetched for a conversation, newest first.
+  index('messages_conversation_sent_idx').on(t.conversationId, t.sentAt),
+])
 
 // ── Relations ─────────────────────────────────────────────────────────────────
 

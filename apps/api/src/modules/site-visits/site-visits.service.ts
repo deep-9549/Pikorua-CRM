@@ -5,17 +5,9 @@ import { siteVisits } from '@pikorua/db'
 import { CreateSiteVisitDto } from './dto/create-site-visit.dto'
 import { UpdateSiteVisitDto } from './dto/update-site-visit.dto'
 import { serializeMetaLead } from '../leads/lead.serializer'
+import { serializeProfile } from '../../common/serializers/profile.serializer'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
-
-function serializeProfile(profile: any) {
-  if (!profile) return null
-
-  return {
-    id: profile.id,
-    full_name: profile.fullName ?? profile.full_name ?? null,
-  }
-}
 
 function toUiVisitStatus(visit: any) {
   if (visit.status === 'completed') return 'visited'

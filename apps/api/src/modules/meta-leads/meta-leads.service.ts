@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { eq, inArray, desc, and, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, userProfiles, clients } from '@pikorua/db'
@@ -11,6 +11,8 @@ const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
 @Injectable()
 export class MetaLeadsService {
+  private readonly logger = new Logger(MetaLeadsService.name)
+
   constructor(
     private readonly database: DatabaseService,
     private readonly clientsService: ClientsService,
@@ -166,7 +168,11 @@ export class MetaLeadsService {
         history = profile.leads
         clientStatus = profile.client?.status ?? null
         clientStatusNote = profile.client?.status_note ?? null
-      } catch {
+      } catch (error) {
+        // Degrade gracefully, but record why so a DB/network failure is
+        // distinguishable from a genuinely missing client.
+        const message = error instanceof Error ? error.message : String(error)
+        this.logger.warn(`Client lookup failed for lead ${id} (client ${clientId}): ${message}`)
         client = null
         history = []
       }
@@ -190,6 +196,7 @@ export class MetaLeadsService {
       .where(eq(metaLeads.id, id))
       .returning()
     if (!updated) throw new NotFoundException(`Meta lead ${id} not found`)
+    this.logger.log(`Lead ${id} assigned to ${dto.assigned_to} by ${assignedBy}`)
     return this.findOne(id)
   }
 
@@ -201,6 +208,7 @@ export class MetaLeadsService {
       .set({ assignedTo: dto.assigned_to, assignedBy, assignedAt: new Date(), status: 'assigned' })
       .where(inArray(metaLeads.id, dto.lead_ids))
       .returning()
+    this.logger.log(`Bulk-assigned ${updated.length} lead(s) to ${dto.assigned_to} by ${assignedBy}`)
     return { updated: updated.length }
   }
 
@@ -212,6 +220,7 @@ export class MetaLeadsService {
       .where(eq(metaLeads.id, id))
       .returning()
     if (!updated) throw new NotFoundException(`Meta lead ${id} not found`)
+    this.logger.log(`Lead ${id} unassigned`)
     return this.findOne(id)
   }
 

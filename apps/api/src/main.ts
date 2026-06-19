@@ -7,6 +7,12 @@ import { AppModule } from './app.module'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
+  // Gracefully shut down on SIGTERM/SIGINT: this registers signal listeners that
+  // close the HTTP server (draining in-flight requests) and fire OnModuleDestroy
+  // hooks — including DatabaseService closing its connection pool. Deploys and
+  // scale-downs no longer sever requests or leak DB connections.
+  app.enableShutdownHooks()
+
   app.setGlobalPrefix('api', {
     exclude: [{ path: '', method: RequestMethod.GET }],
   })

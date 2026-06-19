@@ -14,19 +14,19 @@ export class WhatsappController {
 
   @Get('conversations')
   @ApiOperation({ summary: 'List all WhatsApp conversations' })
-  findAll() {
-    return this.whatsappService.findAllConversations()
+  findAll(@CurrentUser() user: { id: string; role: string }) {
+    return this.whatsappService.findAllConversations(user)
   }
 
   @Get('conversations/:leadId')
   @ApiOperation({ summary: 'Get conversation for a lead' })
-  findByLead(@Param('leadId') leadId: string) {
-    return this.whatsappService.findConversationByLeadId(leadId)
+  findByLead(@Param('leadId') leadId: string, @CurrentUser() user: { id: string; role: string }) {
+    return this.whatsappService.findConversationByLeadId(leadId, user)
   }
 
   @Post('messages')
   @ApiOperation({ summary: 'Send a WhatsApp message' })
-  sendMessage(@Body() dto: SendMessageDto, @CurrentUser() user: { id: string }) {
-    return this.whatsappService.sendMessage(user.id, dto)
+  sendMessage(@Body() dto: SendMessageDto, @CurrentUser() user: { id: string; role: string }) {
+    return this.whatsappService.sendMessage(user, dto)
   }
 }

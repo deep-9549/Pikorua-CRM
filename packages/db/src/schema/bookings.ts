@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, numeric, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, numeric, pgEnum, index } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { metaLeads } from './leads'
 import { properties } from './properties'
@@ -11,7 +11,7 @@ export const bookings = pgTable('bookings', {
   tenantId: uuid('tenant_id').notNull(),
   leadId: uuid('lead_id').references(() => metaLeads.id).notNull(),
   propertyId: uuid('property_id').references(() => properties.id).notNull(),
-  assignedTo: uuid('assigned_to').references(() => userProfiles.id),
+  assignedTo: uuid('assigned_to').references(() => userProfiles.id, { onDelete: 'set null' }),
   amount: numeric('amount', { precision: 15, scale: 2 }).notNull(),
   commission: numeric('commission', { precision: 15, scale: 2 }),
   status: bookingStatusEnum('status').default('pending').notNull(),
@@ -19,7 +19,12 @@ export const bookings = pgTable('bookings', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
-})
+}, (t) => [
+  // The list filters by status; lead/property are joined when loading relations.
+  index('bookings_status_idx').on(t.status),
+  index('bookings_lead_id_idx').on(t.leadId),
+  index('bookings_property_id_idx').on(t.propertyId),
+])
 
 // ── Relations ─────────────────────────────────────────────────────────────────
 

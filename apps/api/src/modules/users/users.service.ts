@@ -95,12 +95,16 @@ export class UsersService {
 
       await tx
         .update(employees)
-        .set({ status: 'inactive', deletedAt: now, updatedAt: now })
+        .set({
+          status: 'inactive',
+          phoneEncrypted: null,
+          deletedAt: now,
+          updatedAt: now,
+        })
         .where(eq(employees.userId, id))
 
       await tx
-        .update(userProfiles)
-        .set({ status: 'inactive', deletedAt: now, updatedAt: now })
+        .delete(userProfiles)
         .where(eq(userProfiles.id, id))
     })
 

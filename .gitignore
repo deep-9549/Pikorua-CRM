@@ -53,6 +53,8 @@ coverage/
 # ── Database ───────────────────────────────────────────────────────────────────
 drizzle/
 *.sql
+!db_migrations/2026-06-19-hard-delete-users-preserve-lead-history.sql
+!db_migrations/2026-06-19-add-access-and-perf-indexes.sql
 
 # ── Seed scripts (contain credentials) ────────────────────────────────────────
 apps/api/scripts/seed-*.js

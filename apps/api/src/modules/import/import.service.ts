@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger } from '@nestjs/common'
 import { and, inArray, isNull } from 'drizzle-orm'
 import * as XLSX from 'xlsx'
 import { DatabaseService } from '../../database/database.service'
@@ -69,6 +69,8 @@ interface ParsedRow {
 
 @Injectable()
 export class ImportService {
+  private readonly logger = new Logger(ImportService.name)
+
   constructor(private readonly database: DatabaseService) {}
 
   private get db() { return this.database.db }
@@ -330,6 +332,9 @@ export class ImportService {
     }
 
     result.inserted = leadIds.length
+    this.logger.log(
+      `Import complete: ${result.inserted} inserted, ${result.skipped} skipped, ${result.errors.length} error(s)`,
+    )
     return result
   }
 

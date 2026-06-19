@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
@@ -8,6 +8,8 @@ import { LoginDto } from './dto/login.dto'
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name)
+
   constructor(
     private readonly database: DatabaseService,
     private readonly jwtService: JwtService,
@@ -25,11 +27,19 @@ export class AuthService {
     })
 
     if (!user || !user.passwordHash) {
+      // Log failed attempts (email only, never the password) so brute-force
+      // patterns are visible. The client still gets a generic message.
+      this.logger.warn(`Failed login attempt for ${dto.email}`)
       throw new UnauthorizedException('Invalid credentials')
     }
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash)
-    if (!valid) throw new UnauthorizedException('Invalid credentials')
+    if (!valid) {
+      this.logger.warn(`Failed login attempt for ${dto.email}`)
+      throw new UnauthorizedException('Invalid credentials')
+    }
+
+    this.logger.log(`User ${user.id} logged in`)
 
     const payload = {
       sub: user.id,

@@ -1,13 +1,4 @@
-function serializeProfile(profile: any) {
-  if (!profile) return null
-
-  return {
-    id: profile.id,
-    full_name: profile.fullName ?? profile.full_name ?? null,
-    email: profile.email ?? null,
-    role: profile.role ?? null,
-  }
-}
+import { serializeProfile } from '../../common/serializers/profile.serializer'
 
 // DB enum → UI value mappings (reverse of what LeadsService.update writes)
 const SITE_VISIT_DB_TO_UI: Record<string, string> = {

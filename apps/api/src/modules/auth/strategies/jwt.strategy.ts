@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt'
 import { and, eq, isNull } from 'drizzle-orm'
 import { userProfiles } from '@pikorua/db'
 import { DatabaseService } from '../../../database/database.service'
+import { getJwtSecret } from '../../../common/config/jwt'
 
 export interface JwtPayload {
   sub: string
@@ -18,7 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET ?? 'change-me-in-production',
+      secretOrKey: getJwtSecret(),
     })
   }
 
