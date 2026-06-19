@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcryptjs'
-import { eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { userProfiles } from '@pikorua/db'
 import { LoginDto } from './dto/login.dto'
@@ -17,7 +17,11 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.db.query.userProfiles.findFirst({
-      where: eq(userProfiles.email, dto.email),
+      where: and(
+        eq(userProfiles.email, dto.email),
+        eq(userProfiles.status, 'active'),
+        isNull(userProfiles.deletedAt),
+      ),
     })
 
     if (!user || !user.passwordHash) {
@@ -26,10 +30,6 @@ export class AuthService {
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash)
     if (!valid) throw new UnauthorizedException('Invalid credentials')
-
-    if (user.status !== 'active') {
-      throw new UnauthorizedException('Account is inactive')
-    }
 
     const payload = {
       sub: user.id,
@@ -46,7 +46,11 @@ export class AuthService {
 
   async getMe(userId: string) {
     const user = await this.db.query.userProfiles.findFirst({
-      where: eq(userProfiles.id, userId),
+      where: and(
+        eq(userProfiles.id, userId),
+        eq(userProfiles.status, 'active'),
+        isNull(userProfiles.deletedAt),
+      ),
     })
     if (!user) throw new UnauthorizedException()
     return { id: user.id, name: user.fullName, email: user.email, role: user.role }

@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'
-import { eq, isNull, desc } from 'drizzle-orm'
+import { and, eq, isNull, desc } from 'drizzle-orm'
 import * as bcrypt from 'bcryptjs'
 import { DatabaseService } from '../../database/database.service'
-import { employees, userProfiles } from '@pikorua/db'
+import { employees, metaLeads, userProfiles } from '@pikorua/db'
 import { CreateUserDto } from './dto/create-user.dto'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
@@ -73,7 +73,37 @@ export class UsersService {
     if (id === requesterId) throw new ConflictException('Cannot delete your own account')
     const user = await this.db.query.userProfiles.findFirst({ where: eq(userProfiles.id, id) })
     if (!user) throw new NotFoundException(`User ${id} not found`)
-    await this.db.update(userProfiles).set({ deletedAt: new Date() }).where(eq(userProfiles.id, id))
+
+    const now = new Date()
+    await this.db.transaction(async (tx) => {
+      // Only active assignments return to the queue. Historical/converted lead
+      // states remain untouched, and all CRM detail/history rows are preserved.
+      await tx
+        .update(metaLeads)
+        .set({
+          assignedTo: null,
+          assignedBy: null,
+          assignedAt: null,
+          status: 'unassigned',
+          updatedAt: now,
+        })
+        .where(and(
+          eq(metaLeads.assignedTo, id),
+          eq(metaLeads.status, 'assigned'),
+          isNull(metaLeads.deletedAt),
+        ))
+
+      await tx
+        .update(employees)
+        .set({ status: 'inactive', deletedAt: now, updatedAt: now })
+        .where(eq(employees.userId, id))
+
+      await tx
+        .update(userProfiles)
+        .set({ status: 'inactive', deletedAt: now, updatedAt: now })
+        .where(eq(userProfiles.id, id))
+    })
+
     return { deleted: true }
   }
 }
