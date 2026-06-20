@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Calendar, Clock, Phone, Plus, CheckCircle2,
-  AlertCircle, Loader2, RefreshCw, MapPin, User, Search, X
+  AlertCircle, Loader2, RefreshCw, MapPin, User, Search,
+  Mail, Briefcase, Building2, DollarSign, MessageSquare, Flame,
+  Thermometer, Snowflake,
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -13,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
@@ -24,12 +27,32 @@ import { getAuthUser } from "@/lib/auth/cookies"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface VisitCrm {
+  call_status: string | null
+  hwc: string | null
+  follow_up_date: string | null
+  budget_range: string | null
+  configuration: string[] | null
+  profession: string | null
+  company_name: string | null
+  current_city: string | null
+  current_area: string | null
+  remarks: string | null
+  first_call_date: string | null
+  last_call_date: string | null
+  buying_status: string | null
+}
+
 interface VisitRow {
+  id: string
   meta_lead_id: string
   site_visit_status: "yet_to_visit" | "visit_week_confirmed" | "visit_date_confirmed" | "visited"
   visit_date: string | null
   visit_confirmation_date: string | null
   updated_at: string
+  notes: string | null
+  feedback: string | null
+  rating: number | null
   scheduled_by_profile: { id: string; full_name: string } | null
   lead: {
     id: string
@@ -38,7 +61,9 @@ interface VisitRow {
     email: string | null
     city: string | null
     campaign_name: string | null
+    source: string | null
     assigned_to_profile: { id: string; full_name: string } | null
+    crm?: VisitCrm | null
   }
 }
 
@@ -53,6 +78,18 @@ const STATUS_META: Record<VisitRow["site_visit_status"], { label: string; color:
   visit_week_confirmed:   { label: "Week Confirmed",         color: "oklch(0.78 0.15 65)",   bg: "oklch(0.78 0.15 65 / 0.15)" },
   visit_date_confirmed:   { label: "Date Confirmed",         color: "oklch(0.65 0.15 145)",  bg: "oklch(0.65 0.15 145 / 0.15)" },
   visited:                { label: "Visited",                color: "oklch(0.65 0.15 145)",  bg: "oklch(0.65 0.15 145 / 0.15)" },
+}
+
+const HWC_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  hot:  { label: "Hot",  icon: Flame,       color: "oklch(0.75 0.18 35)" },
+  warm: { label: "Warm", icon: Thermometer, color: "oklch(0.78 0.15 65)" },
+  cold: { label: "Cold", icon: Snowflake,   color: "oklch(0.65 0.15 250)" },
+}
+
+const CALL_STATUS_COLORS: Record<string, string> = {
+  spoken:         "oklch(0.65 0.15 145)",
+  not_spoken:     "var(--color-destructive)",
+  call_back_later:"var(--color-primary)",
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -72,6 +109,13 @@ function fmtDateTime(iso: string | null) {
   })
 }
 
+function fmtDate(iso: string | null) {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return null
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+}
+
 function isOverdue(v: VisitRow) {
   if (v.site_visit_status !== "visit_date_confirmed") return false
   if (!v.visit_date) return false
@@ -87,13 +131,179 @@ function isToday(iso: string | null) {
     && d.getDate() === now.getDate()
 }
 
-// Convert ISO -> "YYYY-MM-DDTHH:MM" for datetime-local
-function isoToLocalInput(iso: string | null) {
-  if (!iso) return ""
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return ""
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+// ─── Visit Detail Dialog ──────────────────────────────────────────────────────
+
+function DetailRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
+  if (!value) return null
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 shrink-0 w-7 h-7 rounded-lg flex items-center justify-center"
+        style={{ background: "var(--color-muted, oklch(0.96 0 0))" }}>
+        <Icon className="w-3.5 h-3.5" style={{ color: "var(--color-muted-foreground)" }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-medium uppercase tracking-wide mb-0.5" style={{ color: "var(--color-muted-foreground)" }}>{label}</p>
+        <div className="text-sm" style={{ color: "var(--color-foreground)" }}>{value}</div>
+      </div>
+    </div>
+  )
+}
+
+function VisitDetailDialog({ visit, onClose }: { visit: VisitRow | null; onClose: () => void }) {
+  if (!visit) return null
+  const lead = visit.lead
+  const crm = lead.crm
+  const meta = STATUS_META[visit.site_visit_status]
+  const overdue = isOverdue(visit)
+  const when = visit.visit_date ?? visit.visit_confirmation_date
+  const hwcMeta = crm?.hwc ? HWC_META[crm.hwc] : null
+  const HwcIcon = hwcMeta?.icon
+
+  const callStatusLabel: Record<string, string> = {
+    spoken: "Spoken",
+    not_spoken: "Not Spoken",
+    call_back_later: "Call Back Later",
+  }
+  const buyingStatusLabel: Record<string, string> = {
+    ready: "Ready to Buy",
+    still_searching: "Still Searching",
+    postponed: "Postponed",
+  }
+
+  return (
+    <Dialog open={!!visit} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <Avatar className="h-9 w-9 shrink-0">
+              <AvatarFallback className="text-xs gold-gradient" style={{ color: "var(--color-primary-foreground)" }}>
+                {initials(lead.full_name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="text-base font-semibold truncate">{lead.full_name ?? "Unknown"}</p>
+              {lead.campaign_name && (
+                <p className="text-xs font-normal truncate" style={{ color: "var(--color-primary)" }}>{lead.campaign_name}</p>
+              )}
+            </div>
+          </DialogTitle>
+          <DialogDescription className="sr-only">Site visit details for {lead.full_name}</DialogDescription>
+        </DialogHeader>
+
+        {/* Visit status banner */}
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg"
+          style={{ background: meta.bg, border: `1px solid ${meta.color}40` }}>
+          <span className="text-xs font-semibold" style={{ color: meta.color }}>{meta.label}</span>
+          {overdue && (
+            <span className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: "var(--color-destructive)" }}>
+              <AlertCircle className="w-3 h-3" />Overdue
+            </span>
+          )}
+          {when && (
+            <span className="flex items-center gap-1 text-[11px] ml-auto" style={{ color: overdue ? "var(--color-destructive)" : "var(--color-foreground)" }}>
+              <Clock className="w-3 h-3" />{fmtDateTime(when)}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-4 mt-1">
+          {/* Contact info */}
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--color-muted-foreground)" }}>Contact</p>
+            <DetailRow icon={Phone} label="Phone" value={lead.phone ? (
+              <ProtectedPhone value={lead.phone} className="text-sm" style={{ color: "var(--color-foreground)" }}>
+                {formatPhone(lead.phone)}
+              </ProtectedPhone>
+            ) : null} />
+            <DetailRow icon={Mail} label="Email" value={lead.email} />
+            <DetailRow icon={MapPin} label="City" value={lead.city} />
+          </div>
+
+          {crm && (
+            <>
+              {/* Call info */}
+              <div className="space-y-3" style={{ borderTop: "1px solid var(--color-border)", paddingTop: "1rem" }}>
+                <p className="text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--color-muted-foreground)" }}>Call Info</p>
+                {crm.call_status && (
+                  <DetailRow icon={Phone} label="Call Status" value={
+                    <span style={{ color: CALL_STATUS_COLORS[crm.call_status] ?? "var(--color-foreground)" }}>
+                      {callStatusLabel[crm.call_status] ?? crm.call_status}
+                    </span>
+                  } />
+                )}
+                {crm.hwc && hwcMeta && HwcIcon && (
+                  <DetailRow icon={HwcIcon} label="HWC" value={
+                    <span style={{ color: hwcMeta.color }}>{hwcMeta.label}</span>
+                  } />
+                )}
+                <DetailRow icon={Calendar} label="First Call" value={fmtDate(crm.first_call_date)} />
+                <DetailRow icon={Calendar} label="Last Call" value={fmtDate(crm.last_call_date)} />
+                <DetailRow icon={Calendar} label="Follow-up Date" value={fmtDate(crm.follow_up_date)} />
+                {crm.buying_status && (
+                  <DetailRow icon={CheckCircle2} label="Buying Status" value={buyingStatusLabel[crm.buying_status] ?? crm.buying_status} />
+                )}
+              </div>
+
+              {/* Property preferences */}
+              {(crm.budget_range || crm.configuration?.length) && (
+                <div className="space-y-3" style={{ borderTop: "1px solid var(--color-border)", paddingTop: "1rem" }}>
+                  <p className="text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--color-muted-foreground)" }}>Preferences</p>
+                  <DetailRow icon={DollarSign} label="Budget" value={crm.budget_range} />
+                  {crm.configuration && crm.configuration.length > 0 && (
+                    <DetailRow icon={Building2} label="Configuration" value={
+                      <div className="flex flex-wrap gap-1">
+                        {crm.configuration.map(c => (
+                          <Badge key={c} variant="secondary" className="text-[10px]">{c}</Badge>
+                        ))}
+                      </div>
+                    } />
+                  )}
+                </div>
+              )}
+
+              {/* Background */}
+              {(crm.profession || crm.company_name || crm.current_city || crm.current_area) && (
+                <div className="space-y-3" style={{ borderTop: "1px solid var(--color-border)", paddingTop: "1rem" }}>
+                  <p className="text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--color-muted-foreground)" }}>Background</p>
+                  <DetailRow icon={Briefcase} label="Profession" value={crm.profession} />
+                  <DetailRow icon={Building2} label="Company" value={crm.company_name} />
+                  <DetailRow icon={MapPin} label="Current City" value={crm.current_city} />
+                  <DetailRow icon={MapPin} label="Current Area" value={crm.current_area} />
+                </div>
+              )}
+
+              {crm.remarks && (
+                <div className="space-y-3" style={{ borderTop: "1px solid var(--color-border)", paddingTop: "1rem" }}>
+                  <p className="text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--color-muted-foreground)" }}>Remarks</p>
+                  <DetailRow icon={MessageSquare} label="Notes" value={crm.remarks} />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Visit metadata */}
+          <div className="space-y-3" style={{ borderTop: "1px solid var(--color-border)", paddingTop: "1rem" }}>
+            <p className="text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--color-muted-foreground)" }}>Visit Info</p>
+            {visit.scheduled_by_profile && (
+              <DetailRow icon={User} label="Scheduled By" value={visit.scheduled_by_profile.full_name} />
+            )}
+            {lead.assigned_to_profile && (
+              <DetailRow icon={User} label="Assigned To" value={lead.assigned_to_profile.full_name} />
+            )}
+            {visit.notes && <DetailRow icon={MessageSquare} label="Notes" value={visit.notes} />}
+            {visit.feedback && <DetailRow icon={MessageSquare} label="Feedback" value={visit.feedback} />}
+            {visit.rating != null && (
+              <DetailRow icon={CheckCircle2} label="Rating" value={`${visit.rating} / 5`} />
+            )}
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 // ─── Schedule Visit Dialog ────────────────────────────────────────────────────
@@ -114,7 +324,6 @@ function ScheduleVisitDialog({
   useEffect(() => {
     if (!open) return
     setLeadSearch(""); setLeadId(""); setStatus("visit_date_confirmed"); setVisitDate(""); setError(null)
-    // Fetch leads the user can see
     fetch("/api/leads/meta").then(r => r.json()).then(json => {
       const list: LeadOption[] = (json.leads ?? []).map((l: LeadOption) => ({
         id: l.id, full_name: l.full_name, phone: l.phone,
@@ -143,7 +352,6 @@ function ScheduleVisitDialog({
       site_visit_status: status,
     }
     if (needsDate) {
-      // For "visited" we store in visit_date; for "visit_date_confirmed" we use visit_confirmation_date.
       const iso = new Date(visitDate).toISOString()
       if (status === "visited") body.visit_date = iso
       else                       body.visit_confirmation_date = iso
@@ -180,7 +388,6 @@ function ScheduleVisitDialog({
         </DialogHeader>
 
         <div className="space-y-4 mt-1">
-          {/* Lead search + pick */}
           <div className="space-y-1.5">
             <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Lead</Label>
             <div className="relative">
@@ -194,17 +401,13 @@ function ScheduleVisitDialog({
             </div>
             <div className="max-h-44 overflow-y-auto rounded-lg" style={{ border: "1px solid var(--color-border)" }}>
               {filteredLeads.length === 0 ? (
-                <p className="text-xs text-center py-4" style={{ color: "var(--color-muted-foreground)" }}>
-                  No leads
-                </p>
+                <p className="text-xs text-center py-4" style={{ color: "var(--color-muted-foreground)" }}>No leads</p>
               ) : (
                 filteredLeads.map(l => (
                   <button key={l.id} type="button"
                     onClick={() => setLeadId(l.id)}
                     className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors"
-                    style={leadId === l.id
-                      ? { background: "rgb(194 65 12 / 0.12)" }
-                      : { background: "transparent" }}>
+                    style={leadId === l.id ? { background: "rgb(194 65 12 / 0.12)" } : { background: "transparent" }}>
                     <Avatar className="h-6 w-6 shrink-0">
                       <AvatarFallback className="text-[9px]">{initials(l.full_name)}</AvatarFallback>
                     </Avatar>
@@ -224,7 +427,6 @@ function ScheduleVisitDialog({
             </div>
           </div>
 
-          {/* Status */}
           <div className="space-y-1.5">
             <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Visit Status</Label>
             <Select value={status} onValueChange={v => setStatus(v as VisitRow["site_visit_status"])}>
@@ -238,7 +440,6 @@ function ScheduleVisitDialog({
             </Select>
           </div>
 
-          {/* Datetime when applicable */}
           {needsDate && (
             <div className="space-y-1.5">
               <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
@@ -282,7 +483,7 @@ function ScheduleVisitDialog({
 
 // ─── Visit Card ───────────────────────────────────────────────────────────────
 
-function VisitCard({ v, showOwner }: { v: VisitRow; showOwner: boolean }) {
+function VisitCard({ v, showOwner, onClick }: { v: VisitRow; showOwner: boolean; onClick: () => void }) {
   const meta = STATUS_META[v.site_visit_status]
   const overdue = isOverdue(v)
   const when = v.visit_date ?? v.visit_confirmation_date
@@ -292,8 +493,11 @@ function VisitCard({ v, showOwner }: { v: VisitRow; showOwner: boolean }) {
   const showOwnerLine = showOwner && owner && owner !== scheduledBy
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-4 px-4 py-3 rounded-xl"
+    <motion.button
+      type="button"
+      onClick={onClick}
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left transition-all duration-150 hover:scale-[1.005] cursor-pointer"
       style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
       <Avatar className="h-10 w-10 shrink-0">
         <AvatarFallback className="text-xs gold-gradient" style={{ color: "var(--color-primary-foreground)" }}>
@@ -349,7 +553,7 @@ function VisitCard({ v, showOwner }: { v: VisitRow; showOwner: boolean }) {
           </div>
         </div>
       )}
-    </motion.div>
+    </motion.button>
   )
 }
 
@@ -361,6 +565,7 @@ export default function SiteVisitsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedVisit, setSelectedVisit] = useState<VisitRow | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   useEffect(() => {
@@ -370,7 +575,6 @@ export default function SiteVisitsPage() {
     }
   }, [])
 
-  // Determine current user's role for "Owned by" line visibility
   useEffect(() => {
     const user = getAuthUser()
     if (user) {
@@ -487,7 +691,12 @@ export default function SiteVisitsPage() {
         <AnimatePresence initial={false}>
           <div className="space-y-2">
             {visits.map(v => (
-              <VisitCard key={v.meta_lead_id} v={v} showOwner={isSuperAdmin} />
+              <VisitCard
+                key={v.id}
+                v={v}
+                showOwner={isSuperAdmin}
+                onClick={() => setSelectedVisit(v)}
+              />
             ))}
           </div>
         </AnimatePresence>
@@ -497,6 +706,11 @@ export default function SiteVisitsPage() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSaved={() => fetchVisits(tab)}
+      />
+
+      <VisitDetailDialog
+        visit={selectedVisit}
+        onClose={() => setSelectedVisit(null)}
       />
     </div>
   )

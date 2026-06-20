@@ -219,8 +219,40 @@ export default function LeadsPage() {
     return [...filtered].sort((a, b) => contacted(a) - contacted(b))
   }, [filtered])
 
-  // Group by follow-up urgency
   const today = dateKey(new Date())
+
+  // Count spoken / not-spoken calls made today from the full (unfiltered) leads list.
+  // A call counts as "today" if last_call_date or first_call_date falls on today's date.
+  const todayCallStats = useMemo(() => {
+    function calledToday(lead: MetaLead) {
+      const crm = lead.crm
+      if (!crm?.call_status) return false
+      const d = crm.last_call_date ?? crm.first_call_date
+      return !!d && dateKey(d) === today
+    }
+
+    const byExec = new Map<string, { name: string; spoken: number; notSpoken: number }>()
+    let totalSpoken = 0
+    let totalNotSpoken = 0
+
+    leads.forEach(lead => {
+      if (!calledToday(lead)) return
+      const status = lead.crm?.call_status
+      const exec = lead.assigned_to_profile
+      if (!exec) return
+      if (!byExec.has(exec.id)) byExec.set(exec.id, { name: exec.full_name, spoken: 0, notSpoken: 0 })
+      const s = byExec.get(exec.id)!
+      if (status === "spoken") { s.spoken++; totalSpoken++ }
+      if (status === "not_spoken") { s.notSpoken++; totalNotSpoken++ }
+    })
+
+    const execList = Array.from(byExec.values())
+      .sort((a, b) => (b.spoken + b.notSpoken) - (a.spoken + a.notSpoken))
+
+    return { execList, totalSpoken, totalNotSpoken }
+  }, [leads, today])
+
+  // Group by follow-up urgency
   const overdue = interactionSorted.filter(l => {
     const followUp = dateKey(l.crm?.follow_up_date)
     return followUp && followUp < today
@@ -274,6 +306,65 @@ export default function LeadsPage() {
           </Card>
         ))}
       </div>
+
+      {/* Today's Call Stats */}
+      {!loading && (todayCallStats.totalSpoken + todayCallStats.totalNotSpoken > 0 || isSuperAdmin) && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold tracking-wider uppercase px-1" style={{ color: "var(--color-muted-foreground)" }}>
+            Today&apos;s Calls
+          </p>
+          {isSuperAdmin ? (
+            <Card className="shadow-card">
+              <CardContent className="p-0">
+                <div className="grid gap-3 px-4 py-2 text-[11px] font-semibold"
+                  style={{ gridTemplateColumns: "1fr 80px 96px", borderBottom: "1px solid var(--color-border)", color: "var(--color-muted-foreground)" }}>
+                  <span>Executive</span>
+                  <span className="text-center">Spoken</span>
+                  <span className="text-center">Not Spoken</span>
+                </div>
+                {todayCallStats.execList.length === 0 ? (
+                  <p className="text-xs text-center py-4" style={{ color: "var(--color-muted-foreground)" }}>No calls logged today</p>
+                ) : (
+                  <>
+                    {todayCallStats.execList.map(exec => (
+                      <div key={exec.name}
+                        className="grid gap-3 px-4 py-2.5 items-center"
+                        style={{ gridTemplateColumns: "1fr 80px 96px", borderBottom: "1px solid var(--color-border)" }}>
+                        <span className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{exec.name}</span>
+                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-success, oklch(0.65 0.18 145))" }}>{exec.spoken}</span>
+                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-destructive)" }}>{exec.notSpoken}</span>
+                      </div>
+                    ))}
+                    {todayCallStats.execList.length > 1 && (
+                      <div className="grid gap-3 px-4 py-2.5 items-center rounded-b-xl"
+                        style={{ gridTemplateColumns: "1fr 80px 96px", background: "var(--color-muted, oklch(0.96 0 0))" }}>
+                        <span className="text-xs font-semibold" style={{ color: "var(--color-foreground)" }}>Total</span>
+                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-success, oklch(0.65 0.18 145))" }}>{todayCallStats.totalSpoken}</span>
+                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-destructive)" }}>{todayCallStats.totalNotSpoken}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="shadow-card">
+                <CardContent className="p-4">
+                  <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Spoken Today</p>
+                  <p className="text-2xl font-bold" style={{ color: "oklch(0.65 0.18 145)" }}>{todayCallStats.totalSpoken}</p>
+                </CardContent>
+              </Card>
+              <Card className="shadow-card">
+                <CardContent className="p-4">
+                  <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Not Spoken Today</p>
+                  <p className="text-2xl font-bold" style={{ color: "var(--color-destructive)" }}>{todayCallStats.totalNotSpoken}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Search + filter toggle */}
       <div className="flex gap-2">

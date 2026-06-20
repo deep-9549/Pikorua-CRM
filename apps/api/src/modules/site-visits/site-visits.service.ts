@@ -54,6 +54,7 @@ export class SiteVisitsService {
         lead: {
           with: {
             assignedToProfile: true,
+            crmDetails: true,
           },
         },
         property: true,
