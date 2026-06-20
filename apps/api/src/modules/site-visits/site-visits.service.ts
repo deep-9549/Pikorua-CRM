@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { eq, desc, isNull, and } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { siteVisits } from '@pikorua/db'
+import { siteVisits, leadCrmDetails } from '@pikorua/db'
 import { CreateSiteVisitDto } from './dto/create-site-visit.dto'
 import { UpdateSiteVisitDto } from './dto/update-site-visit.dto'
 import { serializeMetaLead } from '../leads/lead.serializer'
@@ -23,7 +23,7 @@ function serializeVisit(visit: any) {
     id: visit.id,
     meta_lead_id: visit.leadId,
     site_visit_status: uiStatus,
-    visit_date: uiStatus === 'visited' ? visit.scheduledDate : null,
+    visit_date: visit.scheduledDate,
     visit_confirmation_date: uiStatus !== 'visited' ? visit.scheduledDate : null,
     scheduled_by_profile: serializeProfile(visit.employee),
     lead,
@@ -31,6 +31,9 @@ function serializeVisit(visit: any) {
     notes: visit.notes,
     feedback: visit.feedback,
     rating: visit.rating,
+    outcome: visit.outcome,
+    cancellation_reason: visit.cancellationReason,
+    follow_up_date: visit.followUpDate,
     created_at: visit.createdAt,
     updated_at: visit.updatedAt,
   }
@@ -42,8 +45,9 @@ export class SiteVisitsService {
 
   private get db() { return this.database.db }
 
-  async findAll(status?: string) {
+  async findAll(status: string | undefined, user: { id: string; role: string }) {
     const conditions = [isNull(siteVisits.deletedAt)]
+    if (user.role !== 'super_admin') conditions.push(eq(siteVisits.employeeId, user.id))
     if (status && !['upcoming', 'past'].includes(status)) {
       conditions.push(eq(siteVisits.status, status as never))
     }
@@ -63,15 +67,14 @@ export class SiteVisitsService {
       orderBy: [desc(siteVisits.scheduledDate)],
     })
 
+    const now = Date.now()
     const filtered = visits.filter((visit) => {
       if (status === 'upcoming') {
-        // All scheduled visits are "upcoming"; overdue ones get the badge in the UI
-        return visit.status === 'scheduled'
+        return visit.status === 'scheduled' && visit.scheduledDate.getTime() >= now
       }
 
       if (status === 'past') {
-        // completed / cancelled / no_show
-        return visit.status !== 'scheduled'
+        return visit.status !== 'scheduled' || visit.scheduledDate.getTime() < now
       }
 
       return true
@@ -100,22 +103,55 @@ export class SiteVisitsService {
     return { visit: serializeVisit(visit) }
   }
 
-  async update(id: string, dto: UpdateSiteVisitDto) {
+  async update(id: string, dto: UpdateSiteVisitDto, user: { id: string; role: string }) {
     const visit = await this.db.query.siteVisits.findFirst({
       where: and(eq(siteVisits.id, id), isNull(siteVisits.deletedAt)),
     })
     if (!visit) throw new NotFoundException(`Site visit ${id} not found`)
+    if (user.role !== 'super_admin' && visit.employeeId !== user.id) {
+      throw new NotFoundException(`Site visit ${id} not found`)
+    }
 
-    const [updated] = await this.db
-      .update(siteVisits)
-      .set({
+    const outcomeStatus = dto.outcome === 'visit_done'
+      ? 'completed'
+      : dto.outcome === 'visit_cancelled'
+        ? 'cancelled'
+        : dto.outcome === 'visit_rescheduled'
+          ? 'scheduled'
+          : undefined
+
+    const updated = await this.db.transaction(async (tx) => {
+      const [savedVisit] = await tx.update(siteVisits).set({
         ...(dto.status !== undefined && { status: dto.status as never }),
+        ...(outcomeStatus !== undefined && { status: outcomeStatus as never }),
+        ...(dto.outcome !== undefined && { outcome: dto.outcome as never }),
+        ...(dto.rescheduled_date !== undefined && { scheduledDate: new Date(dto.rescheduled_date) }),
+        ...(dto.cancellation_reason !== undefined && { cancellationReason: dto.cancellation_reason }),
+        ...(dto.follow_up_date !== undefined && { followUpDate: new Date(dto.follow_up_date) }),
         ...(dto.feedback !== undefined && { feedback: dto.feedback }),
         ...(dto.rating !== undefined && { rating: dto.rating }),
         updatedAt: new Date(),
-      })
-      .where(eq(siteVisits.id, id))
-      .returning()
+      }).where(eq(siteVisits.id, id)).returning()
+
+      if (dto.follow_up_date !== undefined || dto.outcome !== undefined) {
+        const existingCrm = await tx.query.leadCrmDetails.findFirst({ where: eq(leadCrmDetails.leadId, visit.leadId) })
+        const crmUpdate = {
+          ...(dto.follow_up_date !== undefined && { followUpDate: new Date(dto.follow_up_date), followUpDone: false }),
+          ...(dto.outcome === 'visit_done' && { siteVisitStatus: 'completed' as const, visitDate: visit.scheduledDate }),
+          ...(dto.outcome === 'visit_rescheduled' && {
+            siteVisitStatus: 'scheduled' as const,
+            visitConfirmationDate: dto.rescheduled_date ? new Date(dto.rescheduled_date) : visit.scheduledDate,
+          }),
+          ...(dto.outcome === 'visit_cancelled' && { siteVisitStatus: 'not_scheduled' as const }),
+        }
+        if (existingCrm) {
+          await tx.update(leadCrmDetails).set(crmUpdate).where(eq(leadCrmDetails.leadId, visit.leadId))
+        } else {
+          await tx.insert(leadCrmDetails).values({ leadId: visit.leadId, ...crmUpdate })
+        }
+      }
+      return savedVisit
+    })
     return { visit: serializeVisit(updated) }
   }
 }

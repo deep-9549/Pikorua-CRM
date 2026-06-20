@@ -5,6 +5,7 @@ import { properties } from './properties'
 import { userProfiles } from './users'
 
 export const siteVisitStatusEnum = pgEnum('site_visit_status', ['scheduled', 'completed', 'cancelled', 'no_show'])
+export const siteVisitOutcomeEnum = pgEnum('site_visit_outcome', ['visit_done', 'visit_rescheduled', 'visit_cancelled'])
 
 export const siteVisits = pgTable('site_visits', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -14,6 +15,9 @@ export const siteVisits = pgTable('site_visits', {
   employeeId: uuid('employee_id').references(() => userProfiles.id, { onDelete: 'set null' }),
   scheduledDate: timestamp('scheduled_date', { withTimezone: true }).notNull(),
   status: siteVisitStatusEnum('status').default('scheduled').notNull(),
+  outcome: siteVisitOutcomeEnum('outcome'),
+  cancellationReason: text('cancellation_reason'),
+  followUpDate: timestamp('follow_up_date', { withTimezone: true }),
   feedback: text('feedback'),
   rating: integer('rating'),
   notes: text('notes'),
@@ -25,6 +29,7 @@ export const siteVisits = pgTable('site_visits', {
   index('site_visits_status_idx').on(t.status),
   index('site_visits_scheduled_date_idx').on(t.scheduledDate),
   index('site_visits_lead_id_idx').on(t.leadId),
+  index('site_visits_follow_up_date_idx').on(t.followUpDate),
 ])
 
 // ── Relations ─────────────────────────────────────────────────────────────────

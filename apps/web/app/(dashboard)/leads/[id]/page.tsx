@@ -7,7 +7,8 @@ import {
   ArrowLeft, Phone, Mail, MapPin, Calendar, Loader2, Save,
   Check, Flame, Thermometer, Snowflake, User, History,
   AlertTriangle, Briefcase, Building, TrendingDown,
-  PhoneOff, Clock, ChevronDown, ChevronUp, Trash2, type LucideIcon
+  PhoneOff, Clock, ChevronDown, ChevronUp, Trash2, ChevronLeft, ChevronRight,
+  type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,6 +26,7 @@ import {
 import { formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { ProtectedPhone } from "@/components/security/protected-phone"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // Types
 
@@ -81,9 +83,11 @@ interface CrmDetails {
   first_call_date: string | null
   last_call_date: string | null
   call_status: string | null
+  not_spoken_reason: string | null
   site_visit_status: string | null
   visit_date: string | null
   visit_confirmation_date: string | null
+  project_name: string | null
   buying_status: string | null
   budget_range: string | null
   configuration: string[] | null
@@ -92,6 +96,8 @@ interface CrmDetails {
   current_city: string | null
   current_area: string | null
   follow_up_date: string | null
+  follow_up_done: boolean
+  follow_up_remarks: string | null
   hwc: string | null
   remarks: string | null
 }
@@ -367,10 +373,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [history, setHistory] = useState<LeadHistory[]>([])
   const [crm, setCrm] = useState<CrmDetails>({
     first_call_date: null, last_call_date: null, call_status: null,
+    not_spoken_reason: null,
     site_visit_status: null, visit_date: null, visit_confirmation_date: null,
+    project_name: null,
     buying_status: null, budget_range: null, configuration: null,
     profession: null, company_name: null, current_city: null, current_area: null,
-    follow_up_date: null, hwc: null, remarks: null,
+    follow_up_date: null, follow_up_done: false, follow_up_remarks: null, hwc: null, remarks: null,
   })
   const [clientStatus, setClientStatus] = useState<string | null>(null)
   const [clientNote, setClientNote] = useState("")
@@ -381,6 +389,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [previousLeadId, setPreviousLeadId] = useState<string | null>(null)
+  const [nextLeadId, setNextLeadId] = useState<string | null>(null)
 
   useEffect(() => {
     setIsSuperAdmin(getAuthUser()?.role === "super_admin")
@@ -409,20 +419,33 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     load()
   }, [id])
 
-  async function handleSaveAll() {
+  useEffect(() => {
+    fetch('/api/leads/meta').then(res => res.json()).then(json => {
+      const ids = (json.leads ?? []).map((item: { id: string }) => item.id)
+      const index = ids.indexOf(id)
+      setPreviousLeadId(index > 0 ? ids[index - 1] : null)
+      setNextLeadId(index >= 0 && index < ids.length - 1 ? ids[index + 1] : null)
+    }).catch(() => { setPreviousLeadId(null); setNextLeadId(null) })
+  }, [id])
+
+  async function handleSaveAll(): Promise<boolean> {
     setSaving(true)
     try {
       // Explicitly pick only the fields the API accepts to avoid DTO rejections.
       const payload = {
         call_status: crm.call_status,
+        not_spoken_reason: crm.call_status === 'not_spoken' ? (crm.not_spoken_reason ?? 'did_not_pickup') : null,
         first_call_date: crm.first_call_date,
         last_call_date: crm.last_call_date,
         hwc: crm.hwc,
         follow_up_date: crm.follow_up_date,
+        follow_up_done: crm.follow_up_done,
+        follow_up_remarks: crm.follow_up_remarks,
         buying_status: crm.buying_status,
         site_visit_status: crm.site_visit_status,
         visit_date: crm.visit_date,
         visit_confirmation_date: crm.visit_confirmation_date,
+        project_name: crm.project_name,
         budget_range: crm.budget_range,
         configuration: crm.configuration,
         profession: crm.profession,
@@ -473,9 +496,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
+      return true
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to save")
+      return false
     } finally { setSaving(false) }
+  }
+
+  async function navigateToLead(targetId: string | null) {
+    if (!targetId || saving) return
+    if (await handleSaveAll()) router.push(`/leads/${targetId}`)
   }
 
   function toggleConfig(c: string) {
@@ -564,6 +594,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.back()}>
           <ArrowLeft className="w-4 h-4" /> Back to Leads
         </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" disabled={!previousLeadId || saving} onClick={() => navigateToLead(previousLeadId)} aria-label="Previous lead">
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1" disabled={!nextLeadId || saving} onClick={() => navigateToLead(nextLeadId)}>
+            Next Lead <ChevronRight className="w-4 h-4" />
+          </Button>
         {isSuperAdmin && (
           <Button
             variant="ghost"
@@ -574,6 +611,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <Trash2 className="w-4 h-4" /> Delete Lead
           </Button>
         )}
+        </div>
       </div>
 
       {/* Client identity card */}
@@ -709,7 +747,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <div className="space-y-1.5">
                   <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Call Status</Label>
                   <Select value={crm.call_status ?? ""} onValueChange={v => setCrm(p => ({
-                    ...p, call_status: v || null, site_visit_status: null, visit_date: null, visit_confirmation_date: null
+                    ...p, call_status: v || null,
+                    not_spoken_reason: v === 'not_spoken' ? (p.not_spoken_reason ?? 'did_not_pickup') : null,
+                    site_visit_status: null, visit_date: null, visit_confirmation_date: null
                   }))}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Select status..." /></SelectTrigger>
                     <SelectContent>
@@ -719,6 +759,21 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     </SelectContent>
                   </Select>
                 </div>
+
+                {crm.call_status === 'not_spoken' && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Reason for Not Spoken</Label>
+                    <Select value={crm.not_spoken_reason ?? 'did_not_pickup'} onValueChange={v => setCrm(p => ({ ...p, not_spoken_reason: v }))}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="customer_busy">Customer is Busy</SelectItem>
+                        <SelectItem value="wrong_number">Wrong Number</SelectItem>
+                        <SelectItem value="out_of_reach">Number Out of Reach</SelectItem>
+                        <SelectItem value="did_not_pickup">Did Not Pick Up</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {showSiteVisit && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-4">
@@ -741,8 +796,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                         onChange={v => setCrm(p => ({ ...p, visit_date: v }))} />
                     )}
                     {showConfirmDate && (
-                      <DateTimeField label="Confirmation Date & Time" value={crm.visit_confirmation_date}
-                        onChange={v => setCrm(p => ({ ...p, visit_confirmation_date: v }))} />
+                      <>
+                        <DateTimeField label="Confirmation Date & Time" value={crm.visit_confirmation_date}
+                          onChange={v => setCrm(p => ({ ...p, visit_confirmation_date: v }))} />
+                        <TextField label="Project Name" value={crm.project_name ?? ''} placeholder="Project being visited"
+                          onChange={v => setCrm(p => ({ ...p, project_name: v || null }))} />
+                      </>
                     )}
                   </motion.div>
                 )}
@@ -753,6 +812,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     <SelectTrigger className="h-9"><SelectValue placeholder="Select buying status..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="still_searching">Still Searching</SelectItem>
+                      <SelectItem value="interested">Interested</SelectItem>
                       <SelectItem value="postponed">Postponed for Now</SelectItem>
                       <SelectItem value="bought">Bought Already</SelectItem>
                       <SelectItem value="not_interested">Not Interested</SelectItem>
@@ -790,8 +850,28 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
 
-                <DateField label="Follow-up Date" value={crm.follow_up_date ?? ""}
-                  onChange={v => setCrm(p => ({ ...p, follow_up_date: v || null }))} />
+                <div className="space-y-3 rounded-lg border p-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="follow-up-done" checked={crm.follow_up_done}
+                      onCheckedChange={checked => setCrm(p => ({ ...p, follow_up_done: checked === true }))} />
+                    <Label htmlFor="follow-up-done" className="text-sm">Follow-up done</Label>
+                  </div>
+                  {!crm.follow_up_done && (
+                    <DateField label="Follow-up Date" value={crm.follow_up_date ?? ""}
+                      onChange={v => setCrm(p => ({ ...p, follow_up_date: v || null }))} />
+                  )}
+                  {crm.follow_up_done && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Follow-up Remarks</Label>
+                        <Textarea value={crm.follow_up_remarks ?? ''} placeholder="What happened in this follow-up?"
+                          onChange={e => setCrm(p => ({ ...p, follow_up_remarks: e.target.value || null }))} />
+                      </div>
+                      <DateField label="Next Follow-up Date" value={crm.follow_up_date ?? ""}
+                        onChange={v => setCrm(p => ({ ...p, follow_up_date: v || null }))} />
+                    </div>
+                  )}
+                </div>
 
                 {clientStatusSection}
 

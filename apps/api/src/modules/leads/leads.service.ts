@@ -96,6 +96,7 @@ export class LeadsService {
       postponed: 'not_ready',
       bought: 'not_ready',
       not_interested: 'not_ready',
+      interested: 'interested',
       // pass through existing DB values
       ready: 'ready',
       exploring: 'exploring',
@@ -113,14 +114,18 @@ export class LeadsService {
 
     const payload = {
       ...(dto.call_status !== undefined && { callStatus: dto.call_status as never }),
+      ...(dto.not_spoken_reason !== undefined && { notSpokenReason: dto.not_spoken_reason as never }),
       ...(dto.first_call_date !== undefined && { firstCallDate: toDate(dto.first_call_date) }),
       ...(dto.last_call_date !== undefined && { lastCallDate: toDate(dto.last_call_date) }),
       ...(dto.hwc !== undefined && { hwc: dto.hwc as never }),
       ...(dto.follow_up_date !== undefined && { followUpDate: toDate(dto.follow_up_date) }),
+      ...(dto.follow_up_done !== undefined && { followUpDone: dto.follow_up_done }),
+      ...(dto.follow_up_remarks !== undefined && { followUpRemarks: dto.follow_up_remarks }),
       ...(dbBuying !== undefined && { buyingStatus: dbBuying as never }),
       ...(dbSiteVisit !== undefined && { siteVisitStatus: dbSiteVisit as never }),
       ...(dto.visit_date !== undefined && { visitDate: toDate(dto.visit_date) }),
       ...(dto.visit_confirmation_date !== undefined && { visitConfirmationDate: toDate(dto.visit_confirmation_date) }),
+      ...(dto.project_name !== undefined && { projectName: dto.project_name }),
       ...(dto.budget_range !== undefined && { budgetRange: dto.budget_range }),
       ...(dto.configuration !== undefined && { configuration: dto.configuration }),
       ...(dto.profession !== undefined && { profession: dto.profession }),

@@ -18,21 +18,19 @@ export class SiteVisitsController {
   @Get()
   @ApiOperation({ summary: 'List all site visits' })
   @ApiQuery({ name: 'status', required: false, enum: ['scheduled', 'completed', 'cancelled', 'no_show'] })
-  findAll(@Query('status') status?: string) {
-    return this.siteVisitsService.findAll(status)
+  findAll(@CurrentUser() user: { id: string; role: string }, @Query('status') status?: string) {
+    return this.siteVisitsService.findAll(status, user)
   }
 
   @Post()
-  @Roles('super_admin')
   @ApiOperation({ summary: 'Schedule a site visit' })
   create(@Body() dto: CreateSiteVisitDto, @CurrentUser() user: { id: string }) {
     return this.siteVisitsService.create(dto, user.id)
   }
 
   @Patch(':id')
-  @Roles('super_admin')
   @ApiOperation({ summary: 'Update a site visit (status, feedback, rating)' })
-  update(@Param('id') id: string, @Body() dto: UpdateSiteVisitDto) {
-    return this.siteVisitsService.update(id, dto)
+  update(@Param('id') id: string, @Body() dto: UpdateSiteVisitDto, @CurrentUser() user: { id: string; role: string }) {
+    return this.siteVisitsService.update(id, dto, user)
   }
 }

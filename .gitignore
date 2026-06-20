@@ -55,6 +55,7 @@ drizzle/
 *.sql
 !db_migrations/2026-06-19-hard-delete-users-preserve-lead-history.sql
 !db_migrations/2026-06-19-add-access-and-perf-indexes.sql
+!db_migrations/2026-06-20-lead-followups-and-site-visit-outcomes.sql
 
 # ── Seed scripts (contain credentials) ────────────────────────────────────────
 apps/api/scripts/seed-*.js

@@ -11,7 +11,8 @@ export const leadSourceEnum = pgEnum('lead_source', ['meta_ads', 'google_ads', '
 export const metaLeadStatusEnum = pgEnum('meta_lead_status', ['unassigned', 'assigned', 'converted', 'rejected', 'cold_pool'])
 export const callStatusEnum = pgEnum('call_status', ['spoken', 'not_spoken', 'call_back_later'])
 export const hwcEnum = pgEnum('hwc', ['hot', 'warm', 'cold'])
-export const buyingStatusEnum = pgEnum('buying_status', ['ready', 'exploring', 'not_ready'])
+export const buyingStatusEnum = pgEnum('buying_status', ['ready', 'exploring', 'not_ready', 'interested'])
+export const notSpokenReasonEnum = pgEnum('not_spoken_reason', ['customer_busy', 'wrong_number', 'out_of_reach', 'did_not_pickup'])
 export const crmSiteVisitStatusEnum = pgEnum('crm_site_visit_status', ['scheduled', 'completed', 'not_scheduled'])
 
 // Raw leads from Meta Ads webhook
@@ -48,14 +49,18 @@ export const leadCrmDetails = pgTable('lead_crm_details', {
   id: uuid('id').primaryKey().defaultRandom(),
   leadId: uuid('lead_id').references(() => metaLeads.id).notNull().unique(),
   callStatus: callStatusEnum('call_status'),
+  notSpokenReason: notSpokenReasonEnum('not_spoken_reason'),
   firstCallDate: timestamp('first_call_date', { withTimezone: true }),
   lastCallDate: timestamp('last_call_date', { withTimezone: true }),
   hwc: hwcEnum('hwc'),
   followUpDate: timestamp('follow_up_date', { withTimezone: true }),
+  followUpDone: boolean('follow_up_done').default(false).notNull(),
+  followUpRemarks: text('follow_up_remarks'),
   buyingStatus: buyingStatusEnum('buying_status'),
   siteVisitStatus: crmSiteVisitStatusEnum('site_visit_status'),
   visitDate: timestamp('visit_date', { withTimezone: true }),
   visitConfirmationDate: timestamp('visit_confirmation_date', { withTimezone: true }),
+  projectName: text('project_name'),
   budgetRange: text('budget_range'),
   configuration: jsonb('configuration').$type<string[]>(),
   profession: text('profession'),

@@ -23,6 +23,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { getAuthUser } from "@/lib/auth/cookies"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,6 +54,10 @@ interface VisitRow {
   notes: string | null
   feedback: string | null
   rating: number | null
+  status: "scheduled" | "completed" | "cancelled" | "no_show"
+  outcome: "visit_done" | "visit_rescheduled" | "visit_cancelled" | null
+  cancellation_reason: string | null
+  follow_up_date: string | null
   scheduled_by_profile: { id: string; full_name: string } | null
   lead: {
     id: string
@@ -149,7 +154,7 @@ function DetailRow({ icon: Icon, label, value }: { icon: React.ElementType; labe
   )
 }
 
-function VisitDetailDialog({ visit, onClose }: { visit: VisitRow | null; onClose: () => void }) {
+function VisitDetailDialog({ visit, onClose, onUpdateOutcome }: { visit: VisitRow | null; onClose: () => void; onUpdateOutcome: (visit: VisitRow) => void }) {
   if (!visit) return null
   const lead = visit.lead
   const crm = lead.crm
@@ -292,6 +297,8 @@ function VisitDetailDialog({ visit, onClose }: { visit: VisitRow | null; onClose
             )}
             {visit.notes && <DetailRow icon={MessageSquare} label="Notes" value={visit.notes} />}
             {visit.feedback && <DetailRow icon={MessageSquare} label="Feedback" value={visit.feedback} />}
+            {visit.cancellation_reason && <DetailRow icon={AlertCircle} label="Cancellation Reason" value={visit.cancellation_reason} />}
+            {visit.follow_up_date && <DetailRow icon={Calendar} label="Follow-up Date" value={fmtDate(visit.follow_up_date)} />}
             {visit.rating != null && (
               <DetailRow icon={CheckCircle2} label="Rating" value={`${visit.rating} / 5`} />
             )}
@@ -299,7 +306,65 @@ function VisitDetailDialog({ visit, onClose }: { visit: VisitRow | null; onClose
         </div>
 
         <div className="pt-2">
+          {overdue && visit.status === 'scheduled' && (
+            <Button className="w-full mb-2 gold-gradient" onClick={() => onUpdateOutcome(visit)}>Update Visit Outcome</Button>
+          )}
           <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function VisitOutcomeDialog({ visit, onClose, onSaved }: { visit: VisitRow | null; onClose: () => void; onSaved: () => void }) {
+  const [outcome, setOutcome] = useState<"visit_done" | "visit_rescheduled" | "visit_cancelled">("visit_done")
+  const [remarks, setRemarks] = useState("")
+  const [rescheduledDate, setRescheduledDate] = useState("")
+  const [cancellationReason, setCancellationReason] = useState("")
+  const [followUpDate, setFollowUpDate] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!visit) return
+    setOutcome("visit_done"); setRemarks(""); setRescheduledDate(""); setCancellationReason(""); setFollowUpDate(""); setError(null)
+  }, [visit])
+
+  async function saveOutcome() {
+    if (outcome === 'visit_done' && !remarks.trim()) return setError('Add visit remarks')
+    if (outcome === 'visit_rescheduled' && !rescheduledDate) return setError('Choose the rescheduled date and time')
+    if (outcome === 'visit_cancelled' && !cancellationReason.trim()) return setError('Add a cancellation reason')
+    if (!followUpDate) return setError('Choose a follow-up date')
+    setSaving(true); setError(null)
+    try {
+      const body: Record<string, string> = { outcome, follow_up_date: new Date(followUpDate).toISOString() }
+      if (outcome === 'visit_done') body.feedback = remarks
+      if (outcome === 'visit_rescheduled') body.rescheduled_date = new Date(rescheduledDate).toISOString()
+      if (outcome === 'visit_cancelled') body.cancellation_reason = cancellationReason
+      const res = await fetch(`/api/site-visits/${visit?.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.message ?? json.error ?? 'Failed to update visit')
+      onSaved(); onClose()
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to update visit') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <Dialog open={!!visit} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Update Site Visit Outcome</DialogTitle><DialogDescription>{visit?.lead.full_name ?? 'Lead'} · record what happened after the visit time passed.</DialogDescription></DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5"><Label>Outcome</Label>
+            <Select value={outcome} onValueChange={v => setOutcome(v as typeof outcome)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+              <SelectItem value="visit_done">Visit Done</SelectItem><SelectItem value="visit_rescheduled">Visit Rescheduled</SelectItem><SelectItem value="visit_cancelled">Visit Cancelled</SelectItem>
+            </SelectContent></Select>
+          </div>
+          {outcome === 'visit_done' && <div className="space-y-1.5"><Label>Visit Remarks</Label><Textarea value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Customer response, project feedback..." /></div>}
+          {outcome === 'visit_rescheduled' && <div className="space-y-1.5"><Label>Rescheduled Date & Time</Label><Input type="datetime-local" value={rescheduledDate} onChange={e => setRescheduledDate(e.target.value)} /></div>}
+          {outcome === 'visit_cancelled' && <div className="space-y-1.5"><Label>Cancellation Reason</Label><Textarea value={cancellationReason} onChange={e => setCancellationReason(e.target.value)} /></div>}
+          <div className="space-y-1.5"><Label>Follow-up Date</Label><Input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} /></div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button><Button className="flex-1 gold-gradient" disabled={saving} onClick={saveOutcome}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Outcome'}</Button></div>
         </div>
       </DialogContent>
     </Dialog>
@@ -566,6 +631,7 @@ export default function SiteVisitsPage() {
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedVisit, setSelectedVisit] = useState<VisitRow | null>(null)
+  const [outcomeVisit, setOutcomeVisit] = useState<VisitRow | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   useEffect(() => {
@@ -711,7 +777,9 @@ export default function SiteVisitsPage() {
       <VisitDetailDialog
         visit={selectedVisit}
         onClose={() => setSelectedVisit(null)}
+        onUpdateOutcome={visit => setOutcomeVisit(visit)}
       />
+      <VisitOutcomeDialog visit={outcomeVisit} onClose={() => setOutcomeVisit(null)} onSaved={() => { setSelectedVisit(null); fetchVisits(tab) }} />
     </div>
   )
 }
