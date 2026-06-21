@@ -221,35 +221,50 @@ export default function LeadsPage() {
 
   const today = dateKey(new Date())
 
-  // Count spoken / not-spoken calls made today from the full (unfiltered) leads list.
-  // A call counts as "today" if last_call_date or first_call_date falls on today's date.
+  // Count calls made today from the full (unfiltered) leads list. The CRM stores
+  // one current outcome per lead, so these are leads called today rather than a
+  // count of every individual attempt.
   const todayCallStats = useMemo(() => {
     function calledToday(lead: MetaLead) {
       const crm = lead.crm
       if (!crm?.call_status) return false
-      const d = crm.last_call_date ?? crm.first_call_date
-      return !!d && dateKey(d) === today
+      return [crm.first_call_date, crm.last_call_date]
+        .some(date => dateKey(date) === today)
     }
 
-    const byExec = new Map<string, { name: string; spoken: number; notSpoken: number }>()
+    const byExec = new Map<string, { id: string; name: string; spoken: number; notSpoken: number; callBack: number }>()
     let totalSpoken = 0
     let totalNotSpoken = 0
+    let totalCallBack = 0
 
     leads.forEach(lead => {
       if (!calledToday(lead)) return
       const status = lead.crm?.call_status
       const exec = lead.assigned_to_profile
-      if (!exec) return
-      if (!byExec.has(exec.id)) byExec.set(exec.id, { name: exec.full_name, spoken: 0, notSpoken: 0 })
-      const s = byExec.get(exec.id)!
+      const execId = exec?.id ?? "unassigned"
+      if (!byExec.has(execId)) byExec.set(execId, {
+        id: execId,
+        name: exec?.full_name ?? "Unassigned",
+        spoken: 0,
+        notSpoken: 0,
+        callBack: 0,
+      })
+      const s = byExec.get(execId)!
       if (status === "spoken") { s.spoken++; totalSpoken++ }
       if (status === "not_spoken") { s.notSpoken++; totalNotSpoken++ }
+      if (status === "call_back_later") { s.callBack++; totalCallBack++ }
     })
 
     const execList = Array.from(byExec.values())
-      .sort((a, b) => (b.spoken + b.notSpoken) - (a.spoken + a.notSpoken))
+      .sort((a, b) => (b.spoken + b.notSpoken + b.callBack) - (a.spoken + a.notSpoken + a.callBack))
 
-    return { execList, totalSpoken, totalNotSpoken }
+    return {
+      execList,
+      totalSpoken,
+      totalNotSpoken,
+      totalCallBack,
+      totalCalls: totalSpoken + totalNotSpoken + totalCallBack,
+    }
   }, [leads, today])
 
   // Group by follow-up urgency
@@ -308,39 +323,45 @@ export default function LeadsPage() {
       </div>
 
       {/* Today's Call Stats */}
-      {!loading && (todayCallStats.totalSpoken + todayCallStats.totalNotSpoken > 0 || isSuperAdmin) && (
+      {!loading && (todayCallStats.totalCalls > 0 || isSuperAdmin) && (
         <div className="space-y-2">
           <p className="text-xs font-semibold tracking-wider uppercase px-1" style={{ color: "var(--color-muted-foreground)" }}>
-            Today&apos;s Calls
+            Today&apos;s Call Activity
           </p>
           {isSuperAdmin ? (
             <Card className="shadow-card">
-              <CardContent className="p-0">
+              <CardContent className="overflow-x-auto p-0">
                 <div className="grid gap-3 px-4 py-2 text-[11px] font-semibold"
-                  style={{ gridTemplateColumns: "1fr 80px 96px", borderBottom: "1px solid var(--color-border)", color: "var(--color-muted-foreground)" }}>
+                  style={{ gridTemplateColumns: "minmax(120px, 1fr) 72px 88px 80px 64px", borderBottom: "1px solid var(--color-border)", color: "var(--color-muted-foreground)" }}>
                   <span>Executive</span>
                   <span className="text-center">Spoken</span>
                   <span className="text-center">Not Spoken</span>
+                  <span className="text-center">Call Back</span>
+                  <span className="text-center">Total</span>
                 </div>
                 {todayCallStats.execList.length === 0 ? (
                   <p className="text-xs text-center py-4" style={{ color: "var(--color-muted-foreground)" }}>No calls logged today</p>
                 ) : (
                   <>
                     {todayCallStats.execList.map(exec => (
-                      <div key={exec.name}
+                      <div key={exec.id}
                         className="grid gap-3 px-4 py-2.5 items-center"
-                        style={{ gridTemplateColumns: "1fr 80px 96px", borderBottom: "1px solid var(--color-border)" }}>
+                        style={{ gridTemplateColumns: "minmax(120px, 1fr) 72px 88px 80px 64px", borderBottom: "1px solid var(--color-border)" }}>
                         <span className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{exec.name}</span>
                         <span className="text-sm font-bold text-center" style={{ color: "var(--color-success, oklch(0.65 0.18 145))" }}>{exec.spoken}</span>
                         <span className="text-sm font-bold text-center" style={{ color: "var(--color-destructive)" }}>{exec.notSpoken}</span>
+                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-primary)" }}>{exec.callBack}</span>
+                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-foreground)" }}>{exec.spoken + exec.notSpoken + exec.callBack}</span>
                       </div>
                     ))}
                     {todayCallStats.execList.length > 1 && (
                       <div className="grid gap-3 px-4 py-2.5 items-center rounded-b-xl"
-                        style={{ gridTemplateColumns: "1fr 80px 96px", background: "var(--color-muted, oklch(0.96 0 0))" }}>
+                        style={{ gridTemplateColumns: "minmax(120px, 1fr) 72px 88px 80px 64px", background: "var(--color-muted, oklch(0.96 0 0))" }}>
                         <span className="text-xs font-semibold" style={{ color: "var(--color-foreground)" }}>Total</span>
                         <span className="text-sm font-bold text-center" style={{ color: "var(--color-success, oklch(0.65 0.18 145))" }}>{todayCallStats.totalSpoken}</span>
                         <span className="text-sm font-bold text-center" style={{ color: "var(--color-destructive)" }}>{todayCallStats.totalNotSpoken}</span>
+                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-primary)" }}>{todayCallStats.totalCallBack}</span>
+                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-foreground)" }}>{todayCallStats.totalCalls}</span>
                       </div>
                     )}
                   </>
@@ -348,7 +369,7 @@ export default function LeadsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Card className="shadow-card">
                 <CardContent className="p-4">
                   <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Spoken Today</p>
@@ -359,6 +380,18 @@ export default function LeadsPage() {
                 <CardContent className="p-4">
                   <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Not Spoken Today</p>
                   <p className="text-2xl font-bold" style={{ color: "var(--color-destructive)" }}>{todayCallStats.totalNotSpoken}</p>
+                </CardContent>
+              </Card>
+              <Card className="shadow-card">
+                <CardContent className="p-4">
+                  <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Call Back Today</p>
+                  <p className="text-2xl font-bold" style={{ color: "var(--color-primary)" }}>{todayCallStats.totalCallBack}</p>
+                </CardContent>
+              </Card>
+              <Card className="shadow-card">
+                <CardContent className="p-4">
+                  <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Leads Called Today</p>
+                  <p className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>{todayCallStats.totalCalls}</p>
                 </CardContent>
               </Card>
             </div>
