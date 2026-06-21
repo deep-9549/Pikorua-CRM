@@ -28,6 +28,16 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     )
   }
 
+  if (String(config.WEBSITE_LEAD_SYNC_ENABLED).toLowerCase() === 'true') {
+    const websiteSyncMissing = ['WEBSITE_SUPABASE_URL', 'WEBSITE_SUPABASE_SERVICE_ROLE_KEY']
+      .filter((key) => !config[key])
+    if (websiteSyncMissing.length > 0) {
+      throw new Error(
+        `Website lead sync is enabled but missing: ${websiteSyncMissing.join(', ')}.`,
+      )
+    }
+  }
+
   // A short secret is a weakness, not a hard stop — warn rather than refuse to
   // boot, so this validation can never take down a running deployment whose
   // secret happens to be shorter than recommended.

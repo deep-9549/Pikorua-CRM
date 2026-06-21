@@ -1,5 +1,5 @@
 import {
-  pgTable, uuid, text, timestamp, jsonb, boolean, integer, numeric, pgEnum, index,
+  pgTable, uuid, text, timestamp, jsonb, boolean, integer, numeric, pgEnum, index, uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { userProfiles } from './users'
@@ -26,6 +26,10 @@ export const metaLeads = pgTable('meta_leads', {
   email: text('email'),
   city: text('city'),
   source: text('source').default('meta_ads'),
+  // Stable identifier supplied by an external lead source (for example, the
+  // website Supabase row id). Together with source this makes imports safe to
+  // retry without creating duplicate CRM leads.
+  externalId: text('external_id'),
   status: metaLeadStatusEnum('status').default('unassigned').notNull(),
   formData: jsonb('form_data'),
   clientId: text('client_id'),
@@ -42,6 +46,7 @@ export const metaLeads = pgTable('meta_leads', {
   index('meta_leads_client_id_idx').on(t.clientId),
   index('meta_leads_phone_idx').on(t.phone),
   index('meta_leads_deleted_received_idx').on(t.deletedAt, t.receivedAt),
+  uniqueIndex('meta_leads_source_external_id_uidx').on(t.source, t.externalId),
 ])
 
 // CRM details attached to a meta_lead after assignment

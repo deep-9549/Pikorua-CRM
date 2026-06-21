@@ -49,6 +49,9 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      WEBSITE_LEAD_SYNC_ENABLED: ${WEBSITE_LEAD_SYNC_ENABLED:-false}
+      WEBSITE_SUPABASE_URL: ${WEBSITE_SUPABASE_URL:-}
+      WEBSITE_SUPABASE_SERVICE_ROLE_KEY: ${WEBSITE_SUPABASE_SERVICE_ROLE_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

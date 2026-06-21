@@ -18,6 +18,7 @@ import { BookingsModule } from './modules/bookings/bookings.module'
 import { DashboardModule } from './modules/dashboard/dashboard.module'
 import { WebhooksModule } from './modules/webhooks/webhooks.module'
 import { ImportModule } from './modules/import/import.module'
+import { WebsiteLeadSyncModule } from './modules/website-lead-sync/website-lead-sync.module'
 import { validateEnv } from './common/config/env.validation'
 
 @Module({
@@ -40,6 +41,7 @@ import { validateEnv } from './common/config/env.validation'
     DashboardModule,
     WebhooksModule,
     ImportModule,
+    WebsiteLeadSyncModule,
   ],
   controllers: [AppController],
   providers: [
