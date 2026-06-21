@@ -11,7 +11,14 @@ const REQUIRED = ['DATABASE_URL', 'JWT_SECRET'] as const
 
 // Recommended: missing these only breaks specific features, so warn instead of
 // aborting (keeps local/dev boots painless).
-const RECOMMENDED = ['CORS_ORIGIN', 'SUPABASE_SERVICE_ROLE_KEY', 'META_WEBHOOK_VERIFY_TOKEN'] as const
+const RECOMMENDED = [
+  'CORS_ORIGIN',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'META_WEBHOOK_VERIFY_TOKEN',
+  'META_PAGE_ACCESS_TOKEN',
+  'META_APP_SECRET',
+  'META_GRAPH_API_VERSION',
+] as const
 
 const MIN_JWT_SECRET_LENGTH = 32
 

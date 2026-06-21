@@ -11,10 +11,13 @@ export async function proxyToApi(
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (token) headers['Authorization'] = `Bearer ${token}`
+  const metaSignature = request.headers.get('x-hub-signature-256')
+  if (metaSignature) headers['X-Hub-Signature-256'] = metaSignature
 
   let body: string | undefined
   if (request.method !== 'GET' && request.method !== 'HEAD') {
-    try { body = JSON.stringify(await request.json()) } catch {}
+    // Preserve webhook bytes so the API can verify Meta's request signature.
+    try { body = await request.text() } catch {}
   }
 
   try {

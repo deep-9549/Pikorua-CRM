@@ -5,7 +5,9 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { AppModule } from './app.module'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  // Keep the original request bytes so Meta webhook signatures can be
+  // validated before any lead data is trusted.
+  const app = await NestFactory.create(AppModule, { rawBody: true })
 
   // Gracefully shut down on SIGTERM/SIGINT: this registers signal listeners that
   // close the HTTP server (draining in-flight requests) and fire OnModuleDestroy

@@ -1,6 +1,18 @@
-import { Controller, Get, Post, Query, Body, Res, HttpCode } from '@nestjs/common'
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Post,
+  Query,
+  RawBodyRequest,
+  Req,
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common'
 import { ApiTags, ApiOperation } from '@nestjs/swagger'
-import { Response } from 'express'
+import { Request, Response } from 'express'
 import { WebhooksService } from './webhooks.service'
 
 @ApiTags('Webhooks')
@@ -24,7 +36,15 @@ export class WebhooksController {
   @Post('meta')
   @HttpCode(200)
   @ApiOperation({ summary: 'Receive Meta lead form submissions' })
-  ingestMeta(@Body() body: Record<string, unknown>) {
+  ingestMeta(
+    @Req() request: RawBodyRequest<Request>,
+    @Headers('x-hub-signature-256') signature: string | undefined,
+    @Body() body: Record<string, unknown>,
+  ) {
+    if (!this.webhooksService.verifyMetaSignature(request.rawBody, signature)) {
+      throw new UnauthorizedException('Invalid Meta webhook signature')
+    }
+
     return this.webhooksService.ingestMetaLeads(body)
   }
 }
