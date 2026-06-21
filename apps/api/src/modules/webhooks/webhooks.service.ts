@@ -101,6 +101,7 @@ export class WebhooksService {
           continue
         }
 
+        this.logger.log(`Received Meta leadgen webhook for lead ${leadgenId}`)
         const metaLead = await this.fetchMetaLead(leadgenId)
         const fields: Record<string, string> = {}
         for (const f of metaLead.field_data ?? []) {
@@ -130,6 +131,8 @@ export class WebhooksService {
           this.logger.log(`Ignoring duplicate Meta lead ${leadgenId}`)
           continue
         }
+
+        this.logger.log(`Created CRM lead from Meta lead ${leadgenId}`)
 
         // Capture the qualitative form answers (budget / job title / company)
         // into CRM details so they're visible before assignment.

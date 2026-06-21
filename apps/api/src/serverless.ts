@@ -11,7 +11,10 @@ let isReady = false
 async function bootstrap() {
   if (isReady) return
   const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), {
-    logger: ['error', 'warn'],
+    logger: ['error', 'warn', 'log'],
+    // Meta signs the exact request bytes. The Vercel/serverless entry point
+    // needs this independently of main.ts or every valid webhook is rejected.
+    rawBody: true,
   })
   app.setGlobalPrefix('api')
   app.useGlobalPipes(
