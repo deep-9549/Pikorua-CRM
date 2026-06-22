@@ -58,6 +58,7 @@ drizzle/
 !db_migrations/2026-06-20-lead-followups-and-site-visit-outcomes.sql
 !db_migrations/2026-06-21-website-lead-import.sql
 !db_migrations/2026-06-21-meta-lead-periodic-sync.sql
+!db_migrations/2026-06-22-follow-up-time.sql
 
 # ── Seed scripts (contain credentials) ────────────────────────────────────────
 apps/api/scripts/seed-*.js

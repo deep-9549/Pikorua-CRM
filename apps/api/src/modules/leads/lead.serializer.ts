@@ -18,6 +18,10 @@ export function serializeCrmDetails(crm: any) {
 
   const rawSiteVisit = crm.siteVisitStatus ?? crm.site_visit_status ?? null
   const rawBuying = crm.buyingStatus ?? crm.buying_status ?? null
+  const rawConfiguration = crm.configuration ?? null
+  const configuration = Array.isArray(rawConfiguration)
+    ? rawConfiguration.map(value => value === 'Villa' ? 'Duplex' : value)
+    : rawConfiguration
 
   return {
     id: crm.id,
@@ -36,7 +40,7 @@ export function serializeCrmDetails(crm: any) {
     visit_confirmation_date: crm.visitConfirmationDate ?? crm.visit_confirmation_date ?? null,
     project_name: crm.projectName ?? crm.project_name ?? null,
     budget_range: crm.budgetRange ?? crm.budget_range ?? null,
-    configuration: crm.configuration ?? null,
+    configuration,
     profession: crm.profession ?? null,
     company_name: crm.companyName ?? crm.company_name ?? null,
     current_city: crm.currentCity ?? crm.current_city ?? null,

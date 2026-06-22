@@ -93,14 +93,17 @@ interface FollowUpLead {
 
 function dateKey(value: string | Date | null | undefined) {
   if (!value) return ""
-  if (typeof value === "string") {
-    const match = value.match(/^(\d{4}-\d{2}-\d{2})/)
-    if (match) return match[1]
-  }
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return ""
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function followUpTimestamp(value: string | null | undefined) {
+  if (!value) return Number.NaN
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value
+  return new Date(normalized).getTime()
 }
 
 function leadNames(leads: FollowUpLead[]) {
@@ -110,9 +113,11 @@ function leadNames(leads: FollowUpLead[]) {
     .join(", ")
 }
 
-function buildFollowUpNotifications(leads: FollowUpLead[]): Notification[] {
-  const today = dateKey(new Date())
-  const dueToday = leads.filter(lead => dateKey(lead.crm?.follow_up_date) === today)
+function buildFollowUpNotifications(leads: FollowUpLead[], now: number): Notification[] {
+  const today = dateKey(new Date(now))
+  const dueToday = leads.filter(lead =>
+    dateKey(lead.crm?.follow_up_date) === today && followUpTimestamp(lead.crm?.follow_up_date) <= now
+  )
   const overdue = leads.filter(lead => {
     const followUp = dateKey(lead.crm?.follow_up_date)
     return followUp && followUp < today
@@ -125,7 +130,9 @@ function buildFollowUpNotifications(leads: FollowUpLead[]): Notification[] {
       id: "followups-today",
       title: `${dueToday.length} follow-up${dueToday.length === 1 ? "" : "s"} due today`,
       message: leadNames(dueToday),
-      time: "Today",
+      time: firstLead.crm?.follow_up_date
+        ? new Date(firstLead.crm.follow_up_date).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+        : "Today",
       type: "call",
       read: false,
       priority: "high",
@@ -218,6 +225,7 @@ export function TopNav({
   const [readFilter, setReadFilter] = React.useState<"all" | "unread">("all")
   const [assignedEmployee, setAssignedEmployee] = React.useState("")
   const [leadBreadcrumbName, setLeadBreadcrumbName] = React.useState<string | null>(null)
+  const [followUpClock, setFollowUpClock] = React.useState(() => Date.now())
 
   const unreadCount = notifications.filter(n => !n.read).length
   const filtered = notifications.filter(n => {
@@ -264,8 +272,13 @@ export function TopNav({
   const { data: metaLeads } = useMetaLeads<FollowUpLead>()
 
   React.useEffect(() => {
+    const timer = window.setInterval(() => setFollowUpClock(Date.now()), 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  React.useEffect(() => {
     if (!metaLeads) return
-    const generated = buildFollowUpNotifications(metaLeads)
+    const generated = buildFollowUpNotifications(metaLeads, followUpClock)
 
     setNotifications(previous => {
       const generatedIds = new Set(["followups-today", "followups-overdue"])
@@ -279,7 +292,7 @@ export function TopNav({
         ...manualNotifications,
       ]
     })
-  }, [metaLeads])
+  }, [followUpClock, metaLeads])
 
   const breadcrumbs = React.useMemo(() => {
     return pathname.split("/").filter(Boolean).map((seg, i, arr) => {

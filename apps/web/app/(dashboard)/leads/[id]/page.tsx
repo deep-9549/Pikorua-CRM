@@ -110,12 +110,13 @@ const BUDGET_OPTIONS = [
   "15 Cr","16 Cr","17 Cr","18 Cr","19 Cr","20 Cr",
   "21 Cr+",
 ]
-const CONFIGURATIONS = ["3 BHK","4 BHK","5 BHK","Penthouse","Bungalows","Villa","Plot","Other"]
+const CONFIGURATIONS = ["3 BHK","4 BHK","5 BHK","Penthouse","Bungalows","Duplex","Plot","Other"]
 
 const CLIENT_STATUSES = [
   { value: "hot",   label: "Hot",   icon: Flame,         color: "oklch(0.75 0.18 35)",  bg: "oklch(0.75 0.18 35 / 0.15)"  },
   { value: "warm",  label: "Warm",  icon: Thermometer,   color: "oklch(0.78 0.15 65)",  bg: "oklch(0.78 0.15 65 / 0.15)"  },
   { value: "cold",  label: "Cold",  icon: Snowflake,     color: "oklch(0.65 0.15 250)", bg: "oklch(0.65 0.15 250 / 0.15)" },
+  { value: "postponed", label: "Postponed", icon: Clock, color: "oklch(0.68 0.12 285)", bg: "oklch(0.68 0.12 285 / 0.15)" },
   { value: "lost",  label: "Lost",  icon: TrendingDown,  color: "oklch(0.60 0.12 20)",  bg: "oklch(0.60 0.12 20 / 0.15)"  },
   { value: "low_budget",           label: "Low Budget",          icon: AlertTriangle, color: "oklch(0.72 0.15 85)",  bg: "oklch(0.72 0.15 85 / 0.15)"  },
   { value: "not_interested",       label: "Not Interested",       icon: PhoneOff,      color: "oklch(0.55 0.08 260)", bg: "oklch(0.55 0.08 260 / 0.15)" },
@@ -143,6 +144,52 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
       <input type="date" value={isoToDateInput(value)} onChange={e => onChange(e.target.value)}
         className="flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm bg-transparent"
         style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} />
+    </div>
+  )
+}
+
+function localDateTimeParts(value: string | null) {
+  if (!value) return { date: "", time: "" }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return { date: value, time: "00:00" }
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return { date: "", time: "" }
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  }
+}
+
+function combineLocalDateTime(date: string, time: string) {
+  return new Date(`${date}T${time}`).toISOString()
+}
+
+function FollowUpDateTimeFields({ label, value, onChange }: {
+  label: string
+  value: string | null
+  onChange: (value: string | null) => void
+}) {
+  const parts = localDateTimeParts(value)
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={{ color: "var(--color-foreground)" }}>{label}</Label>
+        <input type="date" value={parts.date} onChange={e => {
+          const date = e.target.value
+          onChange(date ? combineLocalDateTime(date, parts.time || "09:00") : null)
+        }}
+          className="flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm bg-transparent"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium" style={{ color: "var(--color-foreground)" }}>Follow-up Time</Label>
+        <input type="time" value={parts.time} disabled={!parts.date} onChange={e => {
+          if (parts.date && e.target.value) onChange(combineLocalDateTime(parts.date, e.target.value))
+        }}
+          className="flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm bg-transparent disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} />
+      </div>
     </div>
   )
 }
@@ -857,8 +904,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     <Label htmlFor="follow-up-done" className="text-sm">Follow-up done</Label>
                   </div>
                   {!crm.follow_up_done && (
-                    <DateField label="Follow-up Date" value={crm.follow_up_date ?? ""}
-                      onChange={v => setCrm(p => ({ ...p, follow_up_date: v || null }))} />
+                    <FollowUpDateTimeFields label="Follow-up Date" value={crm.follow_up_date}
+                      onChange={v => setCrm(p => ({ ...p, follow_up_date: v }))} />
                   )}
                   {crm.follow_up_done && (
                     <div className="space-y-3">
@@ -867,8 +914,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                         <Textarea value={crm.follow_up_remarks ?? ''} placeholder="What happened in this follow-up?"
                           onChange={e => setCrm(p => ({ ...p, follow_up_remarks: e.target.value || null }))} />
                       </div>
-                      <DateField label="Next Follow-up Date" value={crm.follow_up_date ?? ""}
-                        onChange={v => setCrm(p => ({ ...p, follow_up_date: v || null }))} />
+                      <FollowUpDateTimeFields label="Next Follow-up Date" value={crm.follow_up_date}
+                        onChange={v => setCrm(p => ({ ...p, follow_up_date: v }))} />
                     </div>
                   )}
                 </div>

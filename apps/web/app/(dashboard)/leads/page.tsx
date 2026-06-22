@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useEffect, useMemo } from "react"
 import { useMetaLeads } from "@/hooks/use-meta-leads"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -79,6 +79,7 @@ const CLIENT_STATUS_MAP: Record<string, { label: string; icon: React.ElementType
   hot:                    { label: "Hot",               icon: Flame,        color: "oklch(0.75 0.18 35)"  },
   warm:                   { label: "Warm",              icon: Thermometer,  color: "oklch(0.78 0.15 65)"  },
   cold:                   { label: "Cold",              icon: Snowflake,    color: "oklch(0.65 0.15 250)" },
+  postponed:              { label: "Postponed",         icon: Calendar,     color: "oklch(0.68 0.12 285)" },
   lost:                   { label: "Lost",              icon: Star,         color: "oklch(0.60 0.12 20)"  },
   low_budget:             { label: "Low Budget",        icon: Filter,       color: "oklch(0.72 0.15 85)"  },
   not_interested:         { label: "Not Interested",    icon: X,            color: "oklch(0.55 0.08 260)" },
@@ -161,14 +162,17 @@ function filterLeads(leads: MetaLead[], search: string, filters: LeadFilters) {
 
 function dateKey(value: string | Date | null | undefined) {
   if (!value) return ""
-  if (typeof value === "string") {
-    const match = value.match(/^(\d{4}-\d{2}-\d{2})/)
-    if (match) return match[1]
-  }
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return ""
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function followUpTimestamp(value: string | null | undefined) {
+  if (!value) return Number.NaN
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value
+  return new Date(normalized).getTime()
 }
 
 export default function LeadsPage() {
@@ -185,7 +189,13 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("")
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS })
   const [showFilters, setShowFilters] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
   const isSuperAdmin = getAuthUser()?.role === "super_admin"
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   // Unique executives present in the data (for the assigned-to filter)
   const execs = useMemo(() => {
@@ -225,7 +235,7 @@ export default function LeadsPage() {
     return [...filtered].sort((a, b) => contacted(a) - contacted(b))
   }, [filtered])
 
-  const today = dateKey(new Date())
+  const today = dateKey(new Date(now))
 
   // Count calls made today from the full (unfiltered) leads list. The CRM stores
   // one current outcome per lead, so these are leads called today rather than a
@@ -278,10 +288,12 @@ export default function LeadsPage() {
     const followUp = dateKey(l.crm?.follow_up_date)
     return followUp && followUp < today
   })
-  const dueToday = interactionSorted.filter(l => dateKey(l.crm?.follow_up_date) === today)
+  const dueToday = interactionSorted.filter(l =>
+    dateKey(l.crm?.follow_up_date) === today && followUpTimestamp(l.crm?.follow_up_date) <= now
+  )
   const rest = interactionSorted.filter(l => {
     const followUp = dateKey(l.crm?.follow_up_date)
-    return !followUp || followUp > today
+    return !followUp || followUp > today || (followUp === today && followUpTimestamp(l.crm?.follow_up_date) > now)
   })
 
   return (
@@ -570,7 +582,9 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                   {lead.crm?.follow_up_date && (
                     <p className="flex items-center gap-1 text-[10px] sm:justify-end" style={{ color: "var(--color-muted-foreground)" }}>
                       <Calendar className="w-3 h-3" />
-                      {new Date(lead.crm.follow_up_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      {new Date(lead.crm.follow_up_date).toLocaleString("en-IN", {
+                        day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                      })}
                     </p>
                   )}
                   {!lead.assigned_to_profile && !lead.crm?.call_status && (
