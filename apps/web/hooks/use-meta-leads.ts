@@ -29,7 +29,9 @@ export function useMetaLeads<T = unknown>(status?: string) {
       const url = status
         ? `/api/leads/meta?status=${encodeURIComponent(status)}`
         : "/api/leads/meta"
-      const res = await fetch(url)
+      // A manual React Query refetch must reach the API instead of reusing a
+      // browser/proxy response, otherwise the Refresh button can return stale data.
+      const res = await fetch(url, { cache: "no-store" })
       if (!res.ok) throw new Error("Failed to load leads")
       const json = await res.json()
       return normalize(json.leads ?? []) as unknown as T[]

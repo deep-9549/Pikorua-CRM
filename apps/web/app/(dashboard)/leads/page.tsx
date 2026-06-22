@@ -172,7 +172,13 @@ function dateKey(value: string | Date | null | undefined) {
 }
 
 export default function LeadsPage() {
-  const { data, isLoading: loading, error: queryError, refetch } = useMetaLeads<MetaLead>()
+  const {
+    data,
+    isLoading: loading,
+    isFetching: refreshing,
+    error: queryError,
+    refetch,
+  } = useMetaLeads<MetaLead>()
   const leads = data ?? EMPTY_LEADS
   const error = queryError ? (queryError instanceof Error ? queryError.message : "Unknown error") : null
   const [exporting, setExporting] = useState(false)
@@ -299,9 +305,9 @@ export default function LeadsPage() {
               {exporting ? "Exporting" : "Export"}
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => refetch()} disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Refresh
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => void refetch()} disabled={refreshing}>
+            {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            {refreshing ? "Refreshing" : "Refresh"}
           </Button>
         </div>
       </div>
