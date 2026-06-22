@@ -18,6 +18,8 @@ const RECOMMENDED = [
   'META_PAGE_ACCESS_TOKEN',
   'META_APP_SECRET',
   'META_GRAPH_API_VERSION',
+  'META_PAGE_ID',
+  'CRON_SECRET',
 ] as const
 
 const MIN_JWT_SECRET_LENGTH = 32
@@ -41,6 +43,20 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     if (websiteSyncMissing.length > 0) {
       throw new Error(
         `Website lead sync is enabled but missing: ${websiteSyncMissing.join(', ')}.`,
+      )
+    }
+  }
+
+  if (String(config.META_LEAD_SYNC_ENABLED).toLowerCase() === 'true') {
+    const metaSyncMissing = [
+      'META_PAGE_ID',
+      'META_PAGE_ACCESS_TOKEN',
+      'META_GRAPH_API_VERSION',
+      'CRON_SECRET',
+    ].filter((key) => !config[key])
+    if (metaSyncMissing.length > 0) {
+      throw new Error(
+        `Meta lead sync is enabled but missing: ${metaSyncMissing.join(', ')}.`,
       )
     }
   }

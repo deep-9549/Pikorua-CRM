@@ -10,7 +10,8 @@
     "dev": "nest start --watch",
     "start": "node dist/main",
     "start:debug": "nest start --debug --watch",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:meta-sync": "nest build && node --test test/meta-lead-sync.test.cjs"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^2.3.0",
