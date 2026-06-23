@@ -12,6 +12,24 @@ const BUYING_DB_TO_UI: Record<string, string> = {
   ready: 'ready',
   interested: 'interested',
 }
+const CLIENT_DETAIL_STATUSES = new Set([
+  'hot',
+  'warm',
+  'cold',
+  'postponed',
+  'lost',
+  'low_budget',
+  'not_interested',
+  'broker',
+  'construction_biz_owner',
+])
+
+function normalizeClientStatus(status: string | null | undefined, crm: any) {
+  const hwc = crm?.hwc ?? null
+  if (status && CLIENT_DETAIL_STATUSES.has(status)) return status
+  if (hwc && CLIENT_DETAIL_STATUSES.has(hwc)) return hwc
+  return status ?? null
+}
 
 export function serializeCrmDetails(crm: any) {
   if (!crm) return null
@@ -76,7 +94,7 @@ export function serializeMetaLead(lead: any) {
     assigned_to_profile: serializeProfile(lead.assignedToProfile),
     assigned_by_profile: serializeProfile(lead.assignedByProfile),
     crm: serializeCrmDetails(lead.crmDetails),
-    client_status: lead.clientStatus ?? null,
+    client_status: normalizeClientStatus(lead.clientStatus, lead.crmDetails),
     client_status_note: lead.clientStatusNote ?? null,
   }
 }

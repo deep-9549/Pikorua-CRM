@@ -132,7 +132,7 @@ export class LeadsService {
       ...(dto.not_spoken_reason !== undefined && { notSpokenReason: dto.not_spoken_reason as never }),
       ...(dto.first_call_date !== undefined && { firstCallDate: toDate(dto.first_call_date) }),
       ...(dto.last_call_date !== undefined && { lastCallDate: toDate(dto.last_call_date) }),
-      ...(dto.hwc !== undefined && { hwc: dto.hwc as never }),
+      ...(dto.hwc !== undefined && { hwc: null }),
       ...(dto.follow_up_date !== undefined && { followUpDate: toDate(dto.follow_up_date) }),
       ...(dto.follow_up_done !== undefined && { followUpDone: dto.follow_up_done }),
       ...(dto.follow_up_remarks !== undefined && { followUpRemarks: dto.follow_up_remarks }),

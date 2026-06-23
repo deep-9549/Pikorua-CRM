@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common'
-import { and, inArray, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull, or } from 'drizzle-orm'
 import * as XLSX from 'xlsx'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, leadCrmDetails, clients } from '@pikorua/db'
@@ -18,7 +18,7 @@ const HEADER_MAP: Record<string, string[]> = {
   campaign_name:  ['source', 'campaign', 'campaign name', 'campaign_name', 'lead source'],
   received_at:    ['date', 'received', 'received at', 'created', 'created_time', 'created time', 'lead date', 'enquiry date'],
   call_status:    ['call status', 'call_status', 'status'],
-  hwc:            ['hwc', 'priority', 'temperature', 'lead quality'],
+  hwc:            ['client status', 'client_status', 'hwc', 'priority', 'temperature', 'lead quality'],
   budget_range:   ['budget', 'budget range', 'budget_range'],
   profession:     ['profession', 'occupation', 'job', 'job title', 'job_title'],
   company_name:   ['company', 'company name', 'company_name', 'organisation', 'organization'],
@@ -283,6 +283,26 @@ export class ImportService {
       for (const c of inserted) if (c.phone) clientIdByPhone.set(c.phone, c.id)
     }
 
+    const clientStatusPhonesByStatus = new Map<string, string[]>()
+    for (const row of rowByPhone.values()) {
+      if (!row.hwc) continue
+      clientStatusPhonesByStatus.set(row.hwc, [
+        ...(clientStatusPhonesByStatus.get(row.hwc) ?? []),
+        row.phone,
+      ])
+    }
+    for (const [status, phones] of clientStatusPhonesByStatus.entries()) {
+      for (const batch of this.chunk([...new Set(phones)], CHUNK)) {
+        await this.db
+          .update(clients)
+          .set({ status, statusUpdatedAt: new Date(), updatedAt: new Date() })
+          .where(and(
+            inArray(clients.phone, batch),
+            or(isNull(clients.status), eq(clients.status, 'active')),
+          ))
+      }
+    }
+
     // ── Step 4: Insert leads (client_id already set) — chunked ──────────────
     // Rows go in `parsed` order, so the returned ids stay index-aligned with
     // `parsed` (duplicate phones each keep their own lead id).
@@ -310,12 +330,11 @@ export class ImportService {
       .map((r, i) => {
         const leadId = leadIds[i]
         if (!leadId) return null
-        if (!(r.callStatus || r.hwc || r.budgetRange || r.profession || r.companyName ||
+        if (!(r.callStatus || r.budgetRange || r.profession || r.companyName ||
               r.currentCity || r.currentArea || r.followUpDate || r.remarks)) return null
         return {
           leadId,
           ...(r.callStatus   ? { callStatus:   r.callStatus   as 'spoken' | 'not_spoken' | 'call_back_later' } : {}),
-          ...(r.hwc          ? { hwc:          r.hwc          as 'hot' | 'warm' | 'cold' } : {}),
           ...(r.budgetRange  ? { budgetRange:  r.budgetRange  } : {}),
           ...(r.profession   ? { profession:   r.profession   } : {}),
           ...(r.companyName  ? { companyName:  r.companyName  } : {}),
@@ -347,7 +366,7 @@ export class ImportService {
   generateMetaLeadsTemplate(): Buffer {
     const headers = [
       'Name', 'Phone', 'Email', 'City', 'Source',
-      'Date', 'Call Status', 'HWC', 'Budget', 'Profession', 'Company',
+      'Date', 'Call Status', 'Client Status', 'Budget', 'Profession', 'Company',
       'Current City', 'Current Area', 'Follow Up', 'Remarks',
     ]
     const sample = [

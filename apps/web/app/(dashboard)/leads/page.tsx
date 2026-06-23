@@ -129,7 +129,7 @@ function FilterSelect({ value, onChange, children }: {
 }
 
 const EMPTY_FILTERS = {
-  hwc: "", callStatus: "", source: "", assignedTo: "", dateFrom: "", dateTo: "",
+  clientStatus: "", callStatus: "", source: "", assignedTo: "", dateFrom: "", dateTo: "",
 }
 
 type LeadFilters = typeof EMPTY_FILTERS
@@ -147,7 +147,7 @@ function filterLeads(leads: MetaLead[], search: string, filters: LeadFilters) {
         || l.campaign_name?.toLowerCase().includes(q)
       if (!hit) return false
     }
-    if (filters.hwc && (l.crm?.hwc ?? "") !== filters.hwc) return false
+    if (filters.clientStatus && (l.client_status ?? "") !== filters.clientStatus) return false
     if (filters.callStatus) {
       if (filters.callStatus === "fresh" && !isFresh(l)) return false
       if (filters.callStatus !== "fresh" && (l.crm?.call_status ?? "") !== filters.callStatus) return false
@@ -440,11 +440,13 @@ export default function LeadsPage() {
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
             <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl"
               style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
-              <FilterSelect value={filters.hwc} onChange={v => setFilter("hwc", v)}>
-                <option value="">All HWC</option>
+              <FilterSelect value={filters.clientStatus} onChange={v => setFilter("clientStatus", v)}>
+                <option value="">All Client Status</option>
                 <option value="hot">Hot</option>
                 <option value="warm">Warm</option>
                 <option value="cold">Cold</option>
+                <option value="postponed">Postponed</option>
+                <option value="lost">Lost</option>
               </FilterSelect>
               <FilterSelect value={filters.callStatus} onChange={v => setFilter("callStatus", v)}>
                 <option value="">All Call Status</option>

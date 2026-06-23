@@ -65,7 +65,11 @@ export class ClientsService {
 
     return {
       client: serializeClient(enriched),
-      leads: leads.map(serializeMetaLead),
+      leads: leads.map(lead => serializeMetaLead({
+        ...lead,
+        clientStatus: client.status,
+        clientStatusNote: client.statusNote,
+      })),
     }
   }
 

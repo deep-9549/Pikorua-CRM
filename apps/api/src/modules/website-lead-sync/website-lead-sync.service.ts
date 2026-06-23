@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
-import { leadCrmDetails, metaLeads } from '@pikorua/db'
+import { eq } from 'drizzle-orm'
+import { clients, leadCrmDetails, metaLeads } from '@pikorua/db'
 import { DatabaseService } from '../../database/database.service'
 import { stripPhonePrefix } from '../../common/utils/meta-format'
 
@@ -116,14 +117,45 @@ export class WebsiteLeadSyncService implements OnModuleInit, OnModuleDestroy {
 
   private async importLead(sourceLead: WebsiteLead): Promise<boolean> {
     return this.database.db.transaction(async (tx) => {
+      const phone = stripPhonePrefix(sourceLead.phone)
+      let clientId: string | null = null
+
+      if (phone) {
+        const existingClient = await tx.query.clients.findFirst({
+          where: eq(clients.phone, phone),
+        })
+
+        if (existingClient) {
+          clientId = existingClient.id
+          if (sourceLead.is_hot && (!existingClient.status || existingClient.status === 'active')) {
+            await tx.update(clients).set({
+              status: 'hot',
+              statusUpdatedAt: new Date(),
+              updatedAt: new Date(),
+            }).where(eq(clients.id, existingClient.id))
+          }
+        } else {
+          const [insertedClient] = await tx.insert(clients).values({
+            tenantId: '00000000-0000-0000-0000-000000000000',
+            fullName: sourceLead.name,
+            phone,
+            email: sourceLead.email,
+            status: sourceLead.is_hot ? 'hot' : 'active',
+            ...(sourceLead.is_hot ? { statusUpdatedAt: new Date() } : {}),
+          }).returning({ id: clients.id })
+          clientId = insertedClient.id
+        }
+      }
+
       const [inserted] = await tx.insert(metaLeads).values({
         externalId: sourceLead.id,
         fullName: sourceLead.name,
-        phone: stripPhonePrefix(sourceLead.phone),
+        phone,
         email: sourceLead.email,
         city: humanize(sourceLead.location),
         campaignName: `Website – ${humanize(sourceLead.source) ?? 'Enquiry'}`,
         source: 'website',
+        clientId,
         status: 'unassigned',
         receivedAt: new Date(sourceLead.created_at),
         formData: sourceLead,
@@ -144,14 +176,13 @@ export class WebsiteLeadSyncService implements OnModuleInit, OnModuleDestroy {
           : null,
       ].filter(Boolean).join('\n') || null
 
-      if (budgetRange || sourceLead.location || sourceLead.property_ref || remarks || sourceLead.is_hot) {
+      if (budgetRange || sourceLead.location || sourceLead.property_ref || remarks) {
         await tx.insert(leadCrmDetails).values({
           leadId: inserted.id,
           budgetRange,
           currentArea: humanize(sourceLead.location),
           projectName: sourceLead.property_ref,
           remarks,
-          hwc: sourceLead.is_hot ? 'hot' : null,
         })
       }
 

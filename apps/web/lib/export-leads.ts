@@ -14,7 +14,6 @@ export interface ExportableLead {
     first_call_date?: string | null
     last_call_date?: string | null
     call_status?: string | null
-    hwc?: string | null
     follow_up_date?: string | null
     buying_status?: string | null
     site_visit_status?: string | null
@@ -98,7 +97,6 @@ export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") 
     "Call Status",
     "First Call Date",
     "Last Call Date",
-    "HWC",
     "Follow-up",
     "Buying Status",
     "Site Visit Status",
@@ -129,7 +127,6 @@ export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") 
     pretty(l.crm?.call_status),
     fmtDate(l.crm?.first_call_date),
     fmtDate(l.crm?.last_call_date),
-    pretty(l.crm?.hwc),
     fmtDateTime(l.crm?.follow_up_date),
     pretty(l.crm?.buying_status),
     pretty(l.crm?.site_visit_status),

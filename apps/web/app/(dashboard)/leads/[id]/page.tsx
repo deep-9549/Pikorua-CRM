@@ -64,6 +64,7 @@ interface LeadHistory {
   status: string
   received_at: string
   assigned_to_profile: { id: string; full_name: string } | null
+  client_status?: string | null
   crm: {
     call_status: string | null
     site_visit_status: string | null
@@ -344,7 +345,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
                 {{ spoken: "Spoken", not_spoken: "Not Spoken", call_back_later: "Call Back" }[entry.crm.call_status] ?? entry.crm.call_status}
               </span>
             )}
-            {entry.crm?.hwc && <StatusPill status={entry.crm.hwc} />}
+            <StatusPill status={entry.client_status ?? entry.crm?.hwc ?? null} />
           </div>
         </div>
         {hasCrm && (
@@ -455,7 +456,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         if (json.crm) setCrm(prev => ({ ...prev, ...json.crm }))
         if (json.client) {
           setClient(json.client)
-          setClientStatus(CLIENT_STATUS_VALUES.has(json.client.status) ? json.client.status : null)
+          const status = CLIENT_STATUS_VALUES.has(json.client.status)
+            ? json.client.status
+            : CLIENT_STATUS_VALUES.has(json.crm?.hwc)
+              ? json.crm.hwc
+              : null
+          setClientStatus(status)
           setClientNote(json.client.status_note ?? "")
         }
         if (json.history) setHistory(json.history)
@@ -484,7 +490,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         not_spoken_reason: crm.call_status === 'not_spoken' ? (crm.not_spoken_reason ?? 'did_not_pickup') : null,
         first_call_date: crm.first_call_date,
         last_call_date: crm.last_call_date,
-        hwc: crm.hwc,
+        hwc: null,
         follow_up_date: crm.follow_up_date,
         follow_up_done: crm.follow_up_done,
         follow_up_remarks: crm.follow_up_remarks,
