@@ -55,7 +55,10 @@ export class LeadsService {
     return { crm: serializeCrmDetails((lead as any)?.crm) }
   }
 
-  async create(dto: CreateLeadDto) {
+  async create(dto: CreateLeadDto, user: { id: string; role: string }) {
+    const shouldAssignToCreator = user.role !== 'super_admin'
+    const assignedAt = shouldAssignToCreator ? new Date() : null
+
     const [lead] = await this.db.insert(metaLeads).values({
       fullName: dto.full_name,
       phone: dto.phone,
@@ -64,10 +67,22 @@ export class LeadsService {
       campaignName: dto.campaign_name ?? null,
       formData: dto.notes ? { notes: dto.notes } : null,
       source: 'manual',
-      status: 'unassigned',
+      status: shouldAssignToCreator ? 'assigned' : 'unassigned',
+      assignedTo: shouldAssignToCreator ? user.id : null,
+      assignedBy: shouldAssignToCreator ? user.id : null,
+      assignedAt,
     }).returning()
 
-    return { lead: serializeMetaLead(lead) }
+    const createdLead = await this.db.query.metaLeads.findFirst({
+      where: eq(metaLeads.id, lead.id),
+      with: {
+        assignedToProfile: true,
+        assignedByProfile: true,
+        crmDetails: true,
+      },
+    })
+
+    return { lead: serializeMetaLead(createdLead ?? lead) }
   }
 
   async update(id: string, dto: UpdateLeadDto, userId?: string) {

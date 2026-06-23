@@ -553,8 +553,9 @@ export default function MetaAdsPage() {
   }
 
   function handleLeadAdded(lead: MetaLead) {
-    // New leads are unassigned Ã¢â‚¬â€ add to top of list if on unassigned/all tab
-    if (activeTab === "unassigned" || activeTab === "all") {
+    // Manual leads can be unassigned or assigned to the creator; only add them
+    // when they belong in the current tab.
+    if (activeTab === "all" || lead.status === activeTab) {
       setLeads(prev => [lead, ...prev])
     }
   }

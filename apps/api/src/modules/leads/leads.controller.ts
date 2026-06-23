@@ -34,8 +34,11 @@ export class LeadsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new lead' })
-  create(@Body() dto: CreateLeadDto) {
-    return this.leadsService.create(dto)
+  create(
+    @Body() dto: CreateLeadDto,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.leadsService.create(dto, user)
   }
 
   @Put(':id')
