@@ -125,6 +125,7 @@ const CLIENT_STATUSES = [
   { value: "construction_biz_owner", label: "Construction Owner", icon: Building,      color: "oklch(0.65 0.12 200)", bg: "oklch(0.65 0.12 200 / 0.15)" },
 ]
 const CLIENT_STATUS_VALUES = new Set(CLIENT_STATUSES.map(status => status.value))
+const BUYING_STATUS_OPTIONAL_CLIENT_STATUSES = new Set(["broker", "construction_biz_owner"])
 
 // Helpers
 
@@ -482,6 +483,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }, [id])
 
   async function handleSaveAll(): Promise<boolean> {
+    const missingFields: string[] = []
+    if (crm.call_status === "spoken" && !clientStatus) {
+      missingFields.push("Client Status is required when Call Status is Spoken")
+    }
+    if (clientStatus && !BUYING_STATUS_OPTIONAL_CLIENT_STATUSES.has(clientStatus) && !crm.buying_status) {
+      missingFields.push("Buying Status is required unless Client Status is Broker or Construction Owner")
+    }
+
+    if (missingFields.length > 0) {
+      setActiveTab("crm")
+      alert(`Please complete the required fields before saving:\n\n- ${missingFields.join("\n- ")}`)
+      return false
+    }
+
     setSaving(true)
     try {
       // Explicitly pick only the fields the API accepts to avoid DTO rejections.
@@ -607,10 +622,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const showSiteVisit = crm.call_status === "spoken"
   const showVisitDate = crm.site_visit_status === "visited"
   const showConfirmDate = crm.site_visit_status === "visit_date_confirmed"
+  const isClientStatusRequired = crm.call_status === "spoken"
+  const isBuyingStatusRequired = Boolean(
+    clientStatus && !BUYING_STATUS_OPTIONAL_CLIENT_STATUSES.has(clientStatus),
+  )
   const clientStatusSection = (
     <div className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
         Client Status
+        {isClientStatusRequired && <span style={{ color: "var(--color-primary)" }}> *</span>}
       </p>
       <div className="flex flex-wrap gap-2">
         {CLIENT_STATUSES.map(s => {
@@ -860,7 +880,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 )}
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Buying Status</Label>
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
+                    Buying Status
+                    {isBuyingStatusRequired && <span style={{ color: "var(--color-primary)" }}> *</span>}
+                  </Label>
                   <Select value={crm.buying_status ?? ""} onValueChange={v => setCrm(p => ({ ...p, buying_status: v || null }))}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Select buying status..." /></SelectTrigger>
                     <SelectContent>
