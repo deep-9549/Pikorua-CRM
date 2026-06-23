@@ -61,6 +61,7 @@ drizzle/
 !db_migrations/2026-06-22-follow-up-time.sql
 !db_migrations/2026-06-23-migrate-hwc-to-client-status.sql
 !db_migrations/2026-06-23-meta-leads-multi-page-env.sql
+!db_migrations/2026-06-23-meta-leads-four-page-cron.sql
 
 # ── Seed scripts (contain credentials) ────────────────────────────────────────
 apps/api/scripts/seed-*.js

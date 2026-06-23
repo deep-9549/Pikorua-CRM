@@ -4,6 +4,7 @@ import {
   Headers,
   HttpCode,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common'
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
@@ -26,10 +27,13 @@ export class MetaLeadSyncController {
   @Post('sync')
   @HttpCode(200)
   @ApiOperation({ summary: 'Run a protected Meta Lead Ads bulk-read sync' })
-  sync(@Headers('authorization') authorization: string | undefined) {
+  sync(
+    @Headers('authorization') authorization: string | undefined,
+    @Query('page_id') pageId?: string,
+  ) {
     if (!this.authorized(authorization)) {
       throw new UnauthorizedException('Invalid cron authorization')
     }
-    return this.syncService.sync()
+    return this.syncService.sync({ pageId })
   }
 }

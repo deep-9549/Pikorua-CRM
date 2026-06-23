@@ -221,8 +221,15 @@ test('shared importer stores fallback page identity for polled multi-page leads'
 
 test('internal sync endpoint rejects invalid cron authorization', async () => {
   process.env.CRON_SECRET = 'correct-secret'
-  const controller = new MetaLeadSyncController({ sync: async () => ({ ok: true }) })
+  const calls = []
+  const controller = new MetaLeadSyncController({
+    sync: async (options) => {
+      calls.push(options)
+      return { ok: true }
+    },
+  })
 
   assert.throws(() => controller.sync('Bearer wrong-secret'), /Invalid cron authorization/)
-  assert.deepEqual(await controller.sync('Bearer correct-secret'), { ok: true })
+  assert.deepEqual(await controller.sync('Bearer correct-secret', 'page-id'), { ok: true })
+  assert.deepEqual(calls, [{ pageId: 'page-id' }])
 })

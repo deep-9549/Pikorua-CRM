@@ -71,6 +71,7 @@ export class MetaGraphService {
     params: Record<string, string>,
     accessToken?: string,
     attempt = 0,
+    timeoutMs = 12_000,
   ): Promise<MetaGraphResult<T>> {
     const { accessToken: token, graphVersion } = this.config(accessToken)
     const url = new URL(
@@ -82,12 +83,12 @@ export class MetaGraphService {
     try {
       response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout(12_000),
+        signal: AbortSignal.timeout(timeoutMs),
       })
     } catch (error) {
       if (attempt < 2) {
         await sleep(500 * (2 ** attempt))
-        return this.get<T>(objectPath, params, accessToken, attempt + 1)
+        return this.get<T>(objectPath, params, accessToken, attempt + 1, timeoutMs)
       }
       throw error
     }
@@ -102,7 +103,7 @@ export class MetaGraphService {
     const retryable = response.status === 429 || response.status >= 500
     if (retryable && attempt < 2) {
       await sleep(500 * (2 ** attempt))
-      return this.get<T>(objectPath, params, accessToken, attempt + 1)
+      return this.get<T>(objectPath, params, accessToken, attempt + 1, timeoutMs)
     }
 
     throw new MetaGraphError(
@@ -113,10 +114,14 @@ export class MetaGraphService {
     )
   }
 
-  async fetchLead(leadgenId: string, accessToken?: string): Promise<MetaLeadData> {
+  async fetchLead(
+    leadgenId: string,
+    accessToken?: string,
+    timeoutMs?: number,
+  ): Promise<MetaLeadData> {
     const result = await this.get<MetaLeadData>(encodeURIComponent(leadgenId), {
       fields: META_LEAD_FIELDS,
-    }, accessToken)
+    }, accessToken, 0, timeoutMs)
     if (!result.data.id || !Array.isArray(result.data.field_data)) {
       throw new MetaGraphError('Meta returned incomplete lead details', 502)
     }
@@ -127,7 +132,8 @@ export class MetaGraphService {
     objectPath: string,
     params: Record<string, string>,
     accessToken?: string,
+    timeoutMs?: number,
   ): Promise<MetaGraphResult<MetaEdgePage<T>>> {
-    return this.get<MetaEdgePage<T>>(objectPath, params, accessToken)
+    return this.get<MetaEdgePage<T>>(objectPath, params, accessToken, 0, timeoutMs)
   }
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import {
   integrationSyncLocks,
   metaLeadSyncState,
@@ -20,7 +20,9 @@ const LOCK_DURATION_MS = 4 * 60 * 1000
 const FORM_DISCOVERY_INTERVAL_MS = 30 * 60 * 1000
 const BACKFILL_MS = 7 * 24 * 60 * 60 * 1000
 const OVERLAP_MS = 10 * 60 * 1000
-const RUN_BUDGET_MS = 45 * 1000
+const RUN_BUDGET_MS = 35 * 1000
+const GRAPH_TIMEOUT_MS = 6 * 1000
+const MIN_REMAINING_MS = 3 * 1000
 const PAGE_SIZE = '100'
 
 type SyncState = typeof metaLeadSyncState.$inferSelect
@@ -45,6 +47,10 @@ export interface MetaLeadSyncResult {
   completed_at: string
 }
 
+interface MetaLeadSyncOptions {
+  pageId?: string
+}
+
 class SyncRunHaltedError extends Error {}
 class MetaUsageHighError extends SyncRunHaltedError {}
 
@@ -61,16 +67,28 @@ export class MetaLeadSyncService {
   private get db() { return this.database.db }
 
   private assertWithinBudget(deadline: number) {
-    if (Date.now() >= deadline) {
+    if (deadline - Date.now() <= MIN_REMAINING_MS) {
       throw new SyncRunHaltedError('Sync stopped before the serverless execution deadline')
     }
   }
 
-  private async acquireLock(ownerId: string): Promise<boolean> {
+  private graphTimeout(deadline: number) {
+    this.assertWithinBudget(deadline)
+    return Math.max(
+      1_000,
+      Math.min(GRAPH_TIMEOUT_MS, deadline - Date.now() - MIN_REMAINING_MS),
+    )
+  }
+
+  private lockKey(pageId?: string) {
+    return pageId ? `${LOCK_KEY}:${pageId}` : LOCK_KEY
+  }
+
+  private async acquireLock(ownerId: string, pageId?: string): Promise<boolean> {
     const now = new Date()
     const lockedUntil = new Date(now.getTime() + LOCK_DURATION_MS)
     const [lock] = await this.db.insert(integrationSyncLocks).values({
-      key: LOCK_KEY,
+      key: this.lockKey(pageId),
       ownerId,
       lockedUntil,
       updatedAt: now,
@@ -83,11 +101,11 @@ export class MetaLeadSyncService {
     return lock?.ownerId === ownerId
   }
 
-  private async releaseLock(ownerId: string) {
+  private async releaseLock(ownerId: string, pageId?: string) {
     await this.db.update(integrationSyncLocks)
       .set({ lockedUntil: new Date(), updatedAt: new Date() })
       .where(and(
-        eq(integrationSyncLocks.key, LOCK_KEY),
+        eq(integrationSyncLocks.key, this.lockKey(pageId)),
         eq(integrationSyncLocks.ownerId, ownerId),
       ))
   }
@@ -106,6 +124,7 @@ export class MetaLeadSyncService {
           ...(after ? { after } : {}),
         },
         page.accessToken,
+        this.graphTimeout(deadline),
       )
 
       for (const form of result.data.data ?? []) {
@@ -188,6 +207,7 @@ export class MetaLeadSyncService {
           `${encodeURIComponent(state.formId)}/leads`,
           params,
           page.accessToken,
+          this.graphTimeout(deadline),
         )
       } catch (error) {
         if (
@@ -217,6 +237,7 @@ export class MetaLeadSyncService {
 
       fetched += relevantLeads.length
       for (const lead of relevantLeads) {
+        this.assertWithinBudget(deadline)
         if (!lead.id) continue
         const importResult = await this.importer.importLead(lead, {
           pageId: page.pageId,
@@ -270,7 +291,7 @@ export class MetaLeadSyncService {
     return { fetched, imported, duplicates, usageHigh }
   }
 
-  async sync(): Promise<MetaLeadSyncResult> {
+  async sync(options: MetaLeadSyncOptions = {}): Promise<MetaLeadSyncResult> {
     const startedAt = new Date()
     const baseResult = {
       pages_scanned: 0,
@@ -291,15 +312,21 @@ export class MetaLeadSyncService {
       }
     }
 
-    const pages = parseMetaPageConfigs()
+    const configuredPages = parseMetaPageConfigs()
+    const pages = options.pageId
+      ? configuredPages.filter((page) => page.pageId === options.pageId)
+      : configuredPages
     if (pages.length === 0) {
+      if (options.pageId) {
+        throw new NotFoundException(`Meta page ${options.pageId} is not configured in META_PAGES`)
+      }
       throw new Error(
         'Meta lead sync is enabled but no pages are configured. Set META_PAGES or META_PAGE_ID/META_PAGE_ACCESS_TOKEN.',
       )
     }
 
     const ownerId = randomUUID()
-    if (!await this.acquireLock(ownerId)) {
+    if (!await this.acquireLock(ownerId, options.pageId)) {
       return {
         ok: true,
         skipped: 'already_running',
@@ -380,7 +407,7 @@ export class MetaLeadSyncService {
       )
       return result
     } finally {
-      await this.releaseLock(ownerId).catch((error) => {
+      await this.releaseLock(ownerId, options.pageId).catch((error) => {
         this.logger.error(`Failed to release Meta sync lock: ${String(error)}`)
       })
     }
