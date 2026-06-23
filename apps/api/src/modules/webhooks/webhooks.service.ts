@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import { Injectable, Logger } from '@nestjs/common'
 import { MetaGraphService } from '../meta-lead-sync/meta-graph.service'
 import { MetaLeadImporterService } from '../meta-lead-sync/meta-lead-importer.service'
+import { findMetaPageConfig } from '../meta-lead-sync/meta-page-config'
 
 @Injectable()
 export class WebhooksService {
@@ -38,6 +39,8 @@ export class WebhooksService {
     if (body.object !== 'page') return { ok: true }
 
     for (const entry of (body.entry as Record<string, unknown>[] ?? [])) {
+      const pageId = typeof entry.id === 'string' ? entry.id : null
+      const page = findMetaPageConfig(pageId)
       for (const change of (entry.changes as Record<string, unknown>[] ?? [])) {
         if ((change as Record<string, unknown>).field !== 'leadgen') continue
         const value = (change as Record<string, unknown>).value as Record<string, unknown>
@@ -48,8 +51,10 @@ export class WebhooksService {
         }
 
         this.logger.log(`Received Meta leadgen webhook for lead ${leadgenId}`)
-        const metaLead = await this.graph.fetchLead(leadgenId)
+        const metaLead = await this.graph.fetchLead(leadgenId, page?.accessToken)
         const importResult = await this.importer.importLead(metaLead, {
+          pageId,
+          pageName: page?.pageName ?? null,
           formId: typeof value.form_id === 'string' ? value.form_id : null,
           adId: typeof value.ad_id === 'string' ? value.ad_id : null,
         })

@@ -16,7 +16,12 @@ export class MetaLeadImporterService {
 
   async importLead(
     metaLead: MetaLeadData,
-    fallback: { formId?: string | null; adId?: string | null } = {},
+    fallback: {
+      pageId?: string | null
+      pageName?: string | null
+      formId?: string | null
+      adId?: string | null
+    } = {},
   ): Promise<MetaLeadImportResult> {
     const fields: Record<string, string> = {}
     for (const field of metaLead.field_data ?? []) {
@@ -31,6 +36,8 @@ export class MetaLeadImporterService {
 
     return this.database.db.transaction(async (tx) => {
       const [inserted] = await tx.insert(metaLeads).values({
+        pageId: fallback.pageId ?? null,
+        pageName: fallback.pageName ?? null,
         formId: metaLead.form_id ?? fallback.formId ?? null,
         adId: metaLead.ad_id ?? fallback.adId ?? null,
         campaignName: normalizeCampaignName(metaLead.campaign_name ?? null),

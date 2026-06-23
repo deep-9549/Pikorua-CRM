@@ -11,9 +11,14 @@ const {
 const {
   MetaLeadSyncController,
 } = require('../dist/modules/meta-lead-sync/meta-lead-sync.controller')
+const {
+  parseMetaPageConfigs,
+} = require('../dist/modules/meta-lead-sync/meta-page-config')
 
 const originalFetch = global.fetch
 const originalEnv = {
+  META_PAGES: process.env.META_PAGES,
+  META_PAGE_ID: process.env.META_PAGE_ID,
   META_PAGE_ACCESS_TOKEN: process.env.META_PAGE_ACCESS_TOKEN,
   META_GRAPH_API_VERSION: process.env.META_GRAPH_API_VERSION,
   CRON_SECRET: process.env.CRON_SECRET,
@@ -27,8 +32,7 @@ afterEach(() => {
   }
 })
 
-test('Graph client sends the token only as a bearer header and reports high usage', async () => {
-  process.env.META_PAGE_ACCESS_TOKEN = 'page-secret'
+test('Graph client sends an explicit page token only as a bearer header and reports high usage', async () => {
   process.env.META_GRAPH_API_VERSION = 'v25.0'
   let captured
   global.fetch = async (url, options) => {
@@ -43,7 +47,11 @@ test('Graph client sends the token only as a bearer header and reports high usag
   }
 
   const graph = new MetaGraphService()
-  const result = await graph.getEdgePage('page-id/leadgen_forms', { fields: 'id' })
+  const result = await graph.getEdgePage(
+    'page-id/leadgen_forms',
+    { fields: 'id' },
+    'page-secret',
+  )
 
   assert.equal(result.usageHigh, true)
   assert.equal(captured.options.headers.Authorization, 'Bearer page-secret')
@@ -51,7 +59,6 @@ test('Graph client sends the token only as a bearer header and reports high usag
 })
 
 test('Graph client does not retry a non-retryable Meta permission error', async () => {
-  process.env.META_PAGE_ACCESS_TOKEN = 'page-secret'
   process.env.META_GRAPH_API_VERSION = 'v25.0'
   let calls = 0
   global.fetch = async () => {
@@ -63,14 +70,13 @@ test('Graph client does not retry a non-retryable Meta permission error', async 
 
   const graph = new MetaGraphService()
   await assert.rejects(
-    graph.getEdgePage('form-id/leads', { fields: 'id' }),
+    graph.getEdgePage('form-id/leads', { fields: 'id' }, 'page-secret'),
     (error) => error instanceof MetaGraphError && error.code === 200,
   )
   assert.equal(calls, 1)
 })
 
 test('Graph client retries a transient server failure', async () => {
-  process.env.META_PAGE_ACCESS_TOKEN = 'page-secret'
   process.env.META_GRAPH_API_VERSION = 'v25.0'
   let calls = 0
   global.fetch = async () => {
@@ -88,8 +94,43 @@ test('Graph client retries a transient server failure', async () => {
   }
 
   const graph = new MetaGraphService()
-  await graph.getEdgePage('form-id/leads', { fields: 'id' })
+  await graph.getEdgePage('form-id/leads', { fields: 'id' }, 'page-secret')
   assert.equal(calls, 2)
+})
+
+test('Meta page config parser supports multi-page env and legacy fallback', () => {
+  const pages = parseMetaPageConfigs({
+    META_PAGES: JSON.stringify([
+      { page_id: 'page-one', page_name: 'Page One', access_token: 'token-one' },
+      { pageId: 'page-two', pageName: 'Page Two', accessToken: 'token-two' },
+      { page_id: 'disabled-page', access_token: 'token-three', enabled: false },
+    ]),
+  })
+
+  assert.deepEqual(pages, [
+    {
+      pageId: 'page-one',
+      pageName: 'Page One',
+      accessToken: 'token-one',
+      enabled: true,
+    },
+    {
+      pageId: 'page-two',
+      pageName: 'Page Two',
+      accessToken: 'token-two',
+      enabled: true,
+    },
+  ])
+
+  assert.deepEqual(parseMetaPageConfigs({
+    META_PAGE_ID: 'legacy-page',
+    META_PAGE_ACCESS_TOKEN: 'legacy-token',
+  }), [{
+    pageId: 'legacy-page',
+    pageName: null,
+    accessToken: 'legacy-token',
+    enabled: true,
+  }])
 })
 
 test('shared importer maps lead and CRM fields and remains idempotent', async () => {
@@ -133,6 +174,7 @@ test('shared importer maps lead and CRM fields and remains idempotent', async ()
 
   assert.equal(await importer.importLead(lead), 'imported')
   assert.equal(captured.leads[0].externalId, 'meta-lead-id')
+  assert.equal(captured.leads[0].pageId, null)
   assert.equal(captured.leads[0].phone, '+919999999999')
   assert.equal(captured.details[0].profession, 'Founder')
   assert.equal(captured.details[0].companyName, 'Example Co')
@@ -140,6 +182,41 @@ test('shared importer maps lead and CRM fields and remains idempotent', async ()
   returnInserted = false
   assert.equal(await importer.importLead(lead), 'duplicate')
   assert.equal(captured.details.length, 1)
+})
+
+test('shared importer stores fallback page identity for polled multi-page leads', async () => {
+  const captured = { leads: [] }
+  const tx = {
+    insert(table) {
+      return {
+        values(values) {
+          if (table === metaLeads) captured.leads.push(values)
+          return {
+            onConflictDoNothing() {
+              return table === metaLeads
+                ? { returning: async () => [{ id: 'crm-lead-id' }] }
+                : Promise.resolve()
+            },
+          }
+        },
+      }
+    },
+  }
+  const database = { db: { transaction: async (callback) => callback(tx) } }
+  const importer = new MetaLeadImporterService(database)
+
+  assert.equal(await importer.importLead({
+    id: 'meta-lead-id',
+    field_data: [],
+  }, {
+    pageId: 'page-id',
+    pageName: 'Page Name',
+    formId: 'form-id',
+  }), 'imported')
+
+  assert.equal(captured.leads[0].pageId, 'page-id')
+  assert.equal(captured.leads[0].pageName, 'Page Name')
+  assert.equal(captured.leads[0].formId, 'form-id')
 })
 
 test('internal sync endpoint rejects invalid cron authorization', async () => {

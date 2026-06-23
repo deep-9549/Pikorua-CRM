@@ -15,6 +15,7 @@ const RECOMMENDED = [
   'CORS_ORIGIN',
   'SUPABASE_SERVICE_ROLE_KEY',
   'META_WEBHOOK_VERIFY_TOKEN',
+  'META_PAGES',
   'META_PAGE_ACCESS_TOKEN',
   'META_APP_SECRET',
   'META_GRAPH_API_VERSION',
@@ -23,6 +24,34 @@ const RECOMMENDED = [
 ] as const
 
 const MIN_JWT_SECRET_LENGTH = 32
+
+function parseMetaPages(value: unknown): unknown[] | null {
+  if (typeof value !== 'string' || value.trim() === '') return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new Error('META_PAGES must be a valid JSON array.')
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error('META_PAGES must be a JSON array.')
+  }
+
+  for (const [index, entry] of parsed.entries()) {
+    const raw = entry as Record<string, unknown>
+    const pageId = raw.page_id ?? raw.pageId
+    const accessToken = raw.access_token ?? raw.accessToken
+    if (typeof pageId !== 'string' || pageId.trim() === '') {
+      throw new Error(`META_PAGES[${index}] is missing page_id.`)
+    }
+    if (typeof accessToken !== 'string' || accessToken.trim() === '') {
+      throw new Error(`META_PAGES[${index}] is missing access_token.`)
+    }
+  }
+
+  return parsed
+}
 
 export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
   const missing = REQUIRED.filter((key) => {
@@ -48,17 +77,23 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
   }
 
   if (String(config.META_LEAD_SYNC_ENABLED).toLowerCase() === 'true') {
+    const configuredPages = parseMetaPages(config.META_PAGES)
+    const hasMultiPageConfig = configuredPages !== null && configuredPages.length > 0
+    const hasLegacyPageConfig = Boolean(config.META_PAGE_ID && config.META_PAGE_ACCESS_TOKEN)
     const metaSyncMissing = [
-      'META_PAGE_ID',
-      'META_PAGE_ACCESS_TOKEN',
       'META_GRAPH_API_VERSION',
       'CRON_SECRET',
     ].filter((key) => !config[key])
+    if (!hasMultiPageConfig && !hasLegacyPageConfig) {
+      metaSyncMissing.push('META_PAGES or META_PAGE_ID/META_PAGE_ACCESS_TOKEN')
+    }
     if (metaSyncMissing.length > 0) {
       throw new Error(
         `Meta lead sync is enabled but missing: ${metaSyncMissing.join(', ')}.`,
       )
     }
+  } else {
+    parseMetaPages(config.META_PAGES)
   }
 
   // A short secret is a weakness, not a hard stop — warn rather than refuse to
@@ -73,7 +108,18 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     )
   }
 
-  const recommendedMissing = RECOMMENDED.filter((key) => !config[key])
+  const hasConfiguredMetaPages = typeof config.META_PAGES === 'string' &&
+    config.META_PAGES.trim() !== ''
+  const hasLegacyMetaPage = Boolean(config.META_PAGE_ID && config.META_PAGE_ACCESS_TOKEN)
+  const recommendedMissing = RECOMMENDED.filter((key) => {
+    if (hasConfiguredMetaPages && (key === 'META_PAGE_ID' || key === 'META_PAGE_ACCESS_TOKEN')) {
+      return false
+    }
+    if (hasLegacyMetaPage && key === 'META_PAGES') {
+      return false
+    }
+    return !config[key]
+  })
   if (recommendedMissing.length > 0) {
     // eslint-disable-next-line no-console
     console.warn(

@@ -8,6 +8,7 @@ import { and, eq, lt } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { MetaGraphError, MetaGraphService } from './meta-graph.service'
 import { MetaLeadImporterService } from './meta-lead-importer.service'
+import { MetaPageConfig, parseMetaPageConfigs } from './meta-page-config'
 import {
   META_LEAD_FIELDS,
   MetaLeadData,
@@ -34,6 +35,7 @@ interface FormSyncResult {
 export interface MetaLeadSyncResult {
   ok: boolean
   skipped?: 'disabled' | 'already_running'
+  pages_scanned: number
   forms_scanned: number
   leads_fetched: number
   leads_imported: number
@@ -90,26 +92,27 @@ export class MetaLeadSyncService {
       ))
   }
 
-  private async discoverForms(pageId: string, deadline: number) {
+  private async discoverForms(page: MetaPageConfig, deadline: number) {
     let after: string | undefined
     const seenAt = new Date()
 
     do {
       this.assertWithinBudget(deadline)
       const result = await this.graph.getEdgePage<MetaLeadForm>(
-        `${encodeURIComponent(pageId)}/leadgen_forms`,
+        `${encodeURIComponent(page.pageId)}/leadgen_forms`,
         {
           fields: 'id,name,status',
           limit: PAGE_SIZE,
           ...(after ? { after } : {}),
         },
+        page.accessToken,
       )
 
       for (const form of result.data.data ?? []) {
         if (!form.id) continue
         await this.db.insert(metaLeadSyncState).values({
           formId: form.id,
-          pageId,
+          pageId: page.pageId,
           formName: form.name ?? null,
           status: form.status ?? 'UNKNOWN',
           lastSeenAt: seenAt,
@@ -118,7 +121,7 @@ export class MetaLeadSyncService {
         }).onConflictDoUpdate({
           target: metaLeadSyncState.formId,
           set: {
-            pageId,
+            pageId: page.pageId,
             formName: form.name ?? null,
             status: form.status ?? 'UNKNOWN',
             lastSeenAt: seenAt,
@@ -149,6 +152,7 @@ export class MetaLeadSyncService {
 
   private async syncForm(
     state: SyncState,
+    page: MetaPageConfig,
     syncStartedAt: Date,
     deadline: number,
   ): Promise<FormSyncResult> {
@@ -183,6 +187,7 @@ export class MetaLeadSyncService {
         result = await this.graph.getEdgePage<MetaLeadData>(
           `${encodeURIComponent(state.formId)}/leads`,
           params,
+          page.accessToken,
         )
       } catch (error) {
         if (
@@ -213,7 +218,11 @@ export class MetaLeadSyncService {
       fetched += relevantLeads.length
       for (const lead of relevantLeads) {
         if (!lead.id) continue
-        const importResult = await this.importer.importLead(lead, { formId: state.formId })
+        const importResult = await this.importer.importLead(lead, {
+          pageId: page.pageId,
+          pageName: page.pageName,
+          formId: state.formId,
+        })
         if (importResult === 'imported') imported += 1
         else duplicates += 1
       }
@@ -264,6 +273,7 @@ export class MetaLeadSyncService {
   async sync(): Promise<MetaLeadSyncResult> {
     const startedAt = new Date()
     const baseResult = {
+      pages_scanned: 0,
       forms_scanned: 0,
       leads_fetched: 0,
       leads_imported: 0,
@@ -281,8 +291,12 @@ export class MetaLeadSyncService {
       }
     }
 
-    const pageId = process.env.META_PAGE_ID
-    if (!pageId) throw new Error('META_PAGE_ID is required when Meta lead sync is enabled')
+    const pages = parseMetaPageConfigs()
+    if (pages.length === 0) {
+      throw new Error(
+        'Meta lead sync is enabled but no pages are configured. Set META_PAGES or META_PAGE_ID/META_PAGE_ACCESS_TOKEN.',
+      )
+    }
 
     const ownerId = randomUUID()
     if (!await this.acquireLock(ownerId)) {
@@ -298,41 +312,59 @@ export class MetaLeadSyncService {
     let stopForUsage = false
 
     try {
-      let states = await this.db.select().from(metaLeadSyncState)
-      if (this.shouldDiscover(states)) {
-        try {
-          await this.discoverForms(pageId, deadline)
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
-          baseResult.failed_forms.push({ form_id: '__discovery__', error: message })
-          if (error instanceof MetaUsageHighError) stopForUsage = true
-          if (states.length === 0) throw error
-          this.logger.error(`Meta form discovery failed; using cached forms: ${message}`)
-        }
-        states = await this.db.select().from(metaLeadSyncState)
-      }
-
-      const eligibleStates = states.filter((state) =>
-        !state.backfillCompletedAt || state.status.toUpperCase() === 'ACTIVE',
-      )
-
-      for (const state of eligibleStates) {
+      for (const page of pages) {
         if (stopForUsage) break
-        baseResult.forms_scanned += 1
-        try {
-          const result = await this.syncForm(state, startedAt, deadline)
-          baseResult.leads_fetched += result.fetched
-          baseResult.leads_imported += result.imported
-          baseResult.duplicates += result.duplicates
-          if (result.usageHigh) stopForUsage = true
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
-          await this.updateFormError(state.formId, message)
-          baseResult.failed_forms.push({ form_id: state.formId, error: message })
-          this.logger.error(`Meta form ${state.formId} sync failed: ${message}`)
-          if (error instanceof MetaUsageHighError || error instanceof SyncRunHaltedError) {
-            stopForUsage = error instanceof MetaUsageHighError
-            break
+        baseResult.pages_scanned += 1
+        let states = await this.db.select().from(metaLeadSyncState)
+          .where(eq(metaLeadSyncState.pageId, page.pageId))
+
+        if (this.shouldDiscover(states)) {
+          try {
+            await this.discoverForms(page, deadline)
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            baseResult.failed_forms.push({
+              form_id: `__discovery__:${page.pageId}`,
+              error: message,
+            })
+            if (error instanceof MetaUsageHighError) stopForUsage = true
+            if (states.length === 0) {
+              this.logger.error(`Meta form discovery failed for page ${page.pageId}: ${message}`)
+              continue
+            }
+            this.logger.error(
+              `Meta form discovery failed for page ${page.pageId}; using cached forms: ${message}`,
+            )
+          }
+
+          states = await this.db.select().from(metaLeadSyncState)
+            .where(eq(metaLeadSyncState.pageId, page.pageId))
+        }
+
+        if (stopForUsage) break
+
+        const eligibleStates = states.filter((state) =>
+          !state.backfillCompletedAt || state.status.toUpperCase() === 'ACTIVE',
+        )
+
+        for (const state of eligibleStates) {
+          if (stopForUsage) break
+          baseResult.forms_scanned += 1
+          try {
+            const result = await this.syncForm(state, page, startedAt, deadline)
+            baseResult.leads_fetched += result.fetched
+            baseResult.leads_imported += result.imported
+            baseResult.duplicates += result.duplicates
+            if (result.usageHigh) stopForUsage = true
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            await this.updateFormError(state.formId, message)
+            baseResult.failed_forms.push({ form_id: state.formId, error: message })
+            this.logger.error(`Meta form ${state.formId} sync failed: ${message}`)
+            if (error instanceof MetaUsageHighError || error instanceof SyncRunHaltedError) {
+              stopForUsage = error instanceof MetaUsageHighError
+              break
+            }
           }
         }
       }

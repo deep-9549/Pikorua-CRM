@@ -18,6 +18,8 @@ export const crmSiteVisitStatusEnum = pgEnum('crm_site_visit_status', ['schedule
 // Raw leads from Meta Ads webhook
 export const metaLeads = pgTable('meta_leads', {
   id: uuid('id').primaryKey().defaultRandom(),
+  pageId: text('page_id'),
+  pageName: text('page_name'),
   formId: text('form_id'),
   adId: text('ad_id'),
   campaignName: text('campaign_name'),
@@ -44,6 +46,7 @@ export const metaLeads = pgTable('meta_leads', {
   // Sales execs filter by assignee; the list orders by received_at over live rows.
   index('meta_leads_assigned_to_idx').on(t.assignedTo),
   index('meta_leads_client_id_idx').on(t.clientId),
+  index('meta_leads_page_id_idx').on(t.pageId),
   index('meta_leads_phone_idx').on(t.phone),
   index('meta_leads_deleted_received_idx').on(t.deletedAt, t.receivedAt),
   uniqueIndex('meta_leads_source_external_id_uidx').on(t.source, t.externalId),
