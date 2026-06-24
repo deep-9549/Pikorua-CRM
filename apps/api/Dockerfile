@@ -39,13 +39,19 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 nestjs
 
-# Only the compiled output and production deps are needed
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./dist
+# Preserve pnpm's workspace node_modules layout. App dependency links under
+# apps/api/node_modules point into the root node_modules/.pnpm store, while
+# workspace package links point to packages/db and packages/shared.
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/package.json ./package.json
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./apps/api/dist
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/package.json ./apps/api/package.json
+COPY --from=builder --chown=nestjs:nodejs /app/packages/db ./packages/db
+COPY --from=builder --chown=nestjs:nodejs /app/packages/shared ./packages/shared
 
 USER nestjs
 EXPOSE 4000
 ENV API_PORT=4000
 
+WORKDIR /app/apps/api
 CMD ["node", "dist/main"]
