@@ -13,7 +13,6 @@ const REQUIRED = ['DATABASE_URL', 'JWT_SECRET'] as const
 // aborting (keeps local/dev boots painless).
 const RECOMMENDED = [
   'CORS_ORIGIN',
-  'SUPABASE_SERVICE_ROLE_KEY',
   'META_WEBHOOK_VERIFY_TOKEN',
   'META_PAGES',
   'META_PAGE_ACCESS_TOKEN',
