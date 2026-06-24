@@ -53,15 +53,8 @@ coverage/
 # ── Database ───────────────────────────────────────────────────────────────────
 drizzle/
 *.sql
-!db_migrations/2026-06-19-hard-delete-users-preserve-lead-history.sql
-!db_migrations/2026-06-19-add-access-and-perf-indexes.sql
-!db_migrations/2026-06-20-lead-followups-and-site-visit-outcomes.sql
-!db_migrations/2026-06-21-website-lead-import.sql
-!db_migrations/2026-06-21-meta-lead-periodic-sync.sql
-!db_migrations/2026-06-22-follow-up-time.sql
-!db_migrations/2026-06-23-migrate-hwc-to-client-status.sql
-!db_migrations/2026-06-23-meta-leads-multi-page-env.sql
-!db_migrations/2026-06-23-meta-leads-four-page-cron.sql
+*.dump
+*.db
 
 # ── Seed scripts (contain credentials) ────────────────────────────────────────
 apps/api/scripts/seed-*.js

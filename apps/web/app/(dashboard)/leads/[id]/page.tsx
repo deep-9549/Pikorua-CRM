@@ -664,7 +664,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="max-w-2xl mx-auto space-y-5 pb-12">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.back()}>
+        <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.push("/leads")}>
           <ArrowLeft className="w-4 h-4" /> Back to Leads
         </Button>
         <div className="flex items-center gap-1">
