@@ -56,14 +56,35 @@ if ($LASTEXITCODE -ne 0) {
   throw "Railway verification failed with exit code $LASTEXITCODE."
 }
 
-$differences = Compare-Object `
-  (Get-Content -LiteralPath $sourceOutput) `
-  (Get-Content -LiteralPath $targetOutput)
+$sourceResults = Import-Csv -LiteralPath $sourceOutput
+$targetResults = Import-Csv -LiteralPath $targetOutput
+
+# Compare copied data and relationship integrity. Indexes are a target
+# requirement, not a source-equality requirement: Railway may intentionally
+# contain newer performance indexes that have not yet been applied to Supabase.
+$sourceComparable = $sourceResults |
+  Where-Object { $_.metric -notlike 'index.*' } |
+  Sort-Object metric |
+  ForEach-Object { "$($_.metric),$($_.value)" }
+$targetComparable = $targetResults |
+  Where-Object { $_.metric -notlike 'index.*' } |
+  Sort-Object metric |
+  ForEach-Object { "$($_.metric),$($_.value)" }
+
+$differences = Compare-Object $sourceComparable $targetComparable
 
 if ($differences) {
   Write-Host 'Database verification found differences:' -ForegroundColor Red
   $differences | Format-Table -AutoSize
   throw "Supabase and Railway verification results differ. See $resolvedOutputDirectory."
+}
+
+$missingTargetIndexes = $targetResults |
+  Where-Object { $_.metric -like 'index.*' -and $_.value -ne 'true' }
+if ($missingTargetIndexes) {
+  Write-Host 'Railway is missing required indexes:' -ForegroundColor Red
+  $missingTargetIndexes | Format-Table -AutoSize
+  throw "Railway index verification failed. See $targetOutput."
 }
 
 Write-Host 'Database verification passed: counts, integrity checks, and required indexes match.'
