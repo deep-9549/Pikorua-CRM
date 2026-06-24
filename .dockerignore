@@ -8,3 +8,5 @@
 !**/.env.example
 **/coverage
 **/.turbo
+**/*.dump
+railway-migration-artifacts
