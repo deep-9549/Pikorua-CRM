@@ -17,6 +17,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { exportLeadsToExcel } from "@/lib/export-leads"
+import {
+  dateKey,
+  getLeadDisplaySections,
+  isFreshLead,
+} from "@/lib/lead-display-order"
 
 interface Crm {
   first_call_date?: string | null
@@ -72,7 +77,7 @@ function timeAgo(dateStr: string) {
 
 // A lead is "fresh" until it has been marked spoken
 function isFresh(lead: MetaLead) {
-  return lead.crm?.call_status !== "spoken"
+  return isFreshLead(lead)
 }
 
 const CLIENT_STATUS_MAP: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -160,21 +165,6 @@ function filterLeads(leads: MetaLead[], search: string, filters: LeadFilters) {
   })
 }
 
-function dateKey(value: string | Date | null | undefined) {
-  if (!value) return ""
-  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return ""
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-function followUpTimestamp(value: string | null | undefined) {
-  if (!value) return Number.NaN
-  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value
-  return new Date(normalized).getTime()
-}
-
 export default function LeadsPage() {
   const {
     data,
@@ -227,14 +217,6 @@ export default function LeadsPage() {
     }
   }, [filters, isSuperAdmin, search, refetch])
 
-  // Surface leads the exec hasn't acted on yet: anything without a logged call
-  // status sorts to the top so fresh leads are the first thing they see.
-  // (Stable sort keeps the server's received-date order within each group.)
-  const interactionSorted = useMemo(() => {
-    const contacted = (l: MetaLead) => (l.crm?.call_status ? 1 : 0)
-    return [...filtered].sort((a, b) => contacted(a) - contacted(b))
-  }, [filtered])
-
   const today = dateKey(new Date(now))
 
   // Count calls made today from the full (unfiltered) leads list. The CRM stores
@@ -283,18 +265,19 @@ export default function LeadsPage() {
     }
   }, [leads, today])
 
-  // Group by follow-up urgency
-  const overdue = interactionSorted.filter(l => {
-    const followUp = dateKey(l.crm?.follow_up_date)
-    return followUp && followUp < today
-  })
-  const dueToday = interactionSorted.filter(l =>
-    dateKey(l.crm?.follow_up_date) === today && followUpTimestamp(l.crm?.follow_up_date) <= now
+  // This is the exact order rendered on the page and used by the lead-detail
+  // Previous/Next buttons when a sales executive opens a lead from here.
+  const { dueToday, overdue, rest, ordered } = useMemo(
+    () => getLeadDisplaySections(filtered, now),
+    [filtered, now],
   )
-  const rest = interactionSorted.filter(l => {
-    const followUp = dateKey(l.crm?.follow_up_date)
-    return !followUp || followUp > today || (followUp === today && followUpTimestamp(l.crm?.follow_up_date) > now)
-  })
+
+  useEffect(() => {
+    window.sessionStorage.setItem(
+      "pikorua.leads.visibleOrder",
+      JSON.stringify(ordered.map(lead => lead.id)),
+    )
+  }, [ordered])
 
   return (
     <div className="space-y-6">

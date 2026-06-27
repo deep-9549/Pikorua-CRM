@@ -27,6 +27,7 @@ import { formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { Checkbox } from "@/components/ui/checkbox"
+import { getLeadDisplaySections } from "@/lib/lead-display-order"
 
 // Types
 
@@ -40,6 +41,10 @@ interface MetaLead {
   received_at: string
   client_id: string | null
   assigned_to_profile: { id: string; full_name: string } | null
+  crm?: {
+    call_status?: string | null
+    follow_up_date?: string | null
+  } | null
 }
 
 interface ClientProfile {
@@ -475,7 +480,17 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     fetch('/api/leads/meta').then(res => res.json()).then(json => {
-      const ids = (json.leads ?? []).map((item: { id: string }) => item.id)
+      const storedIds = JSON.parse(
+        window.sessionStorage.getItem("pikorua.leads.visibleOrder") ?? "[]",
+      ) as unknown
+      const storedOrder = Array.isArray(storedIds)
+        ? storedIds.filter((item): item is string => typeof item === "string")
+        : []
+      const fallbackOrder = getLeadDisplaySections(
+        (json.leads ?? []) as MetaLead[],
+        Date.now(),
+      ).ordered.map(item => item.id)
+      const ids = storedOrder.includes(id) ? storedOrder : fallbackOrder
       const index = ids.indexOf(id)
       setPreviousLeadId(index > 0 ? ids[index - 1] : null)
       setNextLeadId(index >= 0 && index < ids.length - 1 ? ids[index + 1] : null)
