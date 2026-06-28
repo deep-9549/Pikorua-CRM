@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine, Snowflake, X, FileUp, Search, Undo2, ListChecks
+  Plus, PenLine, Snowflake, X, FileUp, Search, Undo2, ListChecks, CalendarDays
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -71,6 +71,16 @@ function timeAgo(dateStr: string) {
 function initials(name: string | null) {
   if (!name) return "?"
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
+}
+
+function toDateInputValue(dateStr: string) {
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return ""
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 async function readApiError(res: Response, fallback: string) {
@@ -426,6 +436,7 @@ export default function MetaAdsPage() {
   const [search, setSearch] = useState("")
   const [sourceFilter, setSourceFilter] = useState("")
   const [campaignFilter, setCampaignFilter] = useState("")
+  const [receivedDateFilter, setReceivedDateFilter] = useState("")
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -586,10 +597,11 @@ export default function MetaAdsPage() {
     }
     if (sourceFilter && l.source !== sourceFilter) return false
     if (campaignFilter && l.campaign_name !== campaignFilter) return false
+    if (receivedDateFilter && toDateInputValue(l.received_at) !== receivedDateFilter) return false
     return true
-  }), [leads, search, sourceFilter, campaignFilter])
+  }), [leads, search, sourceFilter, campaignFilter, receivedDateFilter])
 
-  const hasActiveFilter = Boolean(search || sourceFilter || campaignFilter)
+  const hasActiveFilter = Boolean(search || sourceFilter || campaignFilter || receivedDateFilter)
   const shownLeadIds = useMemo(() => filteredLeads.map(lead => lead.id), [filteredLeads])
   const shownSelectionOnly = useMemo(
     () => shownLeadIds.length > 0 && selected.size === shownLeadIds.length && shownLeadIds.every(id => selected.has(id)),
@@ -721,6 +733,18 @@ export default function MetaAdsPage() {
                   {campaigns.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               )}
+              {isSuperAdmin && (
+                <div className="relative w-full sm:w-[176px]">
+                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--color-muted-foreground)" }} />
+                  <Input
+                    type="date"
+                    aria-label="Lead received date"
+                    value={receivedDateFilter}
+                    onChange={e => setReceivedDateFilter(e.target.value)}
+                    className="h-9 pl-9 text-xs"
+                  />
+                </div>
+              )}
               {selectable && filteredLeads.length > 0 && (
                 <Button
                   variant="outline"
@@ -738,7 +762,7 @@ export default function MetaAdsPage() {
                   variant="ghost"
                   size="sm"
                   className="gap-1 h-9 text-xs shrink-0"
-                  onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter("") }}
+                  onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter(""); setReceivedDateFilter("") }}
                 >
                   <X className="w-3.5 h-3.5" /> Clear
                 </Button>
@@ -805,7 +829,7 @@ export default function MetaAdsPage() {
                         size="sm"
                         variant="outline"
                         className="gap-2 mx-auto"
-                        onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter("") }}
+                        onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter(""); setReceivedDateFilter("") }}
                       >
                         <X className="w-3.5 h-3.5" />
                         Clear filters
