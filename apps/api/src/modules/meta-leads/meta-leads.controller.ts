@@ -68,8 +68,8 @@ export class MetaLeadsController {
   @Post(':id/unassign')
   @Roles('super_admin')
   @ApiOperation({ summary: 'Unassign a lead and return it to the unassigned queue' })
-  unassign(@Param('id') id: string) {
-    return this.metaLeadsService.unassign(id)
+  unassign(@Param('id') id: string, @CurrentUser() user: { id: string }) {
+    return this.metaLeadsService.unassign(id, user.id)
   }
 
   @Patch(':id/convert')

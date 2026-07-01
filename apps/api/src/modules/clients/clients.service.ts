@@ -4,6 +4,7 @@ import { DatabaseService } from '../../database/database.service'
 import { clients, metaLeads } from '@pikorua/db'
 import { serializeMetaLead } from '../leads/lead.serializer'
 import { serializeProfile } from '../../common/serializers/profile.serializer'
+import { LeadActivityService } from '../lead-activity/lead-activity.service'
 
 function serializeClient(client: any) {
   return {
@@ -30,7 +31,10 @@ function serializeClient(client: any) {
 export class ClientsService {
   private readonly logger = new Logger(ClientsService.name)
 
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly leadActivityService: LeadActivityService,
+  ) {}
 
   private get db() { return this.database.db }
 
@@ -94,6 +98,12 @@ export class ClientsService {
       })
       .where(eq(clients.id, id))
 
+    const changes = this.leadActivityService.diff(
+      { status: client.status ?? null, status_note: client.statusNote ?? null },
+      { status: status ?? null, status_note: statusNote ?? null },
+      { status: 'Client Status', status_note: 'Client Status Note' },
+    )
+
     // Sync cold pool status on linked meta leads
     if (isCold && !wasСold) {
       // Mark all assigned leads for this client as cold_pool
@@ -116,6 +126,26 @@ export class ClientsService {
     }
 
     this.logger.log(`Client ${id} status changed to '${status ?? 'none'}' by ${updatedBy}`)
+
+    if (Object.keys(changes).length > 0) {
+      const linkedLeads = await this.db.query.metaLeads.findMany({
+        where: eq(metaLeads.clientId, id),
+        columns: { id: true },
+      })
+
+      for (const lead of linkedLeads) {
+        await this.leadActivityService.record({
+          leadId: lead.id,
+          actorUserId: updatedBy,
+          eventType: 'client_status_updated',
+          source: 'client_status',
+          title: 'Client status updated',
+          description: 'Client status was changed from the lead detail page.',
+          changes,
+          metadata: { client_id: id },
+        })
+      }
+    }
 
     const full = await this.db.query.clients.findFirst({
       where: eq(clients.id, id),

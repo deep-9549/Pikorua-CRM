@@ -6,6 +6,7 @@ import { CreateSiteVisitDto } from './dto/create-site-visit.dto'
 import { UpdateSiteVisitDto } from './dto/update-site-visit.dto'
 import { serializeMetaLead } from '../leads/lead.serializer'
 import { serializeProfile } from '../../common/serializers/profile.serializer'
+import { LeadActivityService } from '../lead-activity/lead-activity.service'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -41,9 +42,22 @@ function serializeVisit(visit: any) {
 
 @Injectable()
 export class SiteVisitsService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly leadActivityService: LeadActivityService,
+  ) {}
 
   private get db() { return this.database.db }
+
+  private readonly visitActivityLabels: Record<string, string> = {
+    status: 'Visit Status',
+    outcome: 'Visit Outcome',
+    scheduled_date: 'Visit Date',
+    cancellation_reason: 'Cancellation Reason',
+    follow_up_date: 'Follow-up Date',
+    feedback: 'Feedback',
+    rating: 'Rating',
+  }
 
   async findAll(status: string | undefined, user: { id: string; role: string }) {
     const conditions = [isNull(siteVisits.deletedAt)]
@@ -100,6 +114,19 @@ export class SiteVisitsService {
       notes: dto.notes ?? null,
       status: visitStatus,
     }).returning()
+    await this.leadActivityService.record({
+      leadId: dto.lead_id,
+      actorUserId: currentUserId,
+      eventType: 'site_visit_updated',
+      source: 'site_visit',
+      title: visitStatus === 'completed' ? 'Site visit completed' : 'Site visit scheduled',
+      description: dto.notes ?? null,
+      changes: {
+        site_visit_status: { label: 'Site Visit Status', from: null, to: visitStatus },
+        scheduled_date: { label: 'Visit Date', from: null, to: visit.scheduledDate },
+      },
+      metadata: { site_visit_id: visit.id },
+    })
     return { visit: serializeVisit(visit) }
   }
 
@@ -152,6 +179,39 @@ export class SiteVisitsService {
       }
       return savedVisit
     })
+    const changes = this.leadActivityService.diff(
+      {
+        status: visit.status,
+        outcome: visit.outcome,
+        scheduled_date: visit.scheduledDate,
+        cancellation_reason: visit.cancellationReason,
+        follow_up_date: visit.followUpDate,
+        feedback: visit.feedback,
+        rating: visit.rating,
+      },
+      {
+        status: updated.status,
+        outcome: updated.outcome,
+        scheduled_date: updated.scheduledDate,
+        cancellation_reason: updated.cancellationReason,
+        follow_up_date: updated.followUpDate,
+        feedback: updated.feedback,
+        rating: updated.rating,
+      },
+      this.visitActivityLabels,
+    )
+    if (Object.keys(changes).length > 0) {
+      await this.leadActivityService.record({
+        leadId: visit.leadId,
+        actorUserId: user.id,
+        eventType: 'site_visit_updated',
+        source: 'site_visit',
+        title: 'Site visit updated',
+        description: `${Object.keys(changes).length} site visit field(s) changed.`,
+        changes,
+        metadata: { site_visit_id: visit.id },
+      })
+    }
     return { visit: serializeVisit(updated) }
   }
 }

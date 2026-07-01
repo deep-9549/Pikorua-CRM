@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs'
 import { DatabaseService } from '../../database/database.service'
 import { employees, metaLeads, userProfiles } from '@pikorua/db'
 import { CreateUserDto } from './dto/create-user.dto'
+import { LeadActivityService } from '../lead-activity/lead-activity.service'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -24,7 +25,10 @@ function serializeUser(user: UserProfile) {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly leadActivityService: LeadActivityService,
+  ) {}
 
   private get db() { return this.database.db }
 
@@ -76,6 +80,15 @@ export class UsersService {
 
     const now = new Date()
     await this.db.transaction(async (tx) => {
+      const affectedLeads = await tx.query.metaLeads.findMany({
+        where: and(
+          eq(metaLeads.assignedTo, id),
+          eq(metaLeads.status, 'assigned'),
+          isNull(metaLeads.deletedAt),
+        ),
+        with: { assignedToProfile: true },
+      })
+
       // Only active assignments return to the queue. Historical/converted lead
       // states remain untouched, and all CRM detail/history rows are preserved.
       await tx
@@ -92,6 +105,27 @@ export class UsersService {
           eq(metaLeads.status, 'assigned'),
           isNull(metaLeads.deletedAt),
         ))
+
+      for (const lead of affectedLeads) {
+        await this.leadActivityService.record({
+          leadId: lead.id,
+          actorUserId: requesterId,
+          eventType: 'unassigned',
+          source: 'user_deleted',
+          title: 'Lead unassigned after user deletion',
+          description: 'Assigned user was deleted, so the lead returned to the unassigned queue.',
+          fromUserId: id,
+          fromUserName: lead.assignedToProfile?.fullName ?? user.fullName ?? user.email ?? null,
+          changes: {
+            assigned_to: {
+              label: 'Assigned To',
+              from: lead.assignedToProfile?.fullName ?? user.fullName ?? user.email ?? null,
+              to: null,
+            },
+          },
+          metadata: { deleted_user_id: id },
+        }, tx)
+      }
 
       await tx
         .update(employees)

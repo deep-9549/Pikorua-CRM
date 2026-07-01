@@ -9,12 +9,38 @@ import { CreateLeadDto } from './dto/create-lead.dto'
 import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
 import { serializeCrmDetails, serializeMetaLead } from './lead.serializer'
+import { LeadActivityService } from '../lead-activity/lead-activity.service'
 
 @Injectable()
 export class LeadsService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly leadActivityService: LeadActivityService,
+  ) {}
 
   private get db() { return this.database.db }
+
+  private readonly crmActivityLabels: Record<string, string> = {
+    call_status: 'Call Status',
+    not_spoken_reason: 'Not Spoken Reason',
+    first_call_date: 'First Call Date',
+    last_call_date: 'Last Call Date',
+    follow_up_date: 'Follow-up Date',
+    follow_up_done: 'Follow-up Done',
+    follow_up_remarks: 'Follow-up Remarks',
+    buying_status: 'Buying Status',
+    site_visit_status: 'Site Visit Status',
+    visit_date: 'Visit Date',
+    visit_confirmation_date: 'Visit Confirmation Date',
+    project_name: 'Project Name',
+    budget_range: 'Budget',
+    configuration: 'Configuration',
+    profession: 'Profession',
+    company_name: 'Company',
+    current_city: 'Current City',
+    current_area: 'Current Area',
+    remarks: 'Remarks',
+  }
 
   async findAll(status: string | undefined, user: { id: string; role: string }) {
     const conditions = [isNull(metaLeads.deletedAt)]
@@ -82,6 +108,27 @@ export class LeadsService {
       },
     })
 
+    await this.leadActivityService.record({
+      leadId: lead.id,
+      actorUserId: user.id,
+      eventType: 'lead_created',
+      source: 'manual',
+      title: shouldAssignToCreator ? 'Lead created and assigned' : 'Lead created',
+      description: shouldAssignToCreator
+        ? 'Manual lead was created and assigned to the creator.'
+        : 'Manual lead was created and left unassigned.',
+      toUserId: shouldAssignToCreator ? user.id : null,
+      changes: {
+        status: { label: 'Status', from: null, to: shouldAssignToCreator ? 'assigned' : 'unassigned' },
+        assigned_to: {
+          label: 'Assigned To',
+          from: null,
+          to: shouldAssignToCreator ? (createdLead?.assignedToProfile?.fullName ?? user.id) : null,
+        },
+      },
+      metadata: { source: 'manual' },
+    })
+
     return { lead: serializeMetaLead(createdLead ?? lead) }
   }
 
@@ -92,6 +139,7 @@ export class LeadsService {
     const existing = await this.db.query.leadCrmDetails.findFirst({
       where: eq(leadCrmDetails.leadId, id),
     })
+    const beforeCrm = serializeCrmDetails(existing)
 
     // Map UI site_visit_status values to DB enum values
     const SITE_VISIT_UI_TO_DB: Record<string, string> = {
@@ -164,6 +212,24 @@ export class LeadsService {
 
     // Return the updated lead built from data already in hand — no extra query.
     const mergedCrm = serializeCrmDetails({ ...(existing ?? {}), ...payload })
+    const changes = this.leadActivityService.diff(
+      beforeCrm as Record<string, unknown> | null,
+      mergedCrm as Record<string, unknown> | null,
+      this.crmActivityLabels,
+    )
+
+    if (Object.keys(changes).length > 0) {
+      await this.leadActivityService.record({
+        leadId: id,
+        actorUserId: userId ?? null,
+        eventType: 'crm_updated',
+        source: 'crm_form',
+        title: 'CRM details updated',
+        description: `${Object.keys(changes).length} CRM field(s) changed.`,
+        changes,
+      })
+    }
+
     return { ...lead, crm: mergedCrm }
   }
 
@@ -248,6 +314,15 @@ export class LeadsService {
       content: dto.content,
       type: dto.type ?? 'general',
     }).returning()
+    await this.leadActivityService.record({
+      leadId,
+      actorUserId: employeeId,
+      eventType: 'crm_updated',
+      source: 'note',
+      title: 'Note added',
+      description: dto.content,
+      metadata: { note_id: note.id, note_type: note.type },
+    })
     return note
   }
 }

@@ -6,6 +6,7 @@ import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
 import { serializeMetaLead, serializeCrmDetails } from '../leads/lead.serializer'
 import { ClientsService } from '../clients/clients.service'
+import { LeadActivityService } from '../lead-activity/lead-activity.service'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -16,6 +17,7 @@ export class MetaLeadsService {
   constructor(
     private readonly database: DatabaseService,
     private readonly clientsService: ClientsService,
+    private readonly leadActivityService: LeadActivityService,
   ) {}
 
   private get db() { return this.database.db }
@@ -183,18 +185,48 @@ export class MetaLeadsService {
       crm: serializeCrmDetails(lead.crmDetails),
       client,
       history,
+      activity: await this.leadActivityService.getLeadActivity(id),
     }
   }
 
   async assign(id: string, assignedBy: string, dto: AssignLeadDto) {
-    await this.findOne(id)
+    const existing = await this.db.query.metaLeads.findFirst({
+      where: and(eq(metaLeads.id, id), isNull(metaLeads.deletedAt)),
+      with: { assignedToProfile: true },
+    })
+    if (!existing) throw new NotFoundException(`Meta lead ${id} not found`)
     await this.ensureAssignableSalesExecutive(dto.assigned_to)
+    const assignee = await this.db.query.userProfiles.findFirst({
+      where: eq(userProfiles.id, dto.assigned_to),
+    })
 
-    const [updated] = await this.db
-      .update(metaLeads)
-      .set({ assignedTo: dto.assigned_to, assignedBy, assignedAt: new Date(), status: 'assigned' })
-      .where(eq(metaLeads.id, id))
-      .returning()
+    const [updated] = await this.db.transaction(async (tx) => {
+      const rows = await tx
+        .update(metaLeads)
+        .set({ assignedTo: dto.assigned_to, assignedBy, assignedAt: new Date(), status: 'assigned', updatedAt: new Date() })
+        .where(eq(metaLeads.id, id))
+        .returning()
+
+      const fromName = existing.assignedToProfile?.fullName ?? null
+      const isTransfer = Boolean(existing.assignedTo && existing.assignedTo !== dto.assigned_to)
+
+      await this.leadActivityService.record({
+        leadId: id,
+        actorUserId: assignedBy,
+        eventType: isTransfer ? 'transferred' : 'assigned',
+        source: 'manual',
+        title: isTransfer ? 'Lead transferred' : 'Lead assigned',
+        description: isTransfer ? 'Lead ownership was moved to another sales executive.' : 'Lead was assigned to a sales executive.',
+        fromUserId: existing.assignedTo ?? null,
+        fromUserName: fromName,
+        toUserId: dto.assigned_to,
+        changes: {
+          assigned_to: { label: 'Assigned To', from: fromName, to: assignee?.fullName ?? assignee?.email ?? dto.assigned_to },
+        },
+      }, tx)
+
+      return rows
+    })
     if (!updated) throw new NotFoundException(`Meta lead ${id} not found`)
     this.logger.log(`Lead ${id} assigned to ${dto.assigned_to} by ${assignedBy}`)
     return this.findOne(id)
@@ -202,23 +234,79 @@ export class MetaLeadsService {
 
   async bulkAssign(assignedBy: string, dto: BulkAssignDto) {
     await this.ensureAssignableSalesExecutive(dto.assigned_to)
+    const assignee = await this.db.query.userProfiles.findFirst({
+      where: eq(userProfiles.id, dto.assigned_to),
+    })
 
-    const updated = await this.db
-      .update(metaLeads)
-      .set({ assignedTo: dto.assigned_to, assignedBy, assignedAt: new Date(), status: 'assigned' })
-      .where(inArray(metaLeads.id, dto.lead_ids))
-      .returning()
+    const updated = await this.db.transaction(async (tx) => {
+      const existing = await tx.query.metaLeads.findMany({
+        where: and(inArray(metaLeads.id, dto.lead_ids), isNull(metaLeads.deletedAt)),
+        with: { assignedToProfile: true },
+      })
+
+      const rows = await tx
+        .update(metaLeads)
+        .set({ assignedTo: dto.assigned_to, assignedBy, assignedAt: new Date(), status: 'assigned', updatedAt: new Date() })
+        .where(and(inArray(metaLeads.id, dto.lead_ids), isNull(metaLeads.deletedAt)))
+        .returning()
+
+      for (const lead of existing) {
+        const fromName = lead.assignedToProfile?.fullName ?? null
+        const isTransfer = Boolean(lead.assignedTo && lead.assignedTo !== dto.assigned_to)
+        await this.leadActivityService.record({
+          leadId: lead.id,
+          actorUserId: assignedBy,
+          eventType: isTransfer ? 'transferred' : 'assigned',
+          source: 'bulk',
+          title: isTransfer ? 'Lead transferred in bulk' : 'Lead assigned in bulk',
+          description: isTransfer ? 'Lead ownership was moved by a bulk action.' : 'Lead was assigned by a bulk action.',
+          fromUserId: lead.assignedTo ?? null,
+          fromUserName: fromName,
+          toUserId: dto.assigned_to,
+          changes: {
+            assigned_to: { label: 'Assigned To', from: fromName, to: assignee?.fullName ?? assignee?.email ?? dto.assigned_to },
+          },
+          metadata: { bulk_count: dto.lead_ids.length },
+        }, tx)
+      }
+
+      return rows
+    })
     this.logger.log(`Bulk-assigned ${updated.length} lead(s) to ${dto.assigned_to} by ${assignedBy}`)
     return { updated: updated.length }
   }
 
-  async unassign(id: string) {
-    await this.findOne(id)
-    const [updated] = await this.db
-      .update(metaLeads)
-      .set({ assignedTo: null, assignedBy: null, assignedAt: null, status: 'unassigned', updatedAt: new Date() })
-      .where(eq(metaLeads.id, id))
-      .returning()
+  async unassign(id: string, actorUserId: string) {
+    const existing = await this.db.query.metaLeads.findFirst({
+      where: and(eq(metaLeads.id, id), isNull(metaLeads.deletedAt)),
+      with: { assignedToProfile: true },
+    })
+    if (!existing) throw new NotFoundException(`Meta lead ${id} not found`)
+
+    const [updated] = await this.db.transaction(async (tx) => {
+      const rows = await tx
+        .update(metaLeads)
+        .set({ assignedTo: null, assignedBy: null, assignedAt: null, status: 'unassigned', updatedAt: new Date() })
+        .where(eq(metaLeads.id, id))
+        .returning()
+
+      const fromName = existing.assignedToProfile?.fullName ?? null
+      await this.leadActivityService.record({
+        leadId: id,
+        actorUserId,
+        eventType: 'unassigned',
+        source: 'manual',
+        title: 'Lead unassigned',
+        description: 'Lead was returned to the unassigned queue.',
+        fromUserId: existing.assignedTo ?? null,
+        fromUserName: fromName,
+        changes: {
+          assigned_to: { label: 'Assigned To', from: fromName, to: null },
+        },
+      }, tx)
+
+      return rows
+    })
     if (!updated) throw new NotFoundException(`Meta lead ${id} not found`)
     this.logger.log(`Lead ${id} unassigned`)
     return this.findOne(id)

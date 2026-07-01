@@ -14,6 +14,16 @@ export const hwcEnum = pgEnum('hwc', ['hot', 'warm', 'cold'])
 export const buyingStatusEnum = pgEnum('buying_status', ['ready', 'exploring', 'not_ready', 'interested'])
 export const notSpokenReasonEnum = pgEnum('not_spoken_reason', ['customer_busy', 'wrong_number', 'out_of_reach', 'did_not_pickup'])
 export const crmSiteVisitStatusEnum = pgEnum('crm_site_visit_status', ['scheduled', 'completed', 'not_scheduled'])
+export const leadActivityEventTypeEnum = pgEnum('lead_activity_event_type', [
+  'lead_created',
+  'assigned',
+  'transferred',
+  'unassigned',
+  'crm_updated',
+  'client_status_updated',
+  'site_visit_updated',
+  'lead_deleted',
+])
 
 // Raw leads from Meta Ads webhook
 export const metaLeads = pgTable('meta_leads', {
@@ -122,6 +132,28 @@ export const leadInteractions = pgTable('lead_interactions', {
   index('lead_interactions_lead_id_idx').on(t.leadId),
 ])
 
+export const leadActivityEvents = pgTable('lead_activity_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  leadId: uuid('lead_id').references(() => metaLeads.id, { onDelete: 'cascade' }).notNull(),
+  actorUserId: uuid('actor_user_id').references(() => userProfiles.id, { onDelete: 'set null' }),
+  actorName: text('actor_name'),
+  eventType: leadActivityEventTypeEnum('event_type').notNull(),
+  source: text('source').default('manual').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  fromUserId: uuid('from_user_id').references(() => userProfiles.id, { onDelete: 'set null' }),
+  fromUserName: text('from_user_name'),
+  toUserId: uuid('to_user_id').references(() => userProfiles.id, { onDelete: 'set null' }),
+  toUserName: text('to_user_name'),
+  changes: jsonb('changes').$type<Record<string, { label: string; from: unknown; to: unknown }>>(),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('lead_activity_events_lead_created_idx').on(t.leadId, t.createdAt),
+  index('lead_activity_events_actor_idx').on(t.actorUserId),
+  index('lead_activity_events_type_idx').on(t.eventType),
+])
+
 // ── Relations ─────────────────────────────────────────────────────────────────
 
 export const metaLeadsRelations = relations(metaLeads, ({ one, many }) => ({
@@ -130,6 +162,7 @@ export const metaLeadsRelations = relations(metaLeads, ({ one, many }) => ({
   crmDetails: one(leadCrmDetails, { fields: [metaLeads.id], references: [leadCrmDetails.leadId] }),
   notes: many(leadNotes),
   interactions: many(leadInteractions),
+  activityEvents: many(leadActivityEvents),
 }))
 
 export const leadCrmDetailsRelations = relations(leadCrmDetails, ({ one }) => ({
@@ -144,4 +177,11 @@ export const leadNotesRelations = relations(leadNotes, ({ one }) => ({
 export const leadInteractionsRelations = relations(leadInteractions, ({ one }) => ({
   metaLead: one(metaLeads, { fields: [leadInteractions.leadId], references: [metaLeads.id] }),
   employee: one(userProfiles, { fields: [leadInteractions.employeeId], references: [userProfiles.id] }),
+}))
+
+export const leadActivityEventsRelations = relations(leadActivityEvents, ({ one }) => ({
+  metaLead: one(metaLeads, { fields: [leadActivityEvents.leadId], references: [metaLeads.id] }),
+  actor: one(userProfiles, { fields: [leadActivityEvents.actorUserId], references: [userProfiles.id], relationName: 'activity_actor' }),
+  fromUser: one(userProfiles, { fields: [leadActivityEvents.fromUserId], references: [userProfiles.id], relationName: 'activity_from_user' }),
+  toUser: one(userProfiles, { fields: [leadActivityEvents.toUserId], references: [userProfiles.id], relationName: 'activity_to_user' }),
 }))

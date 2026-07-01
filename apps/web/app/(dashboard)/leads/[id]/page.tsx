@@ -8,6 +8,7 @@ import {
   Check, Flame, Thermometer, Snowflake, User, History,
   AlertTriangle, Briefcase, Building, TrendingDown,
   PhoneOff, Clock, ChevronDown, ChevronUp, Trash2, ChevronLeft, ChevronRight,
+  Activity, ArrowRight,
   type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -83,6 +84,24 @@ interface LeadHistory {
     hwc: string | null
     remarks: string | null
   } | null
+}
+
+interface LeadActivity {
+  id: string
+  lead_id: string
+  actor_user_id: string | null
+  actor_name: string | null
+  event_type: string
+  source: string
+  title: string
+  description: string | null
+  from_user_id: string | null
+  from_user_name: string | null
+  to_user_id: string | null
+  to_user_name: string | null
+  changes: Record<string, { label: string; from: unknown; to: unknown }> | null
+  metadata: Record<string, unknown> | null
+  created_at: string
 }
 
 interface CrmDetails {
@@ -257,6 +276,28 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
 }
 
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function displayValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return "Empty"
+  if (Array.isArray(value)) return value.length > 0 ? value.join(", ") : "Empty"
+  if (typeof value === "boolean") return value ? "Yes" : "No"
+  if (typeof value === "string") {
+    const maybeDate = value.match(/^\d{4}-\d{2}-\d{2}/) ? new Date(value) : null
+    if (maybeDate && !Number.isNaN(maybeDate.getTime())) return formatDateTime(value)
+    return value.replace(/_/g, " ")
+  }
+  return String(value)
+}
+
 function LeadInfoCard({ label, value, icon: Icon, href, protectedValue }: {
   label: string
   value: string
@@ -416,6 +457,69 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
   )
 }
 
+function ActivityCard({ event }: { event: LeadActivity }) {
+  const changes = Object.values(event.changes ?? {})
+  const hasTransfer = event.from_user_name || event.to_user_name
+
+  return (
+    <div className="rounded-xl px-4 py-3" style={{
+      border: "1px solid var(--color-border)",
+      background: "var(--color-card)",
+    }}>
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+          style={{ background: "oklch(0.700 0.130 75 / 0.12)", color: "oklch(0.700 0.130 75)" }}>
+          <Activity className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>
+              {event.title}
+            </p>
+            <Badge variant="outline" className="text-[10px] capitalize">{event.source.replace(/_/g, " ")}</Badge>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+            <span>{formatDateTime(event.created_at)}</span>
+            {event.actor_name && (
+              <span className="flex items-center gap-1">
+                <User className="h-3 w-3" />{event.actor_name}
+              </span>
+            )}
+          </div>
+          {event.description && (
+            <p className="mt-2 text-xs" style={{ color: "var(--color-foreground)" }}>{event.description}</p>
+          )}
+          {hasTransfer && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: "var(--color-foreground)" }}>
+              <span>{event.from_user_name ?? "Unassigned"}</span>
+              <ArrowRight className="h-3.5 w-3.5" style={{ color: "var(--color-muted-foreground)" }} />
+              <span>{event.to_user_name ?? "Unassigned"}</span>
+            </div>
+          )}
+          {changes.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              {changes.slice(0, 6).map(change => (
+                <div key={change.label} className="grid grid-cols-[120px_1fr] gap-2 rounded-lg px-3 py-2 text-xs"
+                  style={{ background: "color-mix(in oklab, var(--color-card), var(--color-muted) 18%)" }}>
+                  <span className="font-medium" style={{ color: "var(--color-foreground)" }}>{change.label}</span>
+                  <span className="min-w-0" style={{ color: "var(--color-muted-foreground)" }}>
+                    {displayValue(change.from)} <span className="px-1">-&gt;</span> {displayValue(change.to)}
+                  </span>
+                </div>
+              ))}
+              {changes.length > 6 && (
+                <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                  +{changes.length - 6} more change(s)
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Page
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -425,6 +529,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [lead, setLead] = useState<MetaLead | null>(null)
   const [client, setClient] = useState<ClientProfile | null>(null)
   const [history, setHistory] = useState<LeadHistory[]>([])
+  const [activity, setActivity] = useState<LeadActivity[]>([])
   const [crm, setCrm] = useState<CrmDetails>({
     first_call_date: null, last_call_date: null, call_status: null,
     not_spoken_reason: null,
@@ -439,7 +544,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [activeTab, setActiveTab] = useState<"crm" | "history">("crm")
+  const [activeTab, setActiveTab] = useState<"crm" | "activity" | "history">("crm")
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -471,6 +576,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           setClientNote(json.client.status_note ?? "")
         }
         if (json.history) setHistory(json.history)
+        if (json.activity) setActivity(json.activity)
       } finally {
         setLoading(false)
       }
@@ -576,6 +682,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           setClientNote(statusJson.client.status_note ?? "")
         }
       }
+
+      const detailRes = await fetch(`/api/leads/meta/${id}/detail`)
+      const detailJson = await detailRes.json().catch(() => ({}))
+      if (detailJson.activity) setActivity(detailJson.activity)
+      if (detailJson.history) setHistory(detailJson.history)
 
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -788,7 +899,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
         {([
           { key: "crm",     label: "CRM Details" },
-          { key: "history", label: `History (${history.length})` },
+          { key: "activity", label: `History (${activity.length})` },
+          { key: "history", label: `Enquiries (${history.length})` },
         ] as const).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className="flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-150"
@@ -985,7 +1097,33 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </motion.div>
         )}
 
-        {/* History tab */}
+        {/* Activity tab */}
+        {activeTab === "activity" && (
+          <motion.div key="activity" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <Card className="shadow-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="w-4 h-4" style={{ color: "oklch(0.700 0.130 75)" }} />
+                  Lead History
+                </CardTitle>
+                <p className="text-xs mt-1" style={{ color: "var(--color-foreground)" }}>
+                  Assignments, transfers, CRM changes, client status updates and site visits
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {activity.length === 0 ? (
+                  <p className="text-sm text-center py-8" style={{ color: "var(--color-foreground)" }}>
+                    No activity recorded yet
+                  </p>
+                ) : (
+                  activity.map(event => <ActivityCard key={event.id} event={event} />)
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Enquiries tab */}
         {activeTab === "history" && (
           <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <Card className="shadow-card">
