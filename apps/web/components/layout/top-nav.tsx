@@ -414,7 +414,7 @@ export function TopNav({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {[
-                { icon: Sparkles, label: "New Lead", color: "text-primary", onClick: () => router.push(`/meta-ads?quickAdd=lead&t=${Date.now()}`) },
+                { icon: Sparkles, label: "New Lead", color: "text-primary", onClick: () => router.push(`/leads?quickAdd=lead&t=${Date.now()}`) },
                 { icon: Calendar, label: "Schedule Visit", color: "text-emerald-600", onClick: () => router.push(`/site-visits?quickAdd=visit&t=${Date.now()}`) },
                 { icon: MessageSquare, label: "Send Message", color: "text-blue-600" },
                 { icon: Clock, label: "Add Reminder", color: "text-primary", onClick: () => setShowReminders(true) },

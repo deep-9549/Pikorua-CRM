@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   Search, Users, Phone, MapPin, Flame,
   Thermometer, Snowflake, ChevronRight, Loader2, AlertCircle,
-  RefreshCw, Calendar, Star, Download, Filter, X
+  RefreshCw, Calendar, Star, Download, Filter, X, Plus
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { ProtectedPhone } from "@/components/security/protected-phone"
+import { AddLeadDialog } from "@/components/add-lead-dialog"
 import { exportLeadsToExcel } from "@/lib/export-leads"
 import {
   dateKey,
@@ -180,11 +181,17 @@ export default function LeadsPage() {
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS })
   const [showFilters, setShowFilters] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  const [addOpen, setAddOpen] = useState(false)
   const isSuperAdmin = getAuthUser()?.role === "super_admin"
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
     return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("quickAdd") === "lead") setAddOpen(true)
   }, [])
 
   // Unique executives present in the data (for the assigned-to filter)
@@ -216,6 +223,10 @@ export default function LeadsPage() {
       setExporting(false)
     }
   }, [filters, isSuperAdmin, search, refetch])
+
+  const handleLeadAdded = useCallback(() => {
+    void refetch()
+  }, [refetch])
 
   const today = dateKey(new Date(now))
 
@@ -292,6 +303,15 @@ export default function LeadsPage() {
           </p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <Button
+            size="sm"
+            className="gap-2 gold-gradient font-semibold shadow-gold-sm"
+            style={{ color: "var(--color-primary-foreground)" }}
+            onClick={() => setAddOpen(true)}
+          >
+            <Plus className="w-4 h-4" />
+            Add Lead
+          </Button>
           {isSuperAdmin && (
             <Button variant="outline" size="sm" className="gap-2"
               onClick={handleExport}
@@ -482,11 +502,22 @@ export default function LeadsPage() {
           <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--color-primary)" }} />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 space-y-2">
+        <div className="text-center py-20 space-y-3">
           <Users className="w-10 h-10 mx-auto opacity-20" />
           <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
             {search || activeFilterCount > 0 ? "No leads match your filters" : "No leads assigned yet"}
           </p>
+          {!search && activeFilterCount === 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2 mx-auto"
+              onClick={() => setAddOpen(true)}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add your first lead manually
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -495,6 +526,12 @@ export default function LeadsPage() {
           {rest.length > 0 && <Section title={overdue.length + dueToday.length > 0 ? "Others" : "All Leads"} accentColor="var(--color-primary)" leads={rest} />}
         </div>
       )}
+
+      <AddLeadDialog<MetaLead>
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdded={handleLeadAdded}
+      />
     </div>
   )
 }
