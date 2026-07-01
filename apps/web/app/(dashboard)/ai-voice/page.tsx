@@ -29,6 +29,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ProtectedPhone } from "@/components/security/protected-phone"
+import { getAuthUser } from "@/lib/auth/cookies"
 import { formatPhone } from "@/lib/utils"
 
 type VoiceLabel = "hot" | "warm" | "cold"
@@ -175,6 +176,8 @@ function LabelBadge({ label }: { label: VoiceLabel | null | undefined }) {
 }
 
 export default function AiVoicePage() {
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
   const [items, setItems] = useState<VoiceQueueItem[]>([])
   const [alerts, setAlerts] = useState<VoiceAlert[]>([])
   const [filters, setFilters] = useState<Filters>({ ...EMPTY_FILTERS })
@@ -189,6 +192,12 @@ export default function AiVoicePage() {
   const [overrideReason, setOverrideReason] = useState("")
   const [savingOverride, setSavingOverride] = useState(false)
 
+  useEffect(() => {
+    const user = getAuthUser()
+    setIsSuperAdmin(user?.role === "super_admin")
+    setAuthChecked(true)
+  }, [])
+
   const query = useMemo(() => {
     const params = new URLSearchParams()
     Object.entries(filters).forEach(([key, value]) => {
@@ -198,6 +207,7 @@ export default function AiVoicePage() {
   }, [filters])
 
   const loadQueue = useCallback(async (quiet = false) => {
+    if (!isSuperAdmin) return
     if (quiet) setRefreshing(true)
     else setLoading(true)
     setError(null)
@@ -212,15 +222,16 @@ export default function AiVoicePage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [query])
+  }, [isSuperAdmin, query])
 
   const loadAlerts = useCallback(async () => {
+    if (!isSuperAdmin) return
     try {
       const res = await fetch("/api/ai-voice/alerts?unread=true", { cache: "no-store" })
       const json = await res.json().catch(() => ({}))
       if (res.ok) setAlerts(json.alerts ?? [])
     } catch {}
-  }, [])
+  }, [isSuperAdmin])
 
   const loadDetail = useCallback(async (id: string) => {
     setSelectedId(id)
@@ -283,6 +294,28 @@ export default function AiVoicePage() {
       alerts: alerts.length,
     }
   }, [alerts.length, items])
+
+  if (!authChecked) {
+    return (
+      <div className="flex min-h-[360px] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--color-primary)" }} />
+      </div>
+    )
+  }
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center">
+        <div className="max-w-sm rounded-lg border p-6 text-center shadow-card" style={{ borderColor: "var(--color-border)", background: "var(--color-card)" }}>
+          <ShieldCheck className="mx-auto mb-3 h-9 w-9" style={{ color: "var(--color-primary)" }} />
+          <h1 className="text-lg font-semibold">Super admin only</h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+            AI Voice is restricted to super admin accounts.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   function setFilter(key: keyof Filters, value: string) {
     setFilters((prev) => ({ ...prev, [key]: value }))

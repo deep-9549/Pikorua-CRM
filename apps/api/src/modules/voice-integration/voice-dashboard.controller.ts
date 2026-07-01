@@ -3,8 +3,10 @@ import { VoiceIntegrationService } from './voice-integration.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard } from '../../common/guards/roles.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import { Roles } from '../../common/decorators/roles.decorator'
 
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('super_admin')
 @Controller('ai-voice')
 export class VoiceDashboardController {
   constructor(private readonly voiceService: VoiceIntegrationService) {}
