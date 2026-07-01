@@ -32,6 +32,7 @@ import { useMetaLeads } from "@/hooks/use-meta-leads"
 const pageNames: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/leads": "Lead Management",
+  "/ai-voice": "AI Voice",
   "/whatsapp": "WhatsApp Hub",
   "/properties": "Property Explorer",
   "/smart-matching": "Smart Property Matching",
