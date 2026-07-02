@@ -492,7 +492,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <Card className="shadow-card">
+          <Card className="flex h-[430px] flex-col overflow-hidden shadow-card">
             <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
               <div>
                 <CardTitle className="text-base">Recent Leads</CardTitle>
@@ -504,7 +504,7 @@ export default function DashboardPage() {
                 </Link>
               </Button>
             </CardHeader>
-            <CardContent className="space-y-2 pt-2">
+            <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-4 pr-2 pt-2 [scrollbar-gutter:stable]">
               {leadsLoading ? (
                 <div className="flex justify-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -582,7 +582,7 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <Card className="shadow-card">
+          <Card className="flex h-[430px] flex-col overflow-hidden shadow-card">
             <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
               <div>
                 <CardTitle className="text-base">Upcoming Visits</CardTitle>
@@ -594,7 +594,7 @@ export default function DashboardPage() {
                 </Link>
               </Button>
             </CardHeader>
-            <CardContent className="space-y-2 pt-2">
+            <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-4 pr-2 pt-2 [scrollbar-gutter:stable]">
               {visitsLoading ? (
                 <div className="flex justify-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
