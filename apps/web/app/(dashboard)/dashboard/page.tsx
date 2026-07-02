@@ -1,451 +1,680 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { motion } from "framer-motion"
 import {
-  TrendingUp, TrendingDown, Users, Building2, CreditCard,
-  MessageSquare, Target, Sparkles, ArrowUpRight, Calendar,
-  Phone, BarChart3, Flame, Star, Clock
+  AlertCircle,
+  ArrowUpRight,
+  BarChart3,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Flame,
+  Loader2,
+  Phone,
+  RefreshCw,
+  Target,
+  UserCheck,
+  Users,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
 import {
-  dashboardStats, revenueData, employees, leads,
-  siteVisits, formatCurrency, formatNumber, getStatusColor
-} from "@/lib/data"
-import {
-  Area, AreaChart, Bar, BarChart, ResponsiveContainer,
-  XAxis, YAxis, Tooltip, CartesianGrid
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts"
 
-/* â”€â”€ Animation variants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-const fade = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } }
-}
-const rise = {
-  hidden: { opacity: 0, y: 16 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.45 } }
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ProtectedPhone } from "@/components/security/protected-phone"
+import { useMetaLeads } from "@/hooks/use-meta-leads"
+import { cn, formatPhone } from "@/lib/utils"
+import { dateKey, isFreshLead } from "@/lib/lead-display-order"
+
+interface CrmDetails {
+  call_status?: "spoken" | "not_spoken" | "call_back_later" | string | null
+  first_call_date?: string | null
+  last_call_date?: string | null
+  follow_up_date?: string | null
+  hwc?: "hot" | "warm" | "cold" | string | null
+  buying_status?: string | null
+  site_visit_status?: string | null
+  budget_range?: string | null
 }
 
-function DashboardCardHeader({
-  title,
-  subtitle,
-  action = false,
-}: {
-  title: string
-  subtitle: string
-  action?: boolean
-}) {
-  return (
-    <CardHeader className="flex flex-row items-start justify-between pb-2 pt-5 px-5">
-      <div className="min-w-0">
-        <CardTitle className="text-[15px] font-semibold tracking-tight">{title}</CardTitle>
-        <p className="text-[12px] text-muted-foreground mt-0.5">{subtitle}</p>
-      </div>
-      {action ? (
-        <Button variant="ghost" size="sm" className="h-7 text-[12px] text-primary gap-1 -mt-0.5">
-          View All <ArrowUpRight className="w-3 h-3" />
-        </Button>
-      ) : (
-        <div className="h-7 w-[72px] shrink-0" aria-hidden />
-      )}
-    </CardHeader>
-  )
+interface MetaLead {
+  id: string
+  full_name: string | null
+  phone: string | null
+  email: string | null
+  city: string | null
+  campaign_name: string | null
+  source: string | null
+  status: string
+  received_at: string
+  assigned_at: string | null
+  assigned_to_profile: { id: string; full_name: string } | null
+  crm?: CrmDetails | null
+  client_status?: string | null
 }
 
-/* â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+interface VisitRow {
+  id: string
+  visit_date: string | null
+  visit_confirmation_date: string | null
+  site_visit_status: string
+  status: string
+  lead?: {
+    id: string
+    full_name: string | null
+    phone: string | null
+    city: string | null
+    assigned_to_profile: { id: string; full_name: string } | null
+  } | null
+  scheduled_by_profile?: { id: string; full_name: string } | null
+}
+
 interface StatCardProps {
   title: string
-  value: string
-  change: number
-  trend: "up" | "down"
+  value: string | number
+  detail: string
   icon: React.ElementType
-  iconBg: string
-  iconColor: string
-  suffix?: string
+  tone: "primary" | "success" | "warning" | "destructive"
 }
 
-function StatCard({ title, value, change, trend, icon: Icon, iconBg, iconColor, suffix }: StatCardProps) {
+const EMPTY_LEADS: MetaLead[] = []
+const EMPTY_VISITS: VisitRow[] = []
+
+const toneStyles: Record<StatCardProps["tone"], string> = {
+  primary: "text-primary bg-primary/10",
+  success: "text-success bg-success/10",
+  warning: "text-warning bg-warning/10",
+  destructive: "text-destructive bg-destructive/10",
+}
+
+function initials(name: string | null | undefined) {
+  if (!name) return "?"
+  return name.split(" ").map(part => part[0]).join("").toUpperCase().slice(0, 2)
+}
+
+function parseDate(value: string | null | undefined) {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatNumber(value: number) {
+  return value.toLocaleString("en-IN")
+}
+
+function formatPercent(value: number) {
+  if (!Number.isFinite(value)) return "0%"
+  return `${value > 0 ? "+" : ""}${Math.round(value)}%`
+}
+
+function monthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+}
+
+function buildMonthBuckets(now: Date) {
+  return Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1)
+    return {
+      key: monthKey(date),
+      month: date.toLocaleDateString("en-IN", { month: "short" }),
+      leads: 0,
+      spoken: 0,
+      callbacks: 0,
+    }
+  })
+}
+
+function callWasToday(lead: MetaLead, today: string) {
+  return [lead.crm?.first_call_date, lead.crm?.last_call_date].some(value => dateKey(value) === today)
+}
+
+function displayStatus(lead: MetaLead) {
+  if (lead.client_status) return lead.client_status.replaceAll("_", " ")
+  if (lead.crm?.call_status) return lead.crm.call_status.replaceAll("_", " ")
+  return isFreshLead(lead) ? "fresh" : "active"
+}
+
+function StatCard({ title, value, detail, icon: Icon, tone }: StatCardProps) {
   return (
-    <motion.div variants={rise}>
-      <Card className="relative overflow-hidden card-lift shadow-card border-0">
-        {/* Side accent line */}
-        <div className="absolute left-0 top-4 bottom-4 w-[3px] rounded-r-full"
-          style={{ background: "linear-gradient(180deg, var(--color-primary) 0%, transparent 100%)", opacity: 0.5 }} />
-        <CardContent className="p-5">
-          <div className="flex items-start justify-between mb-4">
-            <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", iconBg)}>
-              <Icon className={cn("w-4.5 h-4.5", iconColor)} style={{ width: 18, height: 18 }} />
+    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+      <Card className="shadow-card">
+        <CardContent className="p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</p>
+            <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", toneStyles[tone])}>
+              <Icon className="h-4 w-4" />
             </div>
           </div>
-          <p className="text-3xl font-bold tracking-tight text-foreground mb-2">
-            {value}{suffix}
-          </p>
-          <div className={cn(
-            "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full",
-            trend === "up"
-              ? "bg-success/10 text-success"
-              : "bg-destructive/10 text-destructive"
-          )}>
-            {trend === "up"
-              ? <TrendingUp className="w-3 h-3" />
-              : <TrendingDown className="w-3 h-3" />}
-            {change}% vs last month
-          </div>
+          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
         </CardContent>
       </Card>
     </motion.div>
   )
 }
 
-/* â”€â”€ Revenue Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function RevenueChart() {
+function EmptyBlock({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
   return (
-    <motion.div variants={rise}>
-      <Card className="shadow-card border-0 card-lift">
-        <CardHeader className="flex flex-row items-start justify-between pb-2 pt-5 px-5">
-          <div>
-            <CardTitle className="text-[15px] font-semibold tracking-tight">Revenue Overview</CardTitle>
-            <p className="text-[12px] text-muted-foreground mt-0.5">Monthly closed deals</p>
-          </div>
-          <Button variant="ghost" size="sm" className="h-7 text-[12px] text-primary gap-1 -mt-0.5">
-            Full Report <ArrowUpRight className="w-3 h-3" />
-          </Button>
-        </CardHeader>
-        <CardContent className="px-5 pb-5 pt-3">
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="month" axisLine={false} tickLine={false}
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false}
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
-                  tickFormatter={v => `${(v / 10000000).toFixed(0)}Cr`} />
-                <Tooltip content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null
-                  return (
-                    <div className="glass shadow-luxury-lg rounded-xl p-3 text-sm">
-                      <p className="font-semibold text-foreground mb-0.5">{payload[0].payload.month}</p>
-                      <p className="text-[15px] font-bold gold-text">{formatCurrency(payload[0].value as number)}</p>
-                      <p className="text-[11px] text-muted-foreground">{payload[0].payload.conversions} closings</p>
-                    </div>
-                  )
-                }} />
-                <Area type="monotone" dataKey="revenue"
-                  stroke="var(--color-primary)" strokeWidth={2.5}
-                  fill="url(#revGrad)" dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+    <div className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+      <Icon className="h-7 w-7 opacity-35" />
+      {label}
+    </div>
   )
 }
 
-/* â”€â”€ Leads Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function LeadsChart() {
-  return (
-    <motion.div variants={rise}>
-      <Card className="shadow-card border-0 card-lift">
-        <CardHeader className="flex flex-row items-start justify-between pb-2 pt-5 px-5">
-          <div>
-            <CardTitle className="text-[15px] font-semibold tracking-tight">Lead Pipeline</CardTitle>
-            <p className="text-[12px] text-muted-foreground mt-0.5">Monthly inbound volume</p>
-          </div>
-        </CardHeader>
-        <CardContent className="px-5 pb-5 pt-3">
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-muted-foreground)" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="var(--color-muted-foreground)" stopOpacity={0.0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="month" axisLine={false} tickLine={false}
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false}
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
-                <Tooltip content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null
-                  return (
-                    <div className="glass shadow-luxury-lg rounded-xl p-3 text-sm border border-border/40">
-                      <p className="font-semibold text-foreground mb-0.5">{payload[0].payload.month}</p>
-                      <p className="text-[15px] font-bold text-primary">{payload[0].value} leads</p>
-                    </div>
-                  )
-                }} />
-                <Area type="monotone" dataKey="leads" stroke="var(--color-muted-foreground)" fill="url(#colorLeads)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-}
+export default function DashboardPage() {
+  const {
+    data,
+    isLoading: leadsLoading,
+    isFetching: leadsFetching,
+    error: leadsError,
+    refetch,
+  } = useMetaLeads<MetaLead>()
+  const leads = data ?? EMPTY_LEADS
+  const [nowMs, setNowMs] = React.useState(() => Date.now())
+  const [visits, setVisits] = React.useState<VisitRow[]>(EMPTY_VISITS)
+  const [visitsLoading, setVisitsLoading] = React.useState(true)
+  const [visitsError, setVisitsError] = React.useState<string | null>(null)
 
-/* â”€â”€ Recent Leads â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function RecentLeads() {
-  const recent = leads.slice(0, 5)
-  return (
-    <motion.div variants={rise}>
-      <Card className="shadow-card border-0">
-        <DashboardCardHeader title="Recent Leads" subtitle="Latest inquiries" action />
-        <CardContent className="px-4 pb-4 pt-1">
-          <div className="space-y-0.5">
-            {recent.map((lead) => (
-              <div key={lead.id}
-                className="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group">
-                <Avatar className="h-9 w-9 shrink-0" style={{ border: "1.5px solid var(--color-border)" }}>
-                  <AvatarImage src={lead.avatar} />
-                  <AvatarFallback className="text-[11px] font-bold bg-primary/8 text-primary">
-                    {lead.name.split(" ").map((n: string) => n[0]).join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[13px] font-medium truncate">{lead.name}</p>
-                    <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border", getStatusColor(lead.status))}>
-                      {lead.status}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    {lead.propertyInterest.join(", ")} Â· {lead.location}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="flex items-center gap-1 justify-end">
-                    <Sparkles className="w-3 h-3 text-primary" />
-                    <span className="text-[13px] font-bold">{lead.aiScore}</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">AI score</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-}
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
-/* â”€â”€ Team Leaderboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function TeamLeaderboard() {
-  const sorted = [...employees].sort((a, b) => b.revenue - a.revenue).slice(0, 5)
-  const medals = ["gold-text", "text-platinum", "text-chart-5", "text-muted-foreground", "text-muted-foreground"]
+  const fetchVisits = React.useCallback(async () => {
+    setVisitsLoading(true)
+    setVisitsError(null)
+    try {
+      const res = await fetch("/api/site-visits?status=upcoming", { cache: "no-store" })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.message ?? json.error ?? "Failed to load site visits")
+      setVisits(json.visits ?? [])
+    } catch (error) {
+      setVisits([])
+      setVisitsError(error instanceof Error ? error.message : "Failed to load site visits")
+    } finally {
+      setVisitsLoading(false)
+    }
+  }, [])
 
-  return (
-    <motion.div variants={rise}>
-      <Card className="shadow-card border-0">
-        <DashboardCardHeader title="Team Leaderboard" subtitle="Top performers this month" />
-        <CardContent className="px-4 pb-4 pt-1">
-          <div className="space-y-1">
-            {sorted.map((emp, i) => (
-              <div key={emp.id} className="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer">
-                <span className={cn("text-[13px] font-bold w-5 text-center tabular-nums", medals[i])}>
-                  {i + 1}
-                </span>
-                <Avatar className="h-8 w-8 shrink-0" style={{ border: "1.5px solid var(--color-border)" }}>
-                  <AvatarImage src={emp.avatar} />
-                  <AvatarFallback className="text-[10px]">
-                    {emp.name.split(" ").map(n => n[0]).join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium truncate">{emp.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{emp.leadsConverted} conversions</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[13px] font-semibold">{formatCurrency(emp.revenue)}</p>
-                  <Progress
-                    value={Math.min((emp.revenue / emp.target) * 100, 100)}
-                    className="h-1 w-16 mt-1.5"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-}
+  React.useEffect(() => {
+    void fetchVisits()
+  }, [fetchVisits])
 
-/* â”€â”€ Upcoming Visits â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function UpcomingVisits() {
-  const visits = siteVisits.filter(v => v.status === "scheduled").slice(0, 4)
-  return (
-    <motion.div variants={rise}>
-      <Card className="shadow-card border-0">
-        <DashboardCardHeader title="Site Visits" subtitle="Upcoming this week" action />
-        <CardContent className="px-4 pb-4 pt-1 space-y-2">
-          {visits.map(v => (
-            <div key={v.id}
-              className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer">
-              <div className="w-11 h-11 rounded-xl flex flex-col items-center justify-center shrink-0"
-                style={{ background: "rgb(194 65 12 / 0.08)", border: "1px solid rgb(194 65 12 / 0.15)" }}>
-                <span className="text-[16px] font-bold leading-none" style={{ color: "var(--color-primary)" }}>
-                  {v.scheduledDate.getDate()}
-                </span>
-                <span className="text-[9px] uppercase tracking-wide" style={{ color: "var(--color-primary)" }}>
-                  {v.scheduledDate.toLocaleDateString("en-US", { month: "short" })}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium truncate">{v.leadName}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{v.propertyName}</p>
-              </div>
-              <span className="text-[11px] text-muted-foreground shrink-0">
-                {v.scheduledDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-              </span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-}
+  const now = React.useMemo(() => new Date(nowMs), [nowMs])
 
-/* â”€â”€ AI Insights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function AIInsights() {
-  const insights: { title: string; body: string; type: "hot" | "up" | "warn"; Icon: typeof Flame }[] = []
-  const colors: Record<string, { bg: string; color: string }> = {
-    hot:  { bg: "bg-destructive/8",  color: "text-destructive" },
-    up:   { bg: "bg-success/8",      color: "text-success" },
-    warn: { bg: "bg-warning/8",      color: "text-warning-foreground" },
+  const dashboard = React.useMemo(() => {
+    const today = dateKey(now)
+    const buckets = buildMonthBuckets(now)
+    const byMonth = new Map(buckets.map(bucket => [bucket.key, bucket]))
+    const team = new Map<string, {
+      id: string
+      name: string
+      assigned: number
+      calledToday: number
+      spoken: number
+      followUps: number
+    }>()
+
+    let fresh = 0
+    let followUpToday = 0
+    let overdue = 0
+    let calledToday = 0
+    let spoken = 0
+    let callback = 0
+    let hot = 0
+    let previousMonthLeads = 0
+    let currentMonthLeads = 0
+    const currentMonth = monthKey(now)
+    const previousMonth = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1))
+
+    leads.forEach((lead) => {
+      if (isFreshLead(lead)) fresh += 1
+
+      const followUp = dateKey(lead.crm?.follow_up_date)
+      if (followUp === today) followUpToday += 1
+      if (followUp && followUp < today) overdue += 1
+
+      const callToday = callWasToday(lead, today)
+      if (callToday) calledToday += 1
+      if (lead.crm?.call_status === "spoken") spoken += 1
+      if (lead.crm?.call_status === "call_back_later") callback += 1
+
+      const heat = lead.client_status ?? lead.crm?.hwc
+      if (heat === "hot") hot += 1
+
+      const received = parseDate(lead.received_at)
+      if (received) {
+        const key = monthKey(received)
+        if (key === currentMonth) currentMonthLeads += 1
+        if (key === previousMonth) previousMonthLeads += 1
+        const bucket = byMonth.get(key)
+        if (bucket) {
+          bucket.leads += 1
+          if (lead.crm?.call_status === "spoken") bucket.spoken += 1
+          if (lead.crm?.call_status === "call_back_later") bucket.callbacks += 1
+        }
+      }
+
+      const owner = lead.assigned_to_profile
+      const ownerId = owner?.id ?? "unassigned"
+      if (!team.has(ownerId)) {
+        team.set(ownerId, {
+          id: ownerId,
+          name: owner?.full_name ?? "Unassigned",
+          assigned: 0,
+          calledToday: 0,
+          spoken: 0,
+          followUps: 0,
+        })
+      }
+      const member = team.get(ownerId)!
+      member.assigned += 1
+      if (callToday) member.calledToday += 1
+      if (lead.crm?.call_status === "spoken") member.spoken += 1
+      if (followUp === today) member.followUps += 1
+    })
+
+    const teamRows = Array.from(team.values())
+      .sort((a, b) => b.calledToday - a.calledToday || b.assigned - a.assigned)
+      .slice(0, 5)
+
+    const recent = [...leads]
+      .sort((a, b) => (parseDate(b.received_at)?.getTime() ?? 0) - (parseDate(a.received_at)?.getTime() ?? 0))
+      .slice(0, 5)
+
+    const conversionRate = leads.length ? (spoken / leads.length) * 100 : 0
+    const leadGrowth = previousMonthLeads
+      ? ((currentMonthLeads - previousMonthLeads) / previousMonthLeads) * 100
+      : currentMonthLeads > 0 ? 100 : 0
+
+    return {
+      fresh,
+      followUpToday,
+      overdue,
+      calledToday,
+      spoken,
+      callback,
+      hot,
+      conversionRate,
+      leadGrowth,
+      chartData: buckets,
+      teamRows,
+      recent,
+    }
+  }, [leads, now])
+
+  const upcomingVisits = React.useMemo(() => {
+    return [...visits]
+      .sort((a, b) => {
+        const aDate = parseDate(a.visit_date ?? a.visit_confirmation_date)?.getTime() ?? 0
+        const bDate = parseDate(b.visit_date ?? b.visit_confirmation_date)?.getTime() ?? 0
+        return aDate - bDate
+      })
+      .slice(0, 4)
+  }, [visits])
+
+  const loading = leadsLoading || visitsLoading
+  const refreshing = leadsFetching || visitsLoading
+  const leadError = leadsError instanceof Error ? leadsError.message : leadsError ? "Failed to load leads" : null
+
+  async function refreshDashboard() {
+    await Promise.all([refetch(), fetchVisits()])
   }
 
   return (
-    <motion.div variants={rise}>
-      <Card className="shadow-card border-0"
-        style={{ background: "linear-gradient(160deg, rgb(194 65 12 / 0.04) 0%, transparent 60%)" }}>
-        <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-5 px-5">
-          <div className="w-8 h-8 rounded-xl gold-gradient flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <div>
-            <CardTitle className="text-[15px] font-semibold tracking-tight">AI Insights</CardTitle>
-            <p className="text-[12px] text-muted-foreground">Smart recommendations</p>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 pt-1 space-y-1.5">
-          {insights.length === 0 && (
-            <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-              Insights will appear here once real CRM activity is available.
-            </div>
-          )}
-          {insights.map((ins, i) => {
-            const c = colors[ins.type]
-            return (
-              <div key={i}
-                className="flex items-start gap-3 p-3 rounded-xl bg-card/60 hover:bg-muted/50 transition-colors cursor-pointer border border-transparent hover:border-border/50">
-                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", c.bg)}>
-                  <ins.Icon className={cn("w-4 h-4", c.color)} />
-                </div>
-                <div>
-                  <p className="text-[13px] font-semibold leading-tight">{ins.title}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{ins.body}</p>
-                </div>
-              </div>
-            )
-          })}
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-}
-
-/* â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-export default function DashboardPage() {
-  const now = new Date()
-  const hour = now.getHours()
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
-
-  return (
-    <motion.div variants={fade} initial="hidden" animate="show" className="space-y-6">
-
-      {/* Page header */}
-      <motion.div variants={rise} className="flex items-start justify-between">
+    <motion.div
+      variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+        className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+      >
         <div>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </p>
-          <h1 className="text-[28px] font-bold tracking-tight text-balance">
-            {greeting}
-          </h1>
-          <p className="text-[13px] text-muted-foreground mt-1">
-            Here&apos;s your portfolio snapshot for today.
+          <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]">Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Live CRM snapshot from leads, calls, follow-ups, and site visits.
           </p>
         </div>
-        <div className="flex items-center gap-2 mt-1">
-          <Button variant="outline" size="sm" className="h-8 gap-2 text-[13px]">
-            <Calendar className="w-3.5 h-3.5" />
-            Today
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" asChild className="gap-2">
+            <Link href="/leads">
+              <Users className="h-4 w-4" />
+              Leads
+            </Link>
           </Button>
-          <Button size="sm" className="h-8 gap-2 text-[13px] gold-gradient text-primary-foreground border-0 shadow-gold-sm font-semibold">
-            <Target className="w-3.5 h-3.5" />
-            View Targets
+          <Button size="sm" onClick={() => void refreshDashboard()} disabled={refreshing} className="gap-2 gold-gradient font-semibold">
+            {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Refresh
           </Button>
         </div>
       </motion.div>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Revenue" value={formatCurrency(dashboardStats.totalRevenue)}
-          change={dashboardStats.revenueGrowth} trend="up"
-          icon={CreditCard} iconBg="bg-primary/8" iconColor="text-primary"
-        />
-        <StatCard
-          title="Total Leads" value={formatNumber(dashboardStats.totalLeads)}
-          change={dashboardStats.leadGrowth} trend="up"
-          icon={Users} iconBg="bg-chart-2/10" iconColor="text-chart-2"
-        />
-        <StatCard
-          title="Conversion Rate" value={`${dashboardStats.conversionRate}`}
-          change={dashboardStats.conversionGrowth} trend="up" suffix="%"
-          icon={Target} iconBg="bg-success/10" iconColor="text-success"
-        />
-        <StatCard
-          title="Active Deals" value={formatNumber(dashboardStats.activeDeals)}
-          change={dashboardStats.dealGrowth} trend="up"
-          icon={Building2} iconBg="bg-chart-5/10" iconColor="text-chart-5"
-        />
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <RevenueChart />
-        <LeadsChart />
-      </div>
-
-      {/* Bottom grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <RecentLeads />
-        <TeamLeaderboard />
-        <div className="space-y-5">
-          <UpcomingVisits />
-          <AIInsights />
+      {(leadError || visitsError) && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{leadError ?? visitsError}</span>
         </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Total Leads"
+          value={formatNumber(leads.length)}
+          detail={`${formatPercent(dashboard.leadGrowth)} vs previous month`}
+          icon={Users}
+          tone="primary"
+        />
+        <StatCard
+          title="Follow-ups"
+          value={formatNumber(dashboard.followUpToday)}
+          detail={`${formatNumber(dashboard.overdue)} overdue`}
+          icon={Clock}
+          tone={dashboard.overdue > 0 ? "destructive" : "warning"}
+        />
+        <StatCard
+          title="Called Today"
+          value={formatNumber(dashboard.calledToday)}
+          detail={`${formatNumber(dashboard.spoken)} total spoken leads`}
+          icon={Phone}
+          tone="success"
+        />
+        <StatCard
+          title="Hot Leads"
+          value={formatNumber(dashboard.hot)}
+          detail={`${dashboard.conversionRate.toFixed(1)}% spoken rate`}
+          icon={Flame}
+          tone="warning"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.8fr)]">
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <Card className="shadow-card">
+            <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
+              <div>
+                <CardTitle className="text-base">Lead Volume</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">Last six months by received date</p>
+              </div>
+              <BarChart3 className="h-5 w-5 text-primary" />
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="h-[270px]">
+                {loading ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : dashboard.chartData.every(row => row.leads === 0) ? (
+                  <EmptyBlock icon={BarChart3} label="Lead trends will appear once CRM data is available." />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dashboard.chartData} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="leadVolume" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.24} />
+                          <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null
+                          const row = payload[0].payload
+                          return (
+                            <div className="rounded-lg border border-border bg-card p-3 text-sm shadow-lg">
+                              <p className="font-semibold">{row.month}</p>
+                              <p className="text-primary">{row.leads} leads</p>
+                            </div>
+                          )
+                        }}
+                      />
+                      <Area type="monotone" dataKey="leads" stroke="var(--color-primary)" strokeWidth={2.5} fill="url(#leadVolume)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <Card className="shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Call Outcomes</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">Spoken and callback distribution</p>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="h-[270px]">
+                {loading ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : dashboard.chartData.every(row => row.spoken === 0 && row.callbacks === 0) ? (
+                  <EmptyBlock icon={Phone} label="Call outcomes will appear after CRM calls are logged." />
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dashboard.chartData} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <Tooltip cursor={{ fill: "var(--color-muted)" }} />
+                      <Bar dataKey="spoken" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="callbacks" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <Card className="shadow-card">
+            <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
+              <div>
+                <CardTitle className="text-base">Recent Leads</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">Newest inquiries in the CRM</p>
+              </div>
+              <Button variant="ghost" size="sm" asChild className="h-8 gap-1 text-xs">
+                <Link href="/leads">
+                  View <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-2">
+              {leadsLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : dashboard.recent.length === 0 ? (
+                <EmptyBlock icon={Users} label="No leads loaded yet." />
+              ) : (
+                dashboard.recent.map(lead => (
+                  <Link
+                    key={lead.id}
+                    href={`/leads/${lead.id}`}
+                    className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 transition-colors hover:bg-muted/50"
+                  >
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarFallback className="text-xs gold-gradient">{initials(lead.full_name)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{lead.full_name ?? "Unknown"}</p>
+                      <p className="truncate text-xs text-muted-foreground">{lead.city ?? lead.campaign_name ?? "No location"}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary">
+                      {displayStatus(lead)}
+                    </span>
+                  </Link>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <Card className="shadow-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Team Focus</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">Workload and call activity</p>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-2">
+              {leadsLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : dashboard.teamRows.length === 0 ? (
+                <EmptyBlock icon={UserCheck} label="Assignments will appear here once leads are assigned." />
+              ) : (
+                dashboard.teamRows.map(member => (
+                  <div key={member.id} className="rounded-lg border border-border px-3 py-2.5">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{member.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatNumber(member.assigned)} assigned leads</p>
+                      </div>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/10 text-success">
+                        <UserCheck className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="rounded-md bg-muted/60 px-2 py-1.5">
+                        <p className="font-bold">{member.calledToday}</p>
+                        <p className="text-muted-foreground">Today</p>
+                      </div>
+                      <div className="rounded-md bg-muted/60 px-2 py-1.5">
+                        <p className="font-bold">{member.spoken}</p>
+                        <p className="text-muted-foreground">Spoken</p>
+                      </div>
+                      <div className="rounded-md bg-muted/60 px-2 py-1.5">
+                        <p className="font-bold">{member.followUps}</p>
+                        <p className="text-muted-foreground">Due</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
+          <Card className="shadow-card">
+            <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
+              <div>
+                <CardTitle className="text-base">Upcoming Visits</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">Next scheduled site visits</p>
+              </div>
+              <Button variant="ghost" size="sm" asChild className="h-8 gap-1 text-xs">
+                <Link href="/site-visits">
+                  View <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-2">
+              {visitsLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : upcomingVisits.length === 0 ? (
+                <EmptyBlock icon={Calendar} label="No upcoming visits scheduled." />
+              ) : (
+                upcomingVisits.map(visit => {
+                  const when = parseDate(visit.visit_date ?? visit.visit_confirmation_date)
+                  const lead = visit.lead
+                  return (
+                    <div key={visit.id} className="rounded-lg border border-border px-3 py-2.5">
+                      <div className="mb-2 flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <span className="text-sm font-bold leading-none">{when ? when.getDate() : "-"}</span>
+                          <span className="text-[9px] uppercase">{when ? when.toLocaleDateString("en-IN", { month: "short" }) : "TBD"}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{lead?.full_name ?? "Unknown lead"}</p>
+                          <p className="truncate text-xs text-muted-foreground">{lead?.city ?? "No location"}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {when && (
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {when.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                        {lead?.phone && (
+                          <ProtectedPhone value={lead.phone} className="inline-flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {formatPhone(lead.phone)}
+                          </ProtectedPhone>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card className="shadow-card">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Target className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{formatNumber(dashboard.fresh)}</p>
+              <p className="text-xs text-muted-foreground">Fresh leads to call</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="shadow-card">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{formatNumber(dashboard.callback)}</p>
+              <p className="text-xs text-muted-foreground">Callback leads</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="shadow-card">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{formatNumber(visits.length)}</p>
+              <p className="text-xs text-muted-foreground">Upcoming site visits</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </motion.div>
   )
 }
-
-
