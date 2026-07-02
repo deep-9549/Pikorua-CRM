@@ -536,12 +536,12 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <Card className="shadow-card">
+          <Card className="flex max-h-[520px] flex-col overflow-hidden shadow-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Team Focus</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">Workload and call activity</p>
             </CardHeader>
-            <CardContent className="space-y-2 pt-2">
+            <CardContent className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-2 pt-2 [scrollbar-gutter:stable]">
               {leadsLoading ? (
                 <div className="flex justify-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
