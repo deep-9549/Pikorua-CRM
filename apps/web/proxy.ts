@@ -10,7 +10,7 @@ const JWT_SECRET = new TextEncoder().encode(
 const PROTECTED = [
   '/dashboard', '/leads', '/meta-ads', '/whatsapp', '/properties',
   '/employees', '/site-visits', '/bookings', '/reports', '/settings',
-  '/scripts', '/documents', '/ai-control', '/ai-voice', '/smart-matching', '/hni-clients',
+  '/scripts', '/documents', '/ai-control', '/ai-voice', '/ai-analytics', '/smart-matching', '/hni-clients',
 ]
 
 const ADMIN_ONLY = [
@@ -19,6 +19,7 @@ const ADMIN_ONLY = [
   '/reports',
   '/ai-control',
   '/ai-voice',
+  '/ai-analytics',
   '/hni-clients',
 ]
 

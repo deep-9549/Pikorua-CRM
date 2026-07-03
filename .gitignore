@@ -53,6 +53,7 @@ coverage/
 # ── Database ───────────────────────────────────────────────────────────────────
 drizzle/
 *.sql
+!db_migrations/20260703_ai_analytics_snapshots.sql
 *.dump
 *.db
 

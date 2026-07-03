@@ -54,6 +54,7 @@ const navGroups: NavGroup[] = [
     title: "Analytics",
     items: [
       { title: "Meta Ads", href: "/meta-ads", icon: BarChart3, adminOnly: true },
+      { title: "AI Analytics", href: "/ai-analytics", icon: Sparkles, adminOnly: true },
       { title: "Employee Performance Analysis", href: "/employee-performance-analysis", icon: Activity, adminOnly: true },
       { title: "Reports", href: "/reports", icon: PieChart, adminOnly: true, comingSoon: true },
       { title: "Bookings", href: "/bookings", icon: CreditCard, comingSoon: true },
