@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, MessageSquare, Building2, Sparkles,
   CalendarCheck, BarChart3, Bot, CreditCard, UserCog, Crown,
   FileText, Settings, ChevronLeft,
-  PieChart, FileSpreadsheet, LogOut, Gem
+  PieChart, FileSpreadsheet, LogOut, Gem, Activity
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -54,6 +54,7 @@ const navGroups: NavGroup[] = [
     title: "Analytics",
     items: [
       { title: "Meta Ads", href: "/meta-ads", icon: BarChart3, adminOnly: true },
+      { title: "Employee Performance Analysis", href: "/employee-performance-analysis", icon: Activity, adminOnly: true },
       { title: "Reports", href: "/reports", icon: PieChart, adminOnly: true, comingSoon: true },
       { title: "Bookings", href: "/bookings", icon: CreditCard, comingSoon: true },
     ]
