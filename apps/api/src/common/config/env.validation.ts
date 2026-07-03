@@ -5,6 +5,7 @@
  *
  * Wired into `ConfigModule.forRoot({ validate })`.
  */
+import { parseMicrositeLeadSourceConfigs } from '../../modules/microsite-lead-sync/microsite-lead-source-config'
 
 // Hard requirements: the app cannot function safely without these.
 const REQUIRED = ['DATABASE_URL', 'JWT_SECRET'] as const
@@ -73,6 +74,16 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     if (websiteSyncMissing.length > 0) {
       throw new Error(
         `Website lead sync is enabled but missing: ${websiteSyncMissing.join(', ')}.`,
+      )
+    }
+  }
+
+  if (String(config.MICROSITE_LEAD_SYNC_ENABLED).toLowerCase() === 'true') {
+    const sources = parseMicrositeLeadSourceConfigs(config)
+    if (sources.length === 0) {
+      throw new Error(
+        'Microsite lead sync is enabled but no sources are configured. ' +
+          'Set MICROSITE_LEAD_SOURCES_JSON.',
       )
     }
   }

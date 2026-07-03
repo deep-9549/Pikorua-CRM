@@ -19,6 +19,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module'
 import { WebhooksModule } from './modules/webhooks/webhooks.module'
 import { ImportModule } from './modules/import/import.module'
 import { WebsiteLeadSyncModule } from './modules/website-lead-sync/website-lead-sync.module'
+import { MicrositeLeadSyncModule } from './modules/microsite-lead-sync/microsite-lead-sync.module'
 import { MetaLeadSyncModule } from './modules/meta-lead-sync/meta-lead-sync.module'
 import { VoiceIntegrationModule } from './modules/voice-integration/voice-integration.module'
 import { validateEnv } from './common/config/env.validation'
@@ -44,6 +45,7 @@ import { validateEnv } from './common/config/env.validation'
     WebhooksModule,
     ImportModule,
     WebsiteLeadSyncModule,
+    MicrositeLeadSyncModule,
     MetaLeadSyncModule,
     VoiceIntegrationModule,
   ],
