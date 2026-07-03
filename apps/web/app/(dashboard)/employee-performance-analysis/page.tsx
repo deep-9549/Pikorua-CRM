@@ -96,6 +96,7 @@ interface RecentLead {
   status: string
   received_at: string
   assigned_at: string | null
+  ownership_status?: "current" | "previous"
   call_status: string | null
   follow_up_date: string | null
   hwc: string | null
@@ -576,9 +577,9 @@ export default function EmployeePerformanceAnalysisPage() {
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <UserCheck className="h-4 w-4 text-primary" />
-                  Recent Assigned Leads
+                  Recent Handled Leads
                 </CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">Latest leads currently owned by this employee</p>
+                <p className="mt-1 text-xs text-muted-foreground">Latest leads currently or previously owned by this employee</p>
               </div>
             </CardHeader>
             <CardContent className="pt-2">
@@ -600,6 +601,9 @@ export default function EmployeePerformanceAnalysisPage() {
                           <p className="truncate text-sm font-semibold">{lead.full_name ?? "Unknown lead"}</p>
                           <Badge variant="outline" className="h-5 capitalize">
                             {pretty(lead.status)}
+                          </Badge>
+                          <Badge variant={lead.ownership_status === "current" ? "secondary" : "outline"} className="h-5 capitalize">
+                            {lead.ownership_status === "current" ? "Current" : "Previous"}
                           </Badge>
                         </div>
                         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">

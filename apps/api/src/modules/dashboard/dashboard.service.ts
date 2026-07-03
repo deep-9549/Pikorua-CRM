@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
-import { eq, count, sum, desc, and, isNull } from 'drizzle-orm'
+import { eq, count, sum, desc, asc, and, isNull, inArray, or } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { metaLeads, bookings, siteVisits, userProfiles } from '@pikorua/db'
+import { metaLeads, bookings, siteVisits, userProfiles, leadActivityEvents } from '@pikorua/db'
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
 
@@ -31,6 +31,13 @@ interface PerformanceSummary {
   warmLeads: number
   coldLeads: number
   conversionRate: number
+}
+
+interface OwnershipWindow {
+  leadId: string
+  employeeId: string
+  assignedAt: Date
+  releasedAt: Date | null
 }
 
 function serializeEmployee(user: typeof userProfiles.$inferSelect) {
@@ -108,14 +115,6 @@ function inRange(value: Date | string | null | undefined, range: PeriodRange) {
   return date >= range.start && date < range.end
 }
 
-function leadAssignedDate(lead: any) {
-  return lead.assignedAt ?? lead.receivedAt ?? lead.createdAt ?? null
-}
-
-function callActivityDate(lead: any) {
-  return lead.crmDetails?.lastCallDate ?? lead.crmDetails?.firstCallDate ?? null
-}
-
 function emptySummary(): PerformanceSummary {
   return {
     totalLeads: 0,
@@ -139,6 +138,139 @@ function emptySummary(): PerformanceSummary {
 
 function monthLabel(date: Date) {
   return date.toLocaleDateString('en-IN', { month: 'short', timeZone: 'Asia/Kolkata' })
+}
+
+function toDate(value: Date | string | null | undefined) {
+  if (!value) return null
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function fallbackAssignmentStart(lead: any, before: Date) {
+  return toDate(lead?.assignedAt) ?? toDate(lead?.receivedAt) ?? toDate(lead?.createdAt) ?? before
+}
+
+function buildOwnershipWindows(leads: any[], events: Array<typeof leadActivityEvents.$inferSelect>) {
+  const leadById = new Map(leads.map((lead) => [lead.id, lead]))
+  const windows: OwnershipWindow[] = []
+  const open = new Map<string, OwnershipWindow>()
+
+  for (const event of events) {
+    if (!['lead_created', 'assigned', 'transferred', 'unassigned'].includes(event.eventType)) continue
+
+    const eventAt = event.createdAt
+    const lead = leadById.get(event.leadId)
+
+    if ((event.eventType === 'transferred' || event.eventType === 'unassigned') && event.fromUserId) {
+      const current = open.get(event.leadId)
+
+      if (current?.employeeId === event.fromUserId) {
+        windows.push({ ...current, releasedAt: eventAt })
+        open.delete(event.leadId)
+      } else {
+        windows.push({
+          leadId: event.leadId,
+          employeeId: event.fromUserId,
+          assignedAt: fallbackAssignmentStart(lead, eventAt),
+          releasedAt: eventAt,
+        })
+      }
+    }
+
+    if (['lead_created', 'assigned', 'transferred'].includes(event.eventType) && event.toUserId) {
+      const current = open.get(event.leadId)
+      if (current && current.employeeId !== event.toUserId) {
+        windows.push({ ...current, releasedAt: eventAt })
+      }
+
+      if (!current || current.employeeId !== event.toUserId) {
+        open.set(event.leadId, {
+          leadId: event.leadId,
+          employeeId: event.toUserId,
+          assignedAt: eventAt,
+          releasedAt: null,
+        })
+      }
+    }
+  }
+
+  for (const current of open.values()) {
+    windows.push(current)
+  }
+
+  for (const lead of leads) {
+    if (!lead.assignedTo) continue
+    const hasCurrentWindow = windows.some((window) =>
+      window.leadId === lead.id &&
+      window.employeeId === lead.assignedTo &&
+      window.releasedAt === null
+    )
+
+    if (!hasCurrentWindow) {
+      windows.push({
+        leadId: lead.id,
+        employeeId: lead.assignedTo,
+        assignedAt: fallbackAssignmentStart(lead, new Date()),
+        releasedAt: null,
+      })
+    }
+  }
+
+  return windows
+}
+
+function windowOverlapsRange(window: OwnershipWindow, range: PeriodRange) {
+  if (!range.start || !range.end) return true
+  const release = window.releasedAt ?? new Date(8640000000000000)
+  return window.assignedAt < range.end && release >= range.start
+}
+
+function ownershipStartedInRange(window: OwnershipWindow, range: PeriodRange) {
+  if (!range.start || !range.end) return true
+  return window.assignedAt >= range.start && window.assignedAt < range.end
+}
+
+function ownedAt(windows: OwnershipWindow[], leadId: string, employeeId: string, value: Date | string | null | undefined) {
+  const date = toDate(value)
+  if (!date) return false
+
+  return windows.some((window) =>
+    window.leadId === leadId &&
+    window.employeeId === employeeId &&
+    date >= window.assignedAt &&
+    (!window.releasedAt || date < window.releasedAt)
+  )
+}
+
+function ownedDuringPeriod(windows: OwnershipWindow[], leadId: string, employeeId: string, range: PeriodRange) {
+  return windows.some((window) =>
+    window.leadId === leadId &&
+    window.employeeId === employeeId &&
+    windowOverlapsRange(window, range)
+  )
+}
+
+function ownershipStartedDuringPeriod(windows: OwnershipWindow[], leadId: string, employeeId: string, range: PeriodRange) {
+  return windows.some((window) =>
+    window.leadId === leadId &&
+    window.employeeId === employeeId &&
+    ownershipStartedInRange(window, range)
+  )
+}
+
+function attributedCallDates(lead: any, windows: OwnershipWindow[], employeeId: string, range: PeriodRange) {
+  const dates = [
+    toDate(lead.crmDetails?.firstCallDate),
+    toDate(lead.crmDetails?.lastCallDate),
+  ].filter((date): date is Date => Boolean(date))
+
+  const uniqueTimes = [...new Set(dates.map((date) => date.getTime()))]
+  return uniqueTimes
+    .map((time) => new Date(time))
+    .filter((date) =>
+      inRange(date, range) &&
+      ownedAt(windows, lead.id, employeeId, date)
+    )
 }
 
 @Injectable()
@@ -238,7 +370,14 @@ export class DashboardService {
       }
     }
 
-    const [leads, visits] = await Promise.all([
+    const [employeeAssignmentEvents, currentLeads, visits] = await Promise.all([
+      this.db.query.leadActivityEvents.findMany({
+        where: or(
+          eq(leadActivityEvents.toUserId, selectedEmployee.id),
+          eq(leadActivityEvents.fromUserId, selectedEmployee.id),
+        ),
+        orderBy: [asc(leadActivityEvents.createdAt)],
+      }),
       this.db.query.metaLeads.findMany({
         where: and(
           eq(metaLeads.assignedTo, selectedEmployee.id),
@@ -261,22 +400,53 @@ export class DashboardService {
       }),
     ])
 
+    const leadIds = [...new Set([
+      ...employeeAssignmentEvents.map((event) => event.leadId),
+      ...currentLeads.map((lead) => lead.id),
+      ...visits.map((visit) => visit.leadId),
+    ])]
+
+    const [leads, assignmentEvents] = leadIds.length > 0
+      ? await Promise.all([
+          this.db.query.metaLeads.findMany({
+            where: and(
+              inArray(metaLeads.id, leadIds),
+              isNull(metaLeads.deletedAt),
+            ),
+            with: {
+              crmDetails: true,
+            },
+            orderBy: [desc(metaLeads.receivedAt)],
+          }),
+          this.db.query.leadActivityEvents.findMany({
+            where: inArray(leadActivityEvents.leadId, leadIds),
+            orderBy: [asc(leadActivityEvents.createdAt)],
+          }),
+        ])
+      : [[], []]
+
+    const ownershipWindows = buildOwnershipWindows(leads, assignmentEvents)
+
     const now = new Date()
     const periods = buildPeriodRanges(now)
     const summaries = periods.reduce<Record<PeriodKey, PerformanceSummary>>((acc, period) => {
       const summary = emptySummary()
 
       for (const lead of leads) {
-        const assignedInPeriod = period.key === 'lifetime' || inRange(leadAssignedDate(lead), period)
+        const assignedInPeriod = ownershipStartedDuringPeriod(ownershipWindows, lead.id, selectedEmployee.id, period)
+        const ownedInPeriod = ownedDuringPeriod(ownershipWindows, lead.id, selectedEmployee.id, period)
         const convertedInPeriod = lead.status === 'converted'
-          && (period.key === 'lifetime' || inRange(lead.updatedAt, period))
+          && inRange(lead.updatedAt, period)
+          && ownedAt(ownershipWindows, lead.id, selectedEmployee.id, lead.updatedAt)
 
         if (assignedInPeriod) {
           summary.totalLeads += 1
-          if (lead.status === 'assigned') summary.activeLeads += 1
+        }
+
+        if (ownedInPeriod) {
+          if (lead.assignedTo === selectedEmployee.id && lead.status === 'assigned') summary.activeLeads += 1
           if (lead.status === 'rejected') summary.rejectedLeads += 1
           if (lead.status === 'cold_pool') summary.coldPoolLeads += 1
-
           if (lead.crmDetails?.hwc === 'hot') summary.hotLeads += 1
           if (lead.crmDetails?.hwc === 'warm') summary.warmLeads += 1
           if (lead.crmDetails?.hwc === 'cold') summary.coldLeads += 1
@@ -284,15 +454,19 @@ export class DashboardService {
 
         if (convertedInPeriod) summary.convertedLeads += 1
 
-        if (period.key === 'lifetime' || inRange(callActivityDate(lead), period)) {
+        if (attributedCallDates(lead, ownershipWindows, selectedEmployee.id, period).length > 0) {
           if (lead.crmDetails?.callStatus) summary.callsLogged += 1
           if (lead.crmDetails?.callStatus === 'spoken') summary.spokenCalls += 1
           if (lead.crmDetails?.callStatus === 'not_spoken') summary.notSpokenCalls += 1
           if (lead.crmDetails?.callStatus === 'call_back_later') summary.callbackCalls += 1
         }
 
-        if (period.key === 'lifetime' || inRange(lead.crmDetails?.followUpDate, period)) {
-          if (lead.crmDetails?.followUpDate) summary.followUpsDue += 1
+        if (
+          lead.crmDetails?.followUpDate &&
+          inRange(lead.crmDetails.followUpDate, period) &&
+          ownedAt(ownershipWindows, lead.id, selectedEmployee.id, lead.crmDetails.followUpDate)
+        ) {
+          summary.followUpsDue += 1
         }
       }
 
@@ -318,28 +492,47 @@ export class DashboardService {
 
       return {
         month: monthLabel(start),
-        leads: leads.filter((lead) => inRange(leadAssignedDate(lead), range)).length,
-        calls: leads.filter((lead) => lead.crmDetails?.callStatus && inRange(callActivityDate(lead), range)).length,
+        leads: leads.filter((lead) => ownershipStartedDuringPeriod(ownershipWindows, lead.id, selectedEmployee.id, range)).length,
+        calls: leads.filter((lead) => lead.crmDetails?.callStatus && attributedCallDates(lead, ownershipWindows, selectedEmployee.id, range).length > 0).length,
         visits: visits.filter((visit) => inRange(visit.scheduledDate, range)).length,
-        conversions: leads.filter((lead) => lead.status === 'converted' && inRange(lead.updatedAt, range)).length,
+        conversions: leads.filter((lead) =>
+          lead.status === 'converted' &&
+          inRange(lead.updatedAt, range) &&
+          ownedAt(ownershipWindows, lead.id, selectedEmployee.id, lead.updatedAt)
+        ).length,
       }
     })
 
-    const recentLeads = leads.slice(0, 8).map((lead) => ({
-      id: lead.id,
-      full_name: lead.fullName,
-      phone: lead.phone,
-      city: lead.city,
-      campaign_name: lead.campaignName,
-      status: lead.status,
-      received_at: lead.receivedAt,
-      assigned_at: lead.assignedAt,
-      call_status: lead.crmDetails?.callStatus ?? null,
-      follow_up_date: lead.crmDetails?.followUpDate ?? null,
-      hwc: lead.crmDetails?.hwc ?? null,
-      buying_status: lead.crmDetails?.buyingStatus ?? null,
-      site_visit_status: lead.crmDetails?.siteVisitStatus ?? null,
-    }))
+    const mostRecentOwnershipStart = (leadId: string) => {
+      const starts = ownershipWindows
+        .filter((window) => window.leadId === leadId && window.employeeId === selectedEmployee.id)
+        .map((window) => window.assignedAt.getTime())
+      return starts.length > 0 ? Math.max(...starts) : null
+    }
+
+    const recentLeads = [...leads]
+      .sort((a, b) => (mostRecentOwnershipStart(b.id) ?? 0) - (mostRecentOwnershipStart(a.id) ?? 0))
+      .slice(0, 8)
+      .map((lead) => {
+        const ownershipStart = mostRecentOwnershipStart(lead.id)
+
+        return {
+          id: lead.id,
+          full_name: lead.fullName,
+          phone: lead.phone,
+          city: lead.city,
+          campaign_name: lead.campaignName,
+          status: lead.status,
+          received_at: lead.receivedAt,
+          assigned_at: ownershipStart ? new Date(ownershipStart).toISOString() : null,
+          ownership_status: lead.assignedTo === selectedEmployee.id ? 'current' : 'previous',
+          call_status: lead.crmDetails?.callStatus ?? null,
+          follow_up_date: lead.crmDetails?.followUpDate ?? null,
+          hwc: lead.crmDetails?.hwc ?? null,
+          buying_status: lead.crmDetails?.buyingStatus ?? null,
+          site_visit_status: lead.crmDetails?.siteVisitStatus ?? null,
+        }
+      })
 
     return {
       employees: employees.map(serializeEmployee),
@@ -347,6 +540,7 @@ export class DashboardService {
       periods: summaries,
       trend,
       recentLeads,
+      transferSafe: true,
       generatedAt: now.toISOString(),
     }
   }
