@@ -43,7 +43,7 @@ interface MetaLead {
   email: string | null
   city: string | null
   campaign_name: string | null
-  source: "meta_ad" | "website" | "manual" | "migrated"
+  source: "meta_ad" | "website" | "microsite" | "manual" | "migrated"
   status: "unassigned" | "assigned" | "cold_pool"
   received_at: string
   assigned_at: string | null
@@ -324,6 +324,12 @@ function LeadRow({
               WEBSITE
             </span>
           )}
+          {lead.source === "microsite" && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+              style={{ background: "rgb(20 184 166 / 0.10)", color: "rgb(15 118 110)" }}>
+              MICROSITE
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
           {lead.phone && (
@@ -573,6 +579,7 @@ export default function MetaAdsPage() {
 
   const metaCount   = leads.filter(l => l.source === "meta_ad").length
   const websiteCount = leads.filter(l => l.source === "website").length
+  const micrositeCount = leads.filter(l => l.source === "microsite").length
   const manualCount = leads.filter(l => l.source === "manual").length
   // Bulk select is available where leads await (re)assignment
   const selectable = isSuperAdmin && (activeTab === "unassigned" || activeTab === "cold_pool")
@@ -660,12 +667,13 @@ export default function MetaAdsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {[
           { label: "Total",        value: leads.length,                                    icon: Users,     color: "var(--color-primary)" },
           { label: "Unassigned",   value: leads.filter(l => l.status === "unassigned").length, icon: Clock, color: "var(--color-warning)" },
           { label: "From Meta",    value: metaCount,                                        icon: BarChart3, color: "var(--color-muted-foreground)" },
           { label: "Website",      value: websiteCount,                                     icon: Users,     color: "rgb(37 99 235)" },
+          { label: "Microsite",    value: micrositeCount,                                   icon: Users,     color: "rgb(15 118 110)" },
           { label: "Manual",       value: manualCount,                                      icon: PenLine,   color: "var(--color-primary)" },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="shadow-card">
@@ -719,6 +727,7 @@ export default function MetaAdsPage() {
                 <option value="">All Sources</option>
                 <option value="meta_ad">Meta Ad</option>
                 <option value="website">Website</option>
+                <option value="microsite">Microsite</option>
                 <option value="manual">Manual</option>
                 <option value="migrated">Migrated</option>
               </select>
