@@ -134,23 +134,23 @@ const PERIODS: { key: PeriodKey; label: string }[] = [
 const TREND_COPY: Record<PeriodKey, { title: string; description: string }> = {
   daily: {
     title: "Daily Performance Trend",
-    description: "Hourly assigned leads, calls, visits, and conversions for today in IST",
+    description: "Hourly assigned leads, calls, visits, and conversions for today",
   },
   weekly: {
     title: "Weekly Performance Trend",
-    description: "Day-wise assigned leads, calls, visits, and conversions for this week in IST",
+    description: "Day-wise assigned leads, calls, visits, and conversions for this week",
   },
   monthly: {
     title: "Monthly Performance Trend",
-    description: "Date-wise assigned leads, calls, visits, and conversions for this month in IST",
+    description: "Date-wise assigned leads, calls, visits, and conversions for this month",
   },
   yearly: {
     title: "Yearly Performance Trend",
-    description: "Month-wise assigned leads, calls, visits, and conversions for this year in IST",
+    description: "Month-wise assigned leads, calls, visits, and conversions for this year",
   },
   lifetime: {
     title: "Lifetime Performance Trend",
-    description: "Historical assigned leads, calls, visits, and conversions for this employee in IST",
+    description: "Historical assigned leads, calls, visits, and conversions for this employee",
   },
 }
 
@@ -548,24 +548,16 @@ export default function EmployeePerformanceAnalysisPage() {
                     <EmptyBlock message="Trend data will appear once this employee has assigned leads or activity." />
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={trendRows} margin={{ top: 10, right: 14, left: -18, bottom: 18 }}>
+                      <LineChart data={trendRows} margin={{ top: 10, right: 14, left: -18, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                         <XAxis
                           dataKey="label"
                           tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
                           axisLine={false}
                           tickLine={false}
-                          label={{
-                            value: "Time (IST)",
-                            position: "insideBottomRight",
-                            offset: -8,
-                            fill: "var(--color-muted-foreground)",
-                            fontSize: 11,
-                          }}
                         />
                         <YAxis tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                         <Tooltip
-                          labelFormatter={(label) => `${label} IST`}
                           contentStyle={{
                             background: "var(--color-card)",
                             border: "1px solid var(--color-border)",

@@ -42,6 +42,12 @@ interface TrendRow {
   conversions: number
 }
 
+interface CallActivity {
+  leadId: string
+  callStatus: string | null
+  createdAt: Date
+}
+
 interface OwnershipWindow {
   leadId: string
   employeeId: string
@@ -306,6 +312,67 @@ function attributedCallDates(lead: any, windows: OwnershipWindow[], employeeId: 
     )
 }
 
+function metadataValue(event: typeof leadActivityEvents.$inferSelect, key: string) {
+  const metadata = event.metadata
+  return metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+    ? (metadata as Record<string, unknown>)[key]
+    : null
+}
+
+function buildCallActivities(events: Array<typeof leadActivityEvents.$inferSelect>, windows: OwnershipWindow[], employeeId: string): CallActivity[] {
+  return events
+    .filter((event) =>
+      event.eventType === 'crm_updated' &&
+      event.actorUserId === employeeId &&
+      metadataValue(event, 'call_logged') === true &&
+      ownedAt(windows, event.leadId, employeeId, event.createdAt)
+    )
+    .map((event) => ({
+      leadId: event.leadId,
+      callStatus: typeof metadataValue(event, 'call_status') === 'string'
+        ? String(metadataValue(event, 'call_status'))
+        : null,
+      createdAt: event.createdAt,
+    }))
+}
+
+function callActivitiesInRange(activities: CallActivity[], range: PeriodRange) {
+  return activities.filter((activity) => inRange(activity.createdAt, range))
+}
+
+function legacyCallActivitiesInRange(
+  leads: any[],
+  events: CallActivity[],
+  windows: OwnershipWindow[],
+  employeeId: string,
+  range: PeriodRange,
+) {
+  const loggedLeadIds = new Set(events.map((event) => event.leadId))
+  return leads.flatMap((lead) => {
+    if (loggedLeadIds.has(lead.id) || !lead.crmDetails?.callStatus) return []
+
+    return attributedCallDates(lead, windows, employeeId, range).map((date) => ({
+      leadId: lead.id,
+      callStatus: lead.crmDetails.callStatus,
+      createdAt: date,
+    }))
+  })
+}
+
+function periodCallActivities(
+  leads: any[],
+  activities: CallActivity[],
+  windows: OwnershipWindow[],
+  employeeId: string,
+  range: PeriodRange,
+) {
+  const eventsInRange = callActivitiesInRange(activities, range)
+  return [
+    ...eventsInRange,
+    ...legacyCallActivitiesInRange(leads, activities, windows, employeeId, range),
+  ]
+}
+
 function monthsBetween(start: Date, end: Date) {
   const startShifted = istShift(start)
   const endShifted = istShift(end)
@@ -313,11 +380,15 @@ function monthsBetween(start: Date, end: Date) {
     (endShifted.getUTCMonth() - startShifted.getUTCMonth())
 }
 
-function earliestTrendDate(leads: any[], visits: any[], windows: OwnershipWindow[], employeeId: string) {
+function earliestTrendDate(leads: any[], visits: any[], windows: OwnershipWindow[], employeeId: string, activities: CallActivity[]) {
   const times: number[] = []
 
   for (const window of windows) {
     if (window.employeeId === employeeId) times.push(window.assignedAt.getTime())
+  }
+
+  for (const activity of activities) {
+    times.push(activity.createdAt.getTime())
   }
 
   for (const lead of leads) {
@@ -350,6 +421,7 @@ function buildTrendBuckets(
   visits: any[],
   windows: OwnershipWindow[],
   employeeId: string,
+  activities: CallActivity[],
 ): PeriodRange[] {
   if (key === 'daily') {
     const start = startOfIstDay(now)
@@ -386,7 +458,7 @@ function buildTrendBuckets(
     })
   }
 
-  const earliest = earliestTrendDate(leads, visits, windows, employeeId)
+  const earliest = earliestTrendDate(leads, visits, windows, employeeId, activities)
   if (!earliest) return []
 
   const lifetimeStartMonth = startOfIstMonth(earliest)
@@ -418,12 +490,13 @@ function buildTrendRows(
   visits: any[],
   windows: OwnershipWindow[],
   employeeId: string,
+  activities: CallActivity[],
 ): TrendRow[] {
-  return buildTrendBuckets(key, now, leads, visits, windows, employeeId).map((range) => ({
+  return buildTrendBuckets(key, now, leads, visits, windows, employeeId, activities).map((range) => ({
     label: range.label,
     month: range.label,
     leads: leads.filter((lead) => ownershipStartedDuringPeriod(windows, lead.id, employeeId, range)).length,
-    calls: leads.filter((lead) => lead.crmDetails?.callStatus && attributedCallDates(lead, windows, employeeId, range).length > 0).length,
+    calls: periodCallActivities(leads, activities, windows, employeeId, range).length,
     visits: visits.filter((visit) => inRange(visit.scheduledDate, range)).length,
     conversions: leads.filter((lead) =>
       lead.status === 'converted' &&
@@ -586,6 +659,7 @@ export class DashboardService {
       : [[], []]
 
     const ownershipWindows = buildOwnershipWindows(leads, assignmentEvents)
+    const callActivities = buildCallActivities(assignmentEvents, ownershipWindows, selectedEmployee.id)
 
     const now = new Date()
     const periods = buildPeriodRanges(now)
@@ -614,13 +688,6 @@ export class DashboardService {
 
         if (convertedInPeriod) summary.convertedLeads += 1
 
-        if (attributedCallDates(lead, ownershipWindows, selectedEmployee.id, period).length > 0) {
-          if (lead.crmDetails?.callStatus) summary.callsLogged += 1
-          if (lead.crmDetails?.callStatus === 'spoken') summary.spokenCalls += 1
-          if (lead.crmDetails?.callStatus === 'not_spoken') summary.notSpokenCalls += 1
-          if (lead.crmDetails?.callStatus === 'call_back_later') summary.callbackCalls += 1
-        }
-
         if (
           lead.crmDetails?.followUpDate &&
           inRange(lead.crmDetails.followUpDate, period) &&
@@ -629,6 +696,12 @@ export class DashboardService {
           summary.followUpsDue += 1
         }
       }
+
+      const periodCalls = periodCallActivities(leads, callActivities, ownershipWindows, selectedEmployee.id, period)
+      summary.callsLogged = periodCalls.length
+      summary.spokenCalls = periodCalls.filter((activity) => activity.callStatus === 'spoken').length
+      summary.notSpokenCalls = periodCalls.filter((activity) => activity.callStatus === 'not_spoken').length
+      summary.callbackCalls = periodCalls.filter((activity) => activity.callStatus === 'call_back_later').length
 
       for (const visit of visits) {
         if (period.key === 'lifetime' || inRange(visit.scheduledDate, period)) {
@@ -653,7 +726,7 @@ export class DashboardService {
       return {
         month: monthLabel(start),
         leads: leads.filter((lead) => ownershipStartedDuringPeriod(ownershipWindows, lead.id, selectedEmployee.id, range)).length,
-        calls: leads.filter((lead) => lead.crmDetails?.callStatus && attributedCallDates(lead, ownershipWindows, selectedEmployee.id, range).length > 0).length,
+        calls: periodCallActivities(leads, callActivities, ownershipWindows, selectedEmployee.id, range).length,
         visits: visits.filter((visit) => inRange(visit.scheduledDate, range)).length,
         conversions: leads.filter((lead) =>
           lead.status === 'converted' &&
@@ -663,7 +736,7 @@ export class DashboardService {
       }
     })
     const trendByPeriod = periods.reduce<Partial<Record<PeriodKey, TrendRow[]>>>((acc, period) => {
-      acc[period.key] = buildTrendRows(period.key, now, leads, visits, ownershipWindows, selectedEmployee.id)
+      acc[period.key] = buildTrendRows(period.key, now, leads, visits, ownershipWindows, selectedEmployee.id, callActivities)
       return acc
     }, {})
 

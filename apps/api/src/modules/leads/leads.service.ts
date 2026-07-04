@@ -174,12 +174,19 @@ export class LeadsService {
       : undefined
 
     const toDate = (v: string | null | undefined) => (v ? new Date(v) : null)
+    const now = new Date()
+    const isAssignedOwnerSave = Boolean(userId && (lead as any).assigned_to === userId)
+    const savedCallStatus = dto.call_status !== undefined
+      ? dto.call_status
+      : existing?.callStatus ?? null
 
     const payload = {
       ...(dto.call_status !== undefined && { callStatus: dto.call_status as never }),
       ...(dto.not_spoken_reason !== undefined && { notSpokenReason: dto.not_spoken_reason as never }),
       ...(dto.first_call_date !== undefined && { firstCallDate: toDate(dto.first_call_date) }),
       ...(dto.last_call_date !== undefined && { lastCallDate: toDate(dto.last_call_date) }),
+      ...(isAssignedOwnerSave && savedCallStatus && !existing?.firstCallDate && { firstCallDate: now }),
+      ...(isAssignedOwnerSave && savedCallStatus && { lastCallDate: now }),
       ...(dto.hwc !== undefined && { hwc: null }),
       ...(dto.follow_up_date !== undefined && { followUpDate: toDate(dto.follow_up_date) }),
       ...(dto.follow_up_done !== undefined && { followUpDone: dto.follow_up_done }),
@@ -218,15 +225,25 @@ export class LeadsService {
       this.crmActivityLabels,
     )
 
-    if (Object.keys(changes).length > 0) {
+    const callLoggedMetadata = isAssignedOwnerSave
+      ? {
+          call_logged: true,
+          call_status: savedCallStatus,
+        }
+      : null
+
+    if (Object.keys(changes).length > 0 || callLoggedMetadata) {
       await this.leadActivityService.record({
         leadId: id,
         actorUserId: userId ?? null,
         eventType: 'crm_updated',
         source: 'crm_form',
         title: 'CRM details updated',
-        description: `${Object.keys(changes).length} CRM field(s) changed.`,
-        changes,
+        description: Object.keys(changes).length > 0
+          ? `${Object.keys(changes).length} CRM field(s) changed.`
+          : 'Lead saved from CRM form.',
+        changes: Object.keys(changes).length > 0 ? changes : null,
+        metadata: callLoggedMetadata,
       })
     }
 
