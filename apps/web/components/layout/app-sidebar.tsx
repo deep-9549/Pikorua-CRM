@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, MessageSquare, Building2, Sparkles,
   CalendarCheck, BarChart3, Bot, CreditCard, UserCog, Crown,
   FileText, Settings, ChevronLeft,
-  PieChart, FileSpreadsheet, LogOut, Gem, Activity
+  PieChart, FileSpreadsheet, LogOut, Activity
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -172,8 +172,8 @@ export function AppSidebar({
                 transition={{ duration: 0.2 }}
                 className="flex items-center gap-3 min-w-0 flex-1">
                 <Link href="/dashboard" className="flex min-w-0 items-center gap-3 rounded-lg transition-opacity hover:opacity-90">
-                  <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center gold-gradient shadow-gold-sm">
-                    <Gem className="w-4 h-4 text-primary-foreground" />
+                  <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center">
+                    <img src="/pikorua-icon-mark.png" alt="Pikorua" className="w-8 h-8 object-contain" />
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-[13px] font-semibold tracking-wide truncate"
@@ -198,8 +198,8 @@ export function AppSidebar({
                 title="Open dashboard"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="w-8 h-8 rounded-lg flex items-center justify-center gold-gradient shadow-gold-sm transition-transform duration-150 hover:scale-105">
-                <Gem className="w-4 h-4 text-primary-foreground" />
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform duration-150 hover:scale-105">
+                <img src="/pikorua-icon-mark.png" alt="Pikorua" className="w-8 h-8 object-contain" />
               </motion.button>
             )}
           </AnimatePresence>

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Gem, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,9 +49,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center gold-gradient shadow-gold-sm mb-4">
-            <Gem className="w-6 h-6 text-primary-foreground" />
-          </div>
+          <img src="/pikorua-icon-mark.png" alt="Pikorua" className="w-14 h-14 object-contain mb-3" />
           <h1 className="text-xl font-semibold tracking-wide" style={{ color: "var(--color-primary)" }}>
             PIKORUA
           </h1>
