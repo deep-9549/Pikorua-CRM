@@ -321,18 +321,28 @@ function metadataValue(event: typeof leadActivityEvents.$inferSelect, key: strin
 
 function buildCallActivities(events: Array<typeof leadActivityEvents.$inferSelect>, windows: OwnershipWindow[], employeeId: string): CallActivity[] {
   return events
-    .filter((event) =>
+    .map((event) => {
+      const savedAt = typeof metadataValue(event, 'saved_at') === 'string'
+        ? toDate(String(metadataValue(event, 'saved_at')))
+        : null
+
+      return {
+        event,
+        savedAt: savedAt ?? event.createdAt,
+      }
+    })
+    .filter(({ event, savedAt }) =>
       event.eventType === 'crm_updated' &&
       event.actorUserId === employeeId &&
       metadataValue(event, 'call_logged') === true &&
-      ownedAt(windows, event.leadId, employeeId, event.createdAt)
+      ownedAt(windows, event.leadId, employeeId, savedAt)
     )
-    .map((event) => ({
+    .map(({ event, savedAt }) => ({
       leadId: event.leadId,
       callStatus: typeof metadataValue(event, 'call_status') === 'string'
         ? String(metadataValue(event, 'call_status'))
         : null,
-      createdAt: event.createdAt,
+      createdAt: savedAt,
     }))
 }
 

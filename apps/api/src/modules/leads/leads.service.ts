@@ -179,14 +179,16 @@ export class LeadsService {
     const savedCallStatus = dto.call_status !== undefined
       ? dto.call_status
       : existing?.callStatus ?? null
+    const shouldLogSaveAsCall = isAssignedOwnerSave
+    const savedAtIst = new Date(now.getTime() + 5.5 * 60 * 60 * 1000).toISOString().replace('Z', '+05:30')
 
     const payload = {
       ...(dto.call_status !== undefined && { callStatus: dto.call_status as never }),
       ...(dto.not_spoken_reason !== undefined && { notSpokenReason: dto.not_spoken_reason as never }),
       ...(dto.first_call_date !== undefined && { firstCallDate: toDate(dto.first_call_date) }),
       ...(dto.last_call_date !== undefined && { lastCallDate: toDate(dto.last_call_date) }),
-      ...(isAssignedOwnerSave && savedCallStatus && !existing?.firstCallDate && { firstCallDate: now }),
-      ...(isAssignedOwnerSave && savedCallStatus && { lastCallDate: now }),
+      ...(shouldLogSaveAsCall && !existing?.firstCallDate && { firstCallDate: now }),
+      ...(shouldLogSaveAsCall && { lastCallDate: now }),
       ...(dto.hwc !== undefined && { hwc: null }),
       ...(dto.follow_up_date !== undefined && { followUpDate: toDate(dto.follow_up_date) }),
       ...(dto.follow_up_done !== undefined && { followUpDone: dto.follow_up_done }),
@@ -225,10 +227,14 @@ export class LeadsService {
       this.crmActivityLabels,
     )
 
-    const callLoggedMetadata = isAssignedOwnerSave
+    const callLoggedMetadata = shouldLogSaveAsCall
       ? {
           call_logged: true,
           call_status: savedCallStatus,
+          saved_at: now.toISOString(),
+          saved_at_ist: savedAtIst,
+          saved_timezone: 'Asia/Kolkata',
+          saved_utc_offset: '+05:30',
         }
       : null
 
