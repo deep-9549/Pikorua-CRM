@@ -33,6 +33,15 @@ interface PerformanceSummary {
   conversionRate: number
 }
 
+interface TrendRow {
+  label: string
+  month: string
+  leads: number
+  calls: number
+  visits: number
+  conversions: number
+}
+
 interface OwnershipWindow {
   leadId: string
   employeeId: string
@@ -92,6 +101,14 @@ function addMonths(date: Date, months: number) {
   ) - IST_OFFSET_MS)
 }
 
+function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
+}
+
+function addHours(date: Date, hours: number) {
+  return new Date(date.getTime() + hours * 60 * 60 * 1000)
+}
+
 function buildPeriodRanges(now: Date): PeriodRange[] {
   const day = startOfIstDay(now)
   const week = startOfIstWeek(now)
@@ -138,6 +155,22 @@ function emptySummary(): PerformanceSummary {
 
 function monthLabel(date: Date) {
   return date.toLocaleDateString('en-IN', { month: 'short', timeZone: 'Asia/Kolkata' })
+}
+
+function dayLabel(date: Date) {
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })
+}
+
+function weekdayLabel(date: Date) {
+  return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' })
+}
+
+function hourLabel(date: Date) {
+  return date.toLocaleTimeString('en-IN', { hour: 'numeric', hour12: true, timeZone: 'Asia/Kolkata' })
+}
+
+function yearLabel(date: Date) {
+  return date.toLocaleDateString('en-IN', { year: 'numeric', timeZone: 'Asia/Kolkata' })
 }
 
 function toDate(value: Date | string | null | undefined) {
@@ -271,6 +304,133 @@ function attributedCallDates(lead: any, windows: OwnershipWindow[], employeeId: 
       inRange(date, range) &&
       ownedAt(windows, lead.id, employeeId, date)
     )
+}
+
+function monthsBetween(start: Date, end: Date) {
+  const startShifted = istShift(start)
+  const endShifted = istShift(end)
+  return (endShifted.getUTCFullYear() - startShifted.getUTCFullYear()) * 12 +
+    (endShifted.getUTCMonth() - startShifted.getUTCMonth())
+}
+
+function earliestTrendDate(leads: any[], visits: any[], windows: OwnershipWindow[], employeeId: string) {
+  const times: number[] = []
+
+  for (const window of windows) {
+    if (window.employeeId === employeeId) times.push(window.assignedAt.getTime())
+  }
+
+  for (const lead of leads) {
+    const callDates = [lead.crmDetails?.firstCallDate, lead.crmDetails?.lastCallDate]
+      .map(toDate)
+      .filter((date): date is Date => Boolean(date))
+
+    for (const date of callDates) {
+      if (ownedAt(windows, lead.id, employeeId, date)) times.push(date.getTime())
+    }
+
+    if (lead.status === 'converted' && ownedAt(windows, lead.id, employeeId, lead.updatedAt)) {
+      const updatedAt = toDate(lead.updatedAt)
+      if (updatedAt) times.push(updatedAt.getTime())
+    }
+  }
+
+  for (const visit of visits) {
+    const scheduledDate = toDate(visit.scheduledDate)
+    if (scheduledDate) times.push(scheduledDate.getTime())
+  }
+
+  return times.length > 0 ? new Date(Math.min(...times)) : null
+}
+
+function buildTrendBuckets(
+  key: PeriodKey,
+  now: Date,
+  leads: any[],
+  visits: any[],
+  windows: OwnershipWindow[],
+  employeeId: string,
+): PeriodRange[] {
+  if (key === 'daily') {
+    const start = startOfIstDay(now)
+    return Array.from({ length: 24 }, (_, index) => {
+      const bucketStart = addHours(start, index)
+      return { key, label: hourLabel(bucketStart), start: bucketStart, end: addHours(bucketStart, 1) }
+    })
+  }
+
+  if (key === 'weekly') {
+    const start = startOfIstWeek(now)
+    return Array.from({ length: 7 }, (_, index) => {
+      const bucketStart = addDays(start, index)
+      return { key, label: weekdayLabel(bucketStart), start: bucketStart, end: addDays(bucketStart, 1) }
+    })
+  }
+
+  if (key === 'monthly') {
+    const start = startOfIstMonth(now)
+    const end = addMonths(start, 1)
+    const days = Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+
+    return Array.from({ length: days }, (_, index) => {
+      const bucketStart = addDays(start, index)
+      return { key, label: dayLabel(bucketStart), start: bucketStart, end: addDays(bucketStart, 1) }
+    })
+  }
+
+  if (key === 'yearly') {
+    const start = startOfIstYear(now)
+    return Array.from({ length: 12 }, (_, index) => {
+      const bucketStart = addMonths(start, index)
+      return { key, label: monthLabel(bucketStart), start: bucketStart, end: addMonths(bucketStart, 1) }
+    })
+  }
+
+  const earliest = earliestTrendDate(leads, visits, windows, employeeId)
+  if (!earliest) return []
+
+  const lifetimeStartMonth = startOfIstMonth(earliest)
+  const currentMonth = startOfIstMonth(now)
+  const monthCount = monthsBetween(lifetimeStartMonth, currentMonth) + 1
+
+  if (monthCount <= 24) {
+    return Array.from({ length: monthCount }, (_, index) => {
+      const bucketStart = addMonths(lifetimeStartMonth, index)
+      return { key, label: `${monthLabel(bucketStart)} ${yearLabel(bucketStart)}`, start: bucketStart, end: addMonths(bucketStart, 1) }
+    })
+  }
+
+  const startYear = startOfIstYear(earliest)
+  const currentYear = startOfIstYear(now)
+  const yearCount = istShift(currentYear).getUTCFullYear() - istShift(startYear).getUTCFullYear() + 1
+
+  return Array.from({ length: yearCount }, (_, index) => {
+    const shifted = istShift(startYear)
+    const bucketStart = new Date(Date.UTC(shifted.getUTCFullYear() + index, 0, 1) - IST_OFFSET_MS)
+    return { key, label: yearLabel(bucketStart), start: bucketStart, end: new Date(Date.UTC(shifted.getUTCFullYear() + index + 1, 0, 1) - IST_OFFSET_MS) }
+  })
+}
+
+function buildTrendRows(
+  key: PeriodKey,
+  now: Date,
+  leads: any[],
+  visits: any[],
+  windows: OwnershipWindow[],
+  employeeId: string,
+): TrendRow[] {
+  return buildTrendBuckets(key, now, leads, visits, windows, employeeId).map((range) => ({
+    label: range.label,
+    month: range.label,
+    leads: leads.filter((lead) => ownershipStartedDuringPeriod(windows, lead.id, employeeId, range)).length,
+    calls: leads.filter((lead) => lead.crmDetails?.callStatus && attributedCallDates(lead, windows, employeeId, range).length > 0).length,
+    visits: visits.filter((visit) => inRange(visit.scheduledDate, range)).length,
+    conversions: leads.filter((lead) =>
+      lead.status === 'converted' &&
+      inRange(lead.updatedAt, range) &&
+      ownedAt(windows, lead.id, employeeId, lead.updatedAt)
+    ).length,
+  }))
 }
 
 @Injectable()
@@ -502,6 +662,10 @@ export class DashboardService {
         ).length,
       }
     })
+    const trendByPeriod = periods.reduce<Partial<Record<PeriodKey, TrendRow[]>>>((acc, period) => {
+      acc[period.key] = buildTrendRows(period.key, now, leads, visits, ownershipWindows, selectedEmployee.id)
+      return acc
+    }, {})
 
     const mostRecentOwnershipStart = (leadId: string) => {
       const starts = ownershipWindows
@@ -539,6 +703,7 @@ export class DashboardService {
       selectedEmployee: serializeEmployee(selectedEmployee),
       periods: summaries,
       trend,
+      trendByPeriod,
       recentLeads,
       transferSafe: true,
       generatedAt: now.toISOString(),

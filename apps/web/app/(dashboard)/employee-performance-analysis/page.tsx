@@ -80,7 +80,8 @@ interface PerformanceSummary {
 }
 
 interface TrendRow {
-  month: string
+  label?: string
+  month?: string
   leads: number
   calls: number
   visits: number
@@ -109,6 +110,7 @@ interface PerformanceResponse {
   selectedEmployee: Employee | null
   periods: Partial<Record<PeriodKey, PerformanceSummary>>
   trend: TrendRow[]
+  trendByPeriod?: Partial<Record<PeriodKey, TrendRow[]>>
   recentLeads: RecentLead[]
   generatedAt: string
 }
@@ -128,6 +130,29 @@ const PERIODS: { key: PeriodKey; label: string }[] = [
   { key: "yearly", label: "Yearly" },
   { key: "lifetime", label: "Lifetime" },
 ]
+
+const TREND_COPY: Record<PeriodKey, { title: string; description: string }> = {
+  daily: {
+    title: "Daily Performance Trend",
+    description: "Hourly assigned leads, calls, visits, and conversions for today",
+  },
+  weekly: {
+    title: "Weekly Performance Trend",
+    description: "Day-wise assigned leads, calls, visits, and conversions for this week",
+  },
+  monthly: {
+    title: "Monthly Performance Trend",
+    description: "Date-wise assigned leads, calls, visits, and conversions for this month",
+  },
+  yearly: {
+    title: "Yearly Performance Trend",
+    description: "Month-wise assigned leads, calls, visits, and conversions for this year",
+  },
+  lifetime: {
+    title: "Lifetime Performance Trend",
+    description: "Historical assigned leads, calls, visits, and conversions for this employee",
+  },
+}
 
 const EMPTY_SUMMARY: PerformanceSummary = {
   totalLeads: 0,
@@ -266,6 +291,11 @@ export default function EmployeePerformanceAnalysisPage() {
 
   const selectedEmployee = data?.selectedEmployee ?? null
   const summary = data?.periods?.[activePeriod] ?? EMPTY_SUMMARY
+  const trendCopy = TREND_COPY[activePeriod]
+  const trendRows = (data?.trendByPeriod?.[activePeriod] ?? data?.trend ?? []).map(row => ({
+    ...row,
+    label: row.label ?? row.month ?? "",
+  }))
   const hasEmployees = Boolean(data?.employees?.length)
   const spokenRate = summary.callsLogged > 0
     ? Math.round((summary.spokenCalls / summary.callsLogged) * 1000) / 10
@@ -506,21 +536,21 @@ export default function EmployeePerformanceAnalysisPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2 text-base">
                     <TrendingUp className="h-4 w-4 text-primary" />
-                    12 Month Performance Trend
+                    {trendCopy.title}
                   </CardTitle>
-                  <p className="mt-1 text-xs text-muted-foreground">Assigned leads, calls, visits, and conversions</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{trendCopy.description}</p>
                 </div>
                 <BarChart3 className="h-5 w-5 text-primary" />
               </CardHeader>
               <CardContent>
                 <div className="h-[320px]">
-                  {(data?.trend ?? []).every(row => row.leads === 0 && row.calls === 0 && row.visits === 0 && row.conversions === 0) ? (
+                  {trendRows.every(row => row.leads === 0 && row.calls === 0 && row.visits === 0 && row.conversions === 0) ? (
                     <EmptyBlock message="Trend data will appear once this employee has assigned leads or activity." />
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={data?.trend ?? []} margin={{ top: 10, right: 14, left: -18, bottom: 0 }}>
+                      <LineChart data={trendRows} margin={{ top: 10, right: 14, left: -18, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                        <XAxis dataKey="month" tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <XAxis dataKey="label" tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                         <Tooltip
                           contentStyle={{
