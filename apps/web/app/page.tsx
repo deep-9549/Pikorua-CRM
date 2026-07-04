@@ -3,7 +3,6 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { Building2 } from "lucide-react"
 
 export default function SplashPage() {
   const router = useRouter()
@@ -40,9 +39,9 @@ export default function SplashPage() {
             initial={{ rotate: -10, scale: 0 }}
             animate={{ rotate: 0, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.3, type: "spring" }}
-            className="w-24 h-24 rounded-3xl gold-gradient flex items-center justify-center shadow-gold"
+            className="w-24 h-24 flex items-center justify-center"
           >
-            <Building2 className="w-12 h-12 text-primary-foreground" />
+            <img src="/pikorua-icon-mark-square.png" alt="Pikorua" className="w-24 h-24 object-contain" />
           </motion.div>
 
           <motion.div

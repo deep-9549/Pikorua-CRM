@@ -173,7 +173,7 @@ export function AppSidebar({
                 className="flex items-center gap-3 min-w-0 flex-1">
                 <Link href="/dashboard" className="flex min-w-0 items-center gap-3 rounded-lg transition-opacity hover:opacity-90">
                   <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center">
-                    <img src="/pikorua-icon-mark.png" alt="Pikorua" className="w-8 h-8 object-contain" />
+                    <img src="/pikorua-icon-mark-square.png" alt="Pikorua" className="w-8 h-8 object-contain" />
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-[13px] font-semibold tracking-wide truncate"
@@ -199,7 +199,7 @@ export function AppSidebar({
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform duration-150 hover:scale-105">
-                <img src="/pikorua-icon-mark.png" alt="Pikorua" className="w-8 h-8 object-contain" />
+                <img src="/pikorua-icon-mark-square.png" alt="Pikorua" className="w-8 h-8 object-contain" />
               </motion.button>
             )}
           </AnimatePresence>

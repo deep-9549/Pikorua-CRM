@@ -49,7 +49,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <img src="/pikorua-icon-mark.png" alt="Pikorua" className="w-14 h-14 object-contain mb-3" />
+          <img src="/pikorua-icon-mark-square.png" alt="Pikorua" className="w-14 h-14 object-contain mb-3" />
           <h1 className="text-xl font-semibold tracking-wide" style={{ color: "var(--color-primary)" }}>
             PIKORUA
           </h1>
