@@ -442,7 +442,8 @@ export default function MetaAdsPage() {
   const [search, setSearch] = useState("")
   const [sourceFilter, setSourceFilter] = useState("")
   const [campaignFilter, setCampaignFilter] = useState("")
-  const [receivedDateFilter, setReceivedDateFilter] = useState("")
+  const [receivedDateFromFilter, setReceivedDateFromFilter] = useState("")
+  const [receivedDateToFilter, setReceivedDateToFilter] = useState("")
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -604,11 +605,14 @@ export default function MetaAdsPage() {
     }
     if (sourceFilter && l.source !== sourceFilter) return false
     if (campaignFilter && l.campaign_name !== campaignFilter) return false
-    if (receivedDateFilter && toDateInputValue(l.received_at) !== receivedDateFilter) return false
+    const receivedDate = toDateInputValue(l.received_at)
+    if ((receivedDateFromFilter || receivedDateToFilter) && !receivedDate) return false
+    if (receivedDateFromFilter && receivedDate < receivedDateFromFilter) return false
+    if (receivedDateToFilter && receivedDate > receivedDateToFilter) return false
     return true
-  }), [leads, search, sourceFilter, campaignFilter, receivedDateFilter])
+  }), [leads, search, sourceFilter, campaignFilter, receivedDateFromFilter, receivedDateToFilter])
 
-  const hasActiveFilter = Boolean(search || sourceFilter || campaignFilter || receivedDateFilter)
+  const hasActiveFilter = Boolean(search || sourceFilter || campaignFilter || receivedDateFromFilter || receivedDateToFilter)
   const shownLeadIds = useMemo(() => filteredLeads.map(lead => lead.id), [filteredLeads])
   const shownSelectionOnly = useMemo(
     () => shownLeadIds.length > 0 && selected.size === shownLeadIds.length && shownLeadIds.every(id => selected.has(id)),
@@ -743,14 +747,26 @@ export default function MetaAdsPage() {
                 </select>
               )}
               {isSuperAdmin && (
-                <div className="relative w-full sm:w-[176px]">
-                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--color-muted-foreground)" }} />
+                <div className="flex w-full items-center gap-1.5 sm:w-auto">
+                  <div className="relative min-w-0 flex-1 sm:flex-none">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--color-muted-foreground)" }} />
+                    <Input
+                      type="date"
+                      aria-label="Lead received start date"
+                      value={receivedDateFromFilter}
+                      max={receivedDateToFilter || undefined}
+                      onChange={e => setReceivedDateFromFilter(e.target.value)}
+                      className="h-9 pl-9 text-xs sm:w-[150px]"
+                    />
+                  </div>
+                  <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>to</span>
                   <Input
                     type="date"
-                    aria-label="Lead received date"
-                    value={receivedDateFilter}
-                    onChange={e => setReceivedDateFilter(e.target.value)}
-                    className="h-9 pl-9 text-xs"
+                    aria-label="Lead received end date"
+                    value={receivedDateToFilter}
+                    min={receivedDateFromFilter || undefined}
+                    onChange={e => setReceivedDateToFilter(e.target.value)}
+                    className="h-9 min-w-0 flex-1 text-xs sm:w-[150px] sm:flex-none"
                   />
                 </div>
               )}
@@ -771,7 +787,7 @@ export default function MetaAdsPage() {
                   variant="ghost"
                   size="sm"
                   className="gap-1 h-9 text-xs shrink-0"
-                  onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter(""); setReceivedDateFilter("") }}
+                  onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
                 >
                   <X className="w-3.5 h-3.5" /> Clear
                 </Button>

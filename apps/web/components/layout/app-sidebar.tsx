@@ -72,7 +72,7 @@ const navGroups: NavGroup[] = [
     title: "Tools",
     items: [
       { title: "AI Control", href: "/ai-control", icon: Bot, adminOnly: true, comingSoon: true },
-      { title: "Scripts", href: "/scripts", icon: FileText, comingSoon: true },
+      { title: "Scripts", href: "/scripts", icon: FileText },
       { title: "Documents", href: "/documents", icon: FileSpreadsheet, comingSoon: true },
     ]
   },
@@ -395,5 +395,4 @@ export function AppSidebar({
     </TooltipProvider>
   )
 }
-
 

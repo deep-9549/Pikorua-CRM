@@ -315,7 +315,73 @@ export const leadGroups: LeadGroup[] = []
 export const whatsappConversations: WhatsAppConversation[] = []
 export const properties: Property[] = []
 export const siteVisits: SiteVisit[] = []
-export const scripts: Script[] = []
+export const scripts: Script[] = [
+  {
+    id: 'luxury-project-ahmedabad-first-call',
+    title: 'Luxury Project in Ahmedabad',
+    category: 'first_call',
+    content: `Script for Luxury Project in Ahmedabad
+
+SM: Hi Sir, this is ______. Aapko actually invite karne ke liye call kiya hai.
+
+Beech mein aapka inquiry aaya tha apna Luxury Project hai, Ahmedabad me, uske liye.
+
+Facebook, Instagram par aapne shayad ad dekha hoga. Usme aapne inquiry kiya tha.
+
+So usi ke liye ek to aapko invite karna tha and dusra jaan na tha ki aap kya dekh rahe hain, 4 BHK dekh rahe hain ya 5 BHK dekh rahe hain?
+
+Customer replies:
+
+Okay 4 BHK, thik hai.
+
+And mota mota kya budget mein dekh rahe hain?
+
+Customer replies:
+
+5 Cr? Okay theek hai.
+
+To apna yeh jo project hai na Sir, this is a beautiful gated community of luxury apartments.
+
+Ismein 4 and 5 BHK options milenge aapko.
+
+Plus saari club-class amenities rahengi society mein jaise swimming pool, club house, gym, library, yoga deck, meditation, mini theatre, kids play area, garden, banquet hall, etc.
+
+Apna jo 4 BHK hai yeh approximately 5700 sqft ka hai, and 5 BHK jo hai woh approx 7500 sqft ka hai.
+
+Possession jo hai woh aapko 2.5 years mein milega.
+
+So hum log abhi kya kar rahe hain na Sir, ki jo clients interest dikha rahe hain, hum unko personally invite karte hain site visit ke liye aur yahi par unko sari details jaise layout, brochure, elevation, video, sab share karte hain.
+
+So just ek 30 minutes ka time lungi aapka. Kya time aapko convenient rahega site visit ke liye?
+
+Kal 11:00 baje, 12:00 baje?
+
+Customer replies:
+
+12 baje?
+
+Theek hai, to kal 12:00 baje ka aapka appointment confirm rakhti hu. Us time par fir aur kisi ka appointment nahi leti so that aapko wait karne ki jarurat na pade.
+
+Thodi der mein aapko Appointment Confirmation Code and Google Map Location dono WhatsApp pe aa jayenge.
+
+And just to know you well Sir, aapka kis cheez ka business hai?
+
+Customer replies:
+
+Ok great, and abhi kaha rehte hai?
+
+Customer replies:
+
+Chalo perfect.
+
+Milte hai kal 12:00 baje Sir.
+Thank you!
+
+Then send a "Pleasure talking wala" message on WhatsApp immediately.`,
+    tags: ['luxury project', 'ahmedabad', 'site visit', '4 BHK', '5 BHK', 'hinglish'],
+    usageCount: 0,
+  },
+]
 export const hniClients: HniClient[] = []
 export const bookings: Booking[] = []
 
@@ -480,7 +546,7 @@ export const callingScripts = scripts.map(s => ({
             s.category === 'vip' ? 'Site Visit' :
             s.category === 'negotiation' ? 'Negotiation' : 'Closing',
   content: s.content,
-  language: 'English',
+  language: s.tags.includes('hinglish') ? 'Hinglish' : 'English',
   tips: s.tags.map(tag => `Best used for ${tag} scenarios`),
 }))
 

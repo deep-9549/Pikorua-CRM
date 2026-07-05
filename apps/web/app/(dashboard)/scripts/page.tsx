@@ -10,21 +10,17 @@ import {
   ChevronRight,
   Phone,
   MessageSquare,
-  Home,
   Building2,
   DollarSign,
   Calendar,
   Star,
   Sparkles,
-  BookOpen,
-  Filter,
-  Plus
+  BookOpen
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { callingScripts } from "@/lib/data"
 
@@ -37,10 +33,12 @@ const categoryIcons: Record<string, React.ComponentType<{ className?: string }>>
   "Closing": Star,
 }
 
+type CallingScript = (typeof callingScripts)[number]
+
 export default function CallingScriptsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
-  const [selectedScript, setSelectedScript] = useState<typeof callingScripts[0] | null>(null)
+  const [selectedScript, setSelectedScript] = useState<CallingScript | null>(() => callingScripts[0] ?? null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const categories = ["all", ...Array.from(new Set(callingScripts.map(s => s.category)))]
@@ -52,7 +50,7 @@ export default function CallingScriptsPage() {
     return matchesSearch && matchesCategory
   })
 
-  const handleCopy = (script: typeof callingScripts[0]) => {
+  const handleCopy = (script: CallingScript) => {
     navigator.clipboard.writeText(script.content)
     setCopiedId(script.id)
     setTimeout(() => setCopiedId(null), 2000)
@@ -75,10 +73,6 @@ export default function CallingScriptsPage() {
             <p className="text-muted-foreground">Pre-written scripts for different sales scenarios</p>
           </div>
         </div>
-        <Button className="bg-gradient-to-r from-primary to-orange-700 hover:from-primary/90 hover:to-orange-700/90">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Script
-        </Button>
       </motion.div>
 
       {/* Stats */}
@@ -91,8 +85,8 @@ export default function CallingScriptsPage() {
         {[
           { label: "Total Scripts", value: callingScripts.length, icon: FileText, color: "text-primary" },
           { label: "Categories", value: categories.length - 1, icon: BookOpen, color: "text-blue-600" },
-          { label: "Most Used", value: "None", icon: Phone, color: "text-green-600" },
-          { label: "Success Rate", value: "0%", icon: Star, color: "text-primary" },
+          { label: "Primary Use", value: "First Call", icon: Phone, color: "text-green-600" },
+          { label: "Status", value: "Live", icon: Star, color: "text-primary" },
         ].map((stat) => (
           <Card key={stat.label} className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-4">
@@ -148,7 +142,11 @@ export default function CallingScriptsPage() {
 
               <ScrollArea className="h-[500px] pr-4">
                 <div className="space-y-3">
-                  {filteredScripts.map((script, index) => {
+                  {filteredScripts.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
+                      No scripts match this search.
+                    </div>
+                  ) : filteredScripts.map((script, index) => {
                     const CategoryIcon = categoryIcons[script.category] || FileText
                     const isSelected = selectedScript?.id === script.id
 
@@ -227,7 +225,7 @@ export default function CallingScriptsPage() {
                         <div>
                           <CardTitle className="text-lg">{selectedScript.title}</CardTitle>
                           <p className="text-sm text-muted-foreground mt-0.5">
-                            {selectedScript.category} • {selectedScript.language}
+                            {selectedScript.category} - {selectedScript.language}
                           </p>
                         </div>
                       </div>
@@ -268,7 +266,7 @@ export default function CallingScriptsPage() {
                         <ul className="space-y-2">
                           {selectedScript.tips.map((tip, index) => (
                             <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                              <span className="text-primary mt-1">•</span>
+                              <span className="text-primary mt-1">-</span>
                               {tip}
                             </li>
                           ))}
