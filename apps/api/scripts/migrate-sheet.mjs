@@ -1,8 +1,8 @@
 /**
- * Pikorua CRM — one-time Google Sheets → Supabase migration.
+ * Pikorua CRM - one-time Google Sheets to Supabase migration.
  *
  * USAGE:
- *   1. Export your Google Sheet as .xlsx (File → Download → Microsoft Excel)
+ *   1. Export your Google Sheet as .xlsx (File -> Download -> Microsoft Excel)
  *      or .csv, and place it next to this script.
  *   2. Fill in the MAPPING object below to match YOUR sheet's column headers.
  *   3. Run a dry run first (prints what WOULD be inserted, writes nothing):
@@ -15,9 +15,9 @@
  *   - `pnpm add xlsx @supabase/supabase-js` in apps/api if not already present.
  *   - Env vars (set in apps/api/.env or inline):
  *        NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- *     Set them inline, e.g. (PowerShell):
- *        $env:NEXT_PUBLIC_SUPABASE_URL="https://xxx.supabase.co"
- *        $env:SUPABASE_SERVICE_ROLE_KEY="eyJ..."
+ *     Set them inline, e.g. (Linux/macOS):
+ *        NEXT_PUBLIC_SUPABASE_URL="https://xxx.supabase.co" \
+ *        SUPABASE_SERVICE_ROLE_KEY="eyJ..." \
  *        node apps/api/scripts/migrate-sheet.mjs ./leads.xlsx --dry
  *
  * The `link_lead_to_client` DB trigger auto-creates/links the client by phone,
@@ -27,21 +27,19 @@
 import * as XLSX from "xlsx"
 import { createClient } from "@supabase/supabase-js"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAPPING — EDIT THIS to match your sheet's exact column header names.
+// MAPPING - edit this to match your sheet's exact column header names.
 // Left = CRM field, Right = the header text in your sheet (case-sensitive).
 // Set to null to skip a field.
-// ─────────────────────────────────────────────────────────────────────────────
 const MAPPING = {
   // meta_leads columns
   full_name:     "Name",
-  phone:         "Phone",         // REQUIRED — used for client dedupe
+  phone:         "Phone",         // REQUIRED - used for client dedupe
   email:         "Email",
   city:          "City",
   campaign_name: "Source",
   received_at:   "Date",          // optional; parsed if present, else now()
 
-  // lead_crm_details columns (optional — leave as null if the sheet lacks them)
+  // lead_crm_details columns (optional - leave as null if the sheet lacks them)
   call_status:   null,            // must map to: spoken | not_spoken | call_back_later
   hwc:           null,            // must map to: hot | warm | cold
   budget_range:  null,
@@ -52,7 +50,7 @@ const MAPPING = {
   remarks:       "Remarks",
 }
 
-// Optional value translators — convert sheet text to the CRM's allowed values.
+// Optional value translators - convert sheet text to the CRM's allowed values.
 const TRANSLATE_CALL_STATUS = (v) => ({
   "spoken": "spoken", "talked": "spoken",
   "not spoken": "not_spoken", "no answer": "not_spoken",
@@ -62,8 +60,6 @@ const TRANSLATE_CALL_STATUS = (v) => ({
 const TRANSLATE_HWC = (v) => ({
   "hot": "hot", "warm": "warm", "cold": "cold",
 }[String(v).trim().toLowerCase()] ?? null)
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 const file = process.argv[2]
 const DRY = process.argv.includes("--dry")

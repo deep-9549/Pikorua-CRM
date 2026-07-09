@@ -1,6 +1,6 @@
-# ── Stage 1: install dependencies ────────────────────────────────────────────
+# Stage 1: install dependencies
 FROM node:22-alpine AS deps
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@11.5.0 --activate
 WORKDIR /app
 
 # Workspace config
@@ -13,9 +13,9 @@ COPY packages/db/package.json ./packages/db/package.json
 
 RUN pnpm install --frozen-lockfile --filter @pikorua/api... --ignore-scripts
 
-# ── Stage 2: build ────────────────────────────────────────────────────────────
+# Stage 2: build
 FROM node:22-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@11.5.0 --activate
 WORKDIR /app
 
 COPY --from=deps /app ./
@@ -30,7 +30,7 @@ RUN pnpm --filter @pikorua/shared build
 RUN pnpm --filter @pikorua/db build
 RUN pnpm --filter @pikorua/api build
 
-# ── Stage 3: production image ─────────────────────────────────────────────────
+# Stage 3: production image
 FROM node:22-alpine AS runner
 WORKDIR /app
 

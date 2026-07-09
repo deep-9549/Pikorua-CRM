@@ -1,229 +1,115 @@
 # Pikorua CRM
 
-A high-velocity real estate CRM for lead capture, assignment, and follow-up. Built as a pnpm + Turborepo monorepo.
+A real estate CRM for lead capture, assignment, follow-up, employee reporting, and sales operations.
+
+This repo is a pnpm + Turborepo monorepo:
+
+```text
+Pikorua-CRM/
+|-- apps/
+|   |-- web/          Next.js frontend: http://localhost:3000
+|   `-- api/          NestJS backend:   http://localhost:4000/api
+|                                      Swagger: /api/docs
+|-- packages/
+|   |-- shared/       Shared TypeScript types and schemas
+|   `-- db/           Drizzle ORM schema and database tooling
+|-- scripts/          Local setup helpers
+|-- docker-compose.yml
+|-- .env.example
+`-- turbo.json
+```
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui |
-| Backend | NestJS 10, Drizzle ORM, PostgreSQL 16 |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| Backend | NestJS 10, Drizzle ORM |
+| Database | PostgreSQL 16 |
 | Cache | Redis 7 |
-| Auth | JWT (jose in Next.js middleware, passport-jwt in NestJS) |
+| Auth | JWT cookies in web, passport-jwt in API |
 | Monorepo | pnpm workspaces + Turborepo |
-| Container | Docker + docker-compose |
+| Local infra | Docker Compose |
 
-## Repository Layout
+## Linux Setup
 
-```
-Pikorua-CRM/
-├── apps/
-│   ├── web/          Next.js frontend          → http://localhost:3000
-│   └── api/          NestJS backend            → http://localhost:4000
-│                                                  Swagger: /api/docs
-├── packages/
-│   ├── shared/       TypeScript types + Zod schemas
-│   └── db/           Drizzle ORM schema + client
-├── docker-compose.yml   PostgreSQL + Redis + api + web
-├── .env.example
-└── turbo.json
-```
+Use the detailed Linux guide here:
 
----
+[docs/LINUX_SETUP.md](docs/LINUX_SETUP.md)
 
-## Local Development (without Docker)
-
-### 1. Prerequisites
-
-- Node.js 22+
-- pnpm 11+ (`npm i -g pnpm`)
-- Docker Desktop (for PostgreSQL + Redis)
-
-### 2. Clone and install
+Fast path after installing Node 22, pnpm, Docker, and Docker Compose:
 
 ```bash
-git clone <repo-url>
-cd Pikorua-CRM
 pnpm install
-```
-
-### 3. Start infrastructure
-
-```bash
-# Start PostgreSQL (port 5432) and Redis (port 6379) only
-docker compose up postgres redis -d
-```
-
-### 4. Configure environment
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set at minimum:
-
-```env
-DATABASE_URL=postgresql://pikorua:pikorua@localhost:5432/pikorua_crm
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=any-long-random-string-here
-NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-META_WEBHOOK_VERIFY_TOKEN=any-random-string
-```
-
-Copy the same `.env` into `apps/api/`:
-
-```bash
-cp .env apps/api/.env
-```
-
-### 5. Push database schema
-
-```bash
+pnpm setup:local
+pnpm dev:infra
 pnpm db:push
-```
-
-### 6. Create the first admin user
-
-```bash
-# Connect to Postgres and run:
-psql postgresql://pikorua:pikorua@localhost:5432/pikorua_crm
-```
-
-```sql
-INSERT INTO user_profiles (full_name, email, password_hash, role, status)
-VALUES (
-  'Admin',
-  'admin@pikorua.com',
-  -- bcrypt hash of 'password123' (change this!)
-  '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4oFkIR.kJ2',
-  'super_admin',
-  'active'
-);
-```
-
-> For a proper hash, use: `node -e "const b=require('bcryptjs');b.hash('yourpassword',12).then(console.log)"`
-
-### 7. Run all apps
-
-```bash
+pnpm seed:admin
 pnpm dev
 ```
 
-This starts all packages in parallel:
-- `apps/web` → http://localhost:3000
-- `apps/api` → http://localhost:4000 (Swagger at `/api/docs`)
-- `packages/shared` and `packages/db` in watch mode
+Open:
 
----
+- Web: http://localhost:3000
+- API health: http://localhost:4000/api/health
+- Swagger: http://localhost:4000/api/docs
 
-## Run with Docker (full stack)
+Default local seed login:
 
-### 1. Configure environment
+- Email: `admin@pikorua.local`
+- Password: `Pikorua@123`
 
-```bash
-cp .env.example .env
-# Edit .env — set JWT_SECRET at minimum
-```
-
-### 2. Build and start all services
+Override the seeded admin with these optional env vars before running `pnpm seed:admin`:
 
 ```bash
-docker compose up --build -d
+SEED_ADMIN_EMAIL=you@example.com \
+SEED_ADMIN_PASSWORD='change-this-password' \
+SEED_ADMIN_FULL_NAME='Your Name' \
+SEED_ADMIN_PHONE='9999999999' \
+pnpm seed:admin
 ```
 
-Services start in dependency order:
-```
-postgres ──► redis ──► api ──► web
-```
-
-| Service | URL |
-|---|---|
-| Web (Next.js) | http://localhost:3000 |
-| API (NestJS) | http://localhost:4000 |
-| Swagger docs | http://localhost:4000/api/docs |
-| PostgreSQL | localhost:5432 |
-| Redis | localhost:6379 |
-
-### 3. Push schema (first run only)
+## Common Commands
 
 ```bash
-# Run against the Docker Postgres instance
-DATABASE_URL=postgresql://pikorua:pikorua@localhost:5432/pikorua_crm pnpm db:push
-```
-
-### 4. Create first admin (first run only)
-
-```bash
-docker compose exec postgres psql -U pikorua -d pikorua_crm -c "
-INSERT INTO user_profiles (full_name, email, password_hash, role, status)
-VALUES ('Admin', 'admin@pikorua.com', '\$2b\$12\$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4oFkIR.kJ2', 'super_admin', 'active');
-"
-```
-
-### Common Docker commands
-
-```bash
-docker compose logs -f api        # stream API logs
-docker compose logs -f web        # stream web logs
-docker compose down               # stop all services
-docker compose down -v            # stop + delete volumes (wipes DB data)
-docker compose up --build api -d  # rebuild + restart API only
-```
-
----
-
-## Build for production
-
-```bash
-pnpm build
-```
-
-Turborepo builds in dependency order: `shared → db → api + web`.
-
----
-
-## Database commands
-
-```bash
-pnpm db:push       # push schema changes directly (development)
-pnpm db:generate   # generate migration SQL files
-pnpm db:migrate    # run pending migrations
-pnpm db:studio     # open Drizzle Studio (visual DB browser)
-```
-
----
-
-## API overview
-
-All endpoints are prefixed with `/api` and require a `Bearer <token>` header (except `/api/auth/login`).
-
-| Module | Endpoints |
-|---|---|
-| **Auth** | `POST /auth/login`, `GET /auth/me` |
-| **Users** | `GET /users`, `POST /users`, `DELETE /users/:id` |
-| **Leads** | `GET /leads`, `GET /leads/:id`, `POST /leads`, `PATCH /leads/:id` |
-| **Meta Leads** | `GET /meta-leads`, `GET /meta-leads/:id`, `PATCH /:id/assign`, `POST /bulk-assign` |
-| **Employees** | `GET /employees`, `GET /employees/:id` |
-| **Properties** | `GET /properties`, `GET /properties/:id` |
-| **Clients** | `GET /clients/:id`, `PATCH /clients/:id/status` |
-| **Site Visits** | `GET /site-visits`, `POST /site-visits`, `PATCH /site-visits/:id` |
-| **Bookings** | `GET /bookings`, `POST /bookings`, `PATCH /bookings/:id` |
-| **Dashboard** | `GET /dashboard/stats`, `/dashboard/leads`, `/dashboard/revenue` |
-| **WhatsApp** | `GET /whatsapp/conversations`, `GET /whatsapp/conversations/:leadId`, `POST /whatsapp/messages` |
-| **Webhooks** | `GET /webhooks/meta` (verification), `POST /webhooks/meta` (lead ingestion) |
-
-Full interactive docs at `http://localhost:4000/api/docs` (Swagger).
-
----
-
-## Project scripts
-
-From repo root:
-
-```bash
-pnpm dev          # start all apps in watch mode
-pnpm build        # production build all packages
-pnpm lint         # lint all packages
-pnpm db:push      # push Drizzle schema to DB
+pnpm setup:local  # create .env, apps/api/.env, apps/web/.env.local
+pnpm dev:infra    # start local Postgres and Redis
+pnpm dev          # start all workspaces in watch mode
+pnpm dev:api      # start only the NestJS API
+pnpm dev:web      # start only the Next.js web app
+pnpm db:push      # push Drizzle schema to local Postgres
+pnpm db:generate  # generate Drizzle migration files
+pnpm db:migrate   # run pending migrations
 pnpm db:studio    # open Drizzle Studio
+pnpm seed:admin   # create the first local super admin
+pnpm build        # production build
+pnpm lint         # TypeScript/lint checks
 ```
+
+## Docker Full Stack
+
+For local development, the recommended path is to run Postgres and Redis in Docker, then run API/web with pnpm.
+
+To run the full stack in Docker:
+
+```bash
+pnpm setup:local
+docker compose up --build -d
+pnpm db:push
+pnpm seed:admin
+```
+
+Useful Docker commands:
+
+```bash
+docker compose logs -f api
+docker compose logs -f web
+docker compose down
+docker compose down -v  # removes database and Redis volumes
+```
+
+## Notes
+
+- `JWT_SECRET` must match between `apps/api/.env` and `apps/web/.env.local`; `pnpm setup:local` handles this.
+- `DATABASE_URL` should point to `postgresql://pikorua:pikorua@localhost:5432/pikorua_crm` for the local compose database.
+- Do not commit `.env`, `apps/api/.env`, or `apps/web/.env.local`.

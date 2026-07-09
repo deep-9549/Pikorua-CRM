@@ -1,5 +1,5 @@
 services:
-  # ── Infrastructure ────────────────────────────────────────────────────────
+  # Infrastructure
   postgres:
     image: postgres:16-alpine
     container_name: pikorua-postgres
@@ -33,7 +33,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Applications ──────────────────────────────────────────────────────────
+  # Applications
   api:
     build:
       context: .

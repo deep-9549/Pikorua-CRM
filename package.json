@@ -7,10 +7,15 @@
     "node": "22.x"
   },
   "scripts": {
+    "setup:local": "node scripts/setup-local-env.mjs",
+    "dev:infra": "docker compose up postgres redis -d",
+    "dev:web": "pnpm --filter @pikorua/web dev",
+    "dev:api": "pnpm --filter @pikorua/api dev",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "start": "turbo run start",
     "lint": "turbo run lint",
+    "seed:admin": "pnpm --filter @pikorua/api seed:admin",
     "db:generate": "turbo run db:generate --filter=@pikorua/db",
     "db:push": "turbo run db:push --filter=@pikorua/db",
     "db:studio": "turbo run db:studio --filter=@pikorua/db",
