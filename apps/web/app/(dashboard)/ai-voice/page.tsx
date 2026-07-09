@@ -486,7 +486,7 @@ export default function AiVoicePage() {
           )}
 
           <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--color-border)", background: "var(--color-card)" }}>
-            <div className="grid min-w-[760px] grid-cols-[86px_minmax(180px,1fr)_90px_110px_130px_120px] gap-3 border-b px-4 py-2 text-[11px] font-semibold uppercase tracking-wide"
+            <div className="grid min-w-[820px] grid-cols-[86px_minmax(180px,1fr)_90px_110px_130px_156px] gap-3 border-b px-4 py-2 text-[11px] font-semibold uppercase tracking-wide"
               style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
               <span>Label</span>
               <span>Lead</span>
@@ -517,7 +517,7 @@ export default function AiVoicePage() {
                         void loadDetail(item.id)
                       }
                     }}
-                    className="grid min-w-[760px] w-full cursor-pointer grid-cols-[86px_minmax(180px,1fr)_90px_110px_130px_120px] items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/45"
+                    className="grid min-w-[820px] w-full cursor-pointer grid-cols-[86px_minmax(180px,1fr)_90px_110px_130px_156px] items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/45"
                     style={{ borderColor: "var(--color-border)", background: selectedId === item.id ? "rgb(194 65 12 / 0.06)" : undefined }}
                   >
                     <div className="flex items-center gap-1.5">
@@ -549,14 +549,14 @@ export default function AiVoicePage() {
                       <p className="capitalize">{labelText(item.score?.timeline)}</p>
                       <p style={{ color: "var(--color-muted-foreground)" }}>{formatDateTime(item.answered_at ?? item.received_at)}</p>
                     </div>
-                    <div className="flex min-w-0 items-center gap-1.5 text-xs">
-                      <span className="truncate">{item.assigned_to_profile?.full_name || "Unassigned"}</span>
+                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_32px] items-center gap-2 text-xs">
+                      <span className="min-w-0 truncate">{item.assigned_to_profile?.full_name || "Unassigned"}</span>
                       {isSuperAdmin && (
                         <Button
                           type="button"
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                          className="h-7 w-7 justify-self-center text-red-600 hover:bg-red-50 hover:text-red-700"
                           title="Delete call log"
                           disabled={deletingId === item.id}
                           onClick={(event) => {
