@@ -77,3 +77,7 @@ export const propertyImagesRelations = relations(propertyImages, ({ one }) => ({
 export const propertyAmenitiesRelations = relations(propertyAmenities, ({ one }) => ({
   property: one(properties, { fields: [propertyAmenities.propertyId], references: [properties.id] }),
 }))
+
+export const propertyAppreciationRelations = relations(propertyAppreciation, ({ one }) => ({
+  property: one(properties, { fields: [propertyAppreciation.propertyId], references: [properties.id] }),
+}))
