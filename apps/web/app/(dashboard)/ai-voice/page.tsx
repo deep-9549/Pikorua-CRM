@@ -486,7 +486,7 @@ export default function AiVoicePage() {
           )}
 
           <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--color-border)", background: "var(--color-card)" }}>
-            <div className="grid min-w-[820px] grid-cols-[86px_minmax(180px,1fr)_90px_110px_130px_156px] gap-3 border-b px-4 py-2 text-[11px] font-semibold uppercase tracking-wide"
+            <div className="grid w-full grid-cols-[54px_minmax(0,1.4fr)_52px_minmax(0,.8fr)_minmax(0,1fr)_minmax(112px,.95fr)] gap-2 border-b px-3 py-2 text-[10px] font-semibold uppercase tracking-wide sm:text-[11px]"
               style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
               <span>Label</span>
               <span>Lead</span>
@@ -504,7 +504,7 @@ export default function AiVoicePage() {
                 No voice calls match the current view
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 {filteredItems.map((item) => (
                   <div
                     key={item.id}
@@ -517,10 +517,10 @@ export default function AiVoicePage() {
                         void loadDetail(item.id)
                       }
                     }}
-                    className="grid min-w-[820px] w-full cursor-pointer grid-cols-[86px_minmax(180px,1fr)_90px_110px_130px_156px] items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/45"
+                    className="grid w-full cursor-pointer grid-cols-[54px_minmax(0,1.4fr)_52px_minmax(0,.8fr)_minmax(0,1fr)_minmax(112px,.95fr)] items-center gap-2 border-b px-3 py-3 text-left transition-colors hover:bg-muted/45"
                     style={{ borderColor: "var(--color-border)", background: selectedId === item.id ? "rgb(194 65 12 / 0.06)" : undefined }}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex min-w-0 items-center gap-1">
                       <LabelBadge label={item.score?.effective_label} />
                       {!item.reviewed && <span className="h-2 w-2 rounded-full bg-red-500" />}
                     </div>
@@ -537,17 +537,17 @@ export default function AiVoicePage() {
                         {item.campaign_name && <span>{item.campaign_name}</span>}
                       </div>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-bold">{item.score?.score ?? "-"}</p>
                       <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>{item.score?.source ?? ""}</p>
                     </div>
-                    <div className="text-xs">
-                      <p className="capitalize">{item.direction}</p>
+                    <div className="min-w-0 text-xs">
+                      <p className="truncate capitalize">{item.direction}</p>
                       <p style={{ color: "var(--color-muted-foreground)" }}>{duration(item.duration_sec)}</p>
                     </div>
-                    <div className="text-xs">
-                      <p className="capitalize">{labelText(item.score?.timeline)}</p>
-                      <p style={{ color: "var(--color-muted-foreground)" }}>{formatDateTime(item.answered_at ?? item.received_at)}</p>
+                    <div className="min-w-0 text-xs">
+                      <p className="truncate capitalize">{labelText(item.score?.timeline)}</p>
+                      <p className="truncate" style={{ color: "var(--color-muted-foreground)" }}>{formatDateTime(item.answered_at ?? item.received_at)}</p>
                     </div>
                     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_32px] items-center gap-2 text-xs">
                       <span className="min-w-0 truncate">{item.assigned_to_profile?.full_name || "Unassigned"}</span>
