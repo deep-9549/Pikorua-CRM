@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { createHmac, timingSafeEqual } from 'crypto'
-import { and, desc, eq, inArray, isNull, lt, or } from 'drizzle-orm'
+import { and, desc, eq, isNull, lt, or } from 'drizzle-orm'
 import {
   leadCrmDetails,
   metaLeads,
@@ -344,7 +344,7 @@ export class VoiceIntegrationService {
       .filter((row: any) => this.canAccessLead(row.lead, user))
       .map((row: any) => this.serializeQueueItem(row))
       .filter((item) => this.matchesQueueFilters(item, query))
-      .sort((a, b) => this.queueRank(a) - this.queueRank(b))
+      .sort((a, b) => this.queueSort(a, b, query.scoreSort))
 
     return { items }
   }
@@ -370,6 +370,30 @@ export class VoiceIntegrationService {
       .where(eq(voiceCallLogs.id, id))
       .returning()
     return { call: { ...detail.call, reviewed: updated.reviewed } }
+  }
+
+  async deleteCallLog(id: string, user: { id: string; role: string }) {
+    if (user.role !== 'super_admin') throw new ForbiddenException('Only super admins can delete voice call logs')
+
+    const row = await this.db.query.voiceCallLogs.findFirst({
+      where: eq(voiceCallLogs.id, id),
+      columns: { id: true, callId: true, leadId: true },
+    })
+    if (!row) throw new NotFoundException('Voice call not found')
+
+    await this.db.transaction(async (tx) => {
+      await tx.delete(voiceEvents).where(eq(voiceEvents.callId, row.callId))
+      await tx.delete(voiceCallLogs).where(eq(voiceCallLogs.id, id))
+    })
+
+    return {
+      deleted: true,
+      call: {
+        id: row.id,
+        call_id: row.callId,
+        crm_lead_id: row.leadId,
+      },
+    }
   }
 
   async overrideScore(id: string, body: { label?: string; reason?: string }, user: { id: string; role: string }) {
@@ -726,10 +750,33 @@ export class VoiceIntegrationService {
     if (query.reviewed === 'false' && item.reviewed) return false
     if (query.assignedTo && item.assigned_to_profile?.id !== query.assignedTo) return false
     if (query.campaign && item.campaign_name !== query.campaign) return false
-    if (query.dateFrom && String(item.received_at) < query.dateFrom) return false
-    if (query.dateTo && String(item.received_at) > `${query.dateTo}T23:59:59`) return false
+    const receivedAt = this.toDate(item.received_at)?.getTime()
+    const from = this.filterDateBoundary(query.dateFrom, false)?.getTime()
+    const to = this.filterDateBoundary(query.dateTo, true)?.getTime()
+    if (from && (!receivedAt || receivedAt < from)) return false
+    if (to && (!receivedAt || receivedAt > to)) return false
     if (query.hotAlerts === 'true' && score?.effective_label !== 'hot') return false
     return true
+  }
+
+  private filterDateBoundary(value: string | undefined, endOfDay: boolean) {
+    if (!value) return null
+    const suffix = endOfDay ? 'T23:59:59.999+05:30' : 'T00:00:00.000+05:30'
+    return this.toDate(`${value}${suffix}`)
+  }
+
+  private queueSort(a: any, b: any, scoreSort?: string) {
+    if (scoreSort === 'asc') {
+      const aScore = typeof a.score?.score === 'number' ? a.score.score : Number.POSITIVE_INFINITY
+      const bScore = typeof b.score?.score === 'number' ? b.score.score : Number.POSITIVE_INFINITY
+      return aScore - bScore
+    }
+    if (scoreSort === 'desc') {
+      const aScore = typeof a.score?.score === 'number' ? a.score.score : Number.NEGATIVE_INFINITY
+      const bScore = typeof b.score?.score === 'number' ? b.score.score : Number.NEGATIVE_INFINITY
+      return bScore - aScore
+    }
+    return this.queueRank(a) - this.queueRank(b)
   }
 
   private queueRank(item: any) {

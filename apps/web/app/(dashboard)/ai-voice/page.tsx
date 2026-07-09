@@ -20,12 +20,24 @@ import {
   Search,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
   User,
   X,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -100,6 +112,7 @@ type VoiceCallDetail = VoiceQueueItem & {
 
 type VoiceAlert = {
   id: string
+  call_id: string
   type: string
   at: string
   read: boolean
@@ -109,15 +122,9 @@ type VoiceAlert = {
 
 const EMPTY_FILTERS = {
   label: "",
-  timeline: "",
-  locale: "",
-  campaign: "",
-  direction: "",
-  reviewed: "",
-  assignedTo: "",
-  hotAlerts: "",
   dateFrom: "",
   dateTo: "",
+  scoreSort: "desc",
 }
 
 type Filters = typeof EMPTY_FILTERS
@@ -191,6 +198,9 @@ export default function AiVoicePage() {
   const [overrideLabel, setOverrideLabel] = useState<VoiceLabel>("hot")
   const [overrideReason, setOverrideReason] = useState("")
   const [savingOverride, setSavingOverride] = useState(false)
+  const [showTranscript, setShowTranscript] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<VoiceQueueItem | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     const user = getAuthUser()
@@ -243,6 +253,7 @@ export default function AiVoicePage() {
       setDetail(json.call)
       setOverrideLabel(json.call?.score?.effective_label ?? "hot")
       setOverrideReason("")
+      setShowTranscript(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load call")
     } finally {
@@ -271,20 +282,6 @@ export default function AiVoicePage() {
       item.score?.rationale,
     ].some((value) => value?.toLowerCase().includes(q)))
   }, [items, search])
-
-  const campaigns = useMemo(() => {
-    return Array.from(new Set(items.map((item) => item.campaign_name).filter(Boolean))) as string[]
-  }, [items])
-
-  const assignees = useMemo(() => {
-    const map = new Map<string, string>()
-    items.forEach((item) => {
-      if (item.assigned_to_profile?.id) {
-        map.set(item.assigned_to_profile.id, item.assigned_to_profile.full_name ?? "Unnamed")
-      }
-    })
-    return Array.from(map, ([id, name]) => ({ id, name }))
-  }, [items])
 
   const stats = useMemo(() => {
     return {
@@ -356,6 +353,29 @@ export default function AiVoicePage() {
   async function markAlertRead(alertId: string) {
     await fetch(`/api/ai-voice/alerts/${alertId}/read`, { method: "PATCH" })
     setAlerts((prev) => prev.filter((alert) => alert.id !== alertId))
+  }
+
+  async function deleteCallLog() {
+    if (!deleteTarget) return
+    setDeletingId(deleteTarget.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/ai-voice/calls/${deleteTarget.id}`, { method: "DELETE" })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.message ?? json.error ?? "Failed to delete call log")
+      setItems((prev) => prev.filter((item) => item.id !== deleteTarget.id))
+      setAlerts((prev) => prev.filter((alert) => alert.call_id !== deleteTarget.call_id))
+      if (selectedId === deleteTarget.id) {
+        setSelectedId(null)
+        setDetail(null)
+        setShowTranscript(false)
+      }
+      setDeleteTarget(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete call log")
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   return (
@@ -438,51 +458,20 @@ export default function AiVoicePage() {
                   <option value="warm">Warm</option>
                   <option value="cold">Cold</option>
                 </FilterSelect>
-                <FilterSelect value={filters.reviewed} onChange={(value) => setFilter("reviewed", value)}>
-                  <option value="">All review</option>
-                  <option value="false">Unreviewed</option>
-                  <option value="true">Reviewed</option>
-                </FilterSelect>
-                <FilterSelect value={filters.direction} onChange={(value) => setFilter("direction", value)}>
-                  <option value="">Any direction</option>
-                  <option value="inbound">Inbound</option>
-                  <option value="outbound">Outbound</option>
-                </FilterSelect>
-                <FilterSelect value={filters.locale} onChange={(value) => setFilter("locale", value)}>
-                  <option value="">Any locale</option>
-                  <option value="hi">Hindi</option>
-                  <option value="en">English</option>
-                  <option value="gu">Gujarati</option>
+                <FilterSelect value={filters.scoreSort} onChange={(value) => setFilter("scoreSort", value)}>
+                  <option value="desc">Score high to low</option>
+                  <option value="asc">Score low to high</option>
                 </FilterSelect>
               </div>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <SlidersHorizontal className="h-4 w-4" style={{ color: "var(--color-muted-foreground)" }} />
-              <FilterSelect value={filters.timeline} onChange={(value) => setFilter("timeline", value)}>
-                <option value="">Any timeline</option>
-                <option value="immediate">Immediate</option>
-                <option value="short_term">Short term</option>
-                <option value="long_term">Long term</option>
-                <option value="exploring">Exploring</option>
-                <option value="unknown">Unknown</option>
-              </FilterSelect>
-              <FilterSelect value={filters.campaign} onChange={(value) => setFilter("campaign", value)}>
-                <option value="">Any campaign</option>
-                {campaigns.map((campaign) => <option key={campaign} value={campaign}>{campaign}</option>)}
-              </FilterSelect>
-              <FilterSelect value={filters.assignedTo} onChange={(value) => setFilter("assignedTo", value)}>
-                <option value="">Any assignee</option>
-                {assignees.map((assignee) => <option key={assignee.id} value={assignee.id}>{assignee.name}</option>)}
-              </FilterSelect>
-              <FilterSelect value={filters.hotAlerts} onChange={(value) => setFilter("hotAlerts", value)}>
-                <option value="">Any alert state</option>
-                <option value="true">Hot only</option>
-              </FilterSelect>
+              <span className="text-xs font-medium" style={{ color: "var(--color-muted-foreground)" }}>Date</span>
               <input type="date" value={filters.dateFrom} onChange={(event) => setFilter("dateFrom", event.target.value)}
                 className="h-9 rounded-md border bg-transparent px-2 text-xs" style={{ borderColor: "var(--color-border)" }} />
               <input type="date" value={filters.dateTo} onChange={(event) => setFilter("dateTo", event.target.value)}
                 className="h-9 rounded-md border bg-transparent px-2 text-xs" style={{ borderColor: "var(--color-border)" }} />
-              {Object.values(filters).some(Boolean) && (
+              {(filters.label || filters.dateFrom || filters.dateTo || filters.scoreSort !== EMPTY_FILTERS.scoreSort) && (
                 <Button variant="ghost" size="sm" className="h-9 gap-1 text-xs" onClick={() => setFilters({ ...EMPTY_FILTERS })}>
                   <X className="h-3.5 w-3.5" /> Clear
                 </Button>
@@ -517,10 +506,18 @@ export default function AiVoicePage() {
             ) : (
               <div className="overflow-x-auto">
                 {filteredItems.map((item) => (
-                  <button
+                  <div
                     key={item.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => void loadDetail(item.id)}
-                    className="grid min-w-[760px] w-full grid-cols-[86px_minmax(180px,1fr)_90px_110px_130px_120px] items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/45"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault()
+                        void loadDetail(item.id)
+                      }
+                    }}
+                    className="grid min-w-[760px] w-full cursor-pointer grid-cols-[86px_minmax(180px,1fr)_90px_110px_130px_120px] items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/45"
                     style={{ borderColor: "var(--color-border)", background: selectedId === item.id ? "rgb(194 65 12 / 0.06)" : undefined }}
                   >
                     <div className="flex items-center gap-1.5">
@@ -552,10 +549,26 @@ export default function AiVoicePage() {
                       <p className="capitalize">{labelText(item.score?.timeline)}</p>
                       <p style={{ color: "var(--color-muted-foreground)" }}>{formatDateTime(item.answered_at ?? item.received_at)}</p>
                     </div>
-                    <div className="truncate text-xs">
-                      {item.assigned_to_profile?.full_name || "Unassigned"}
+                    <div className="flex min-w-0 items-center gap-1.5 text-xs">
+                      <span className="truncate">{item.assigned_to_profile?.full_name || "Unassigned"}</span>
+                      {isSuperAdmin && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                          title="Delete call log"
+                          disabled={deletingId === item.id}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setDeleteTarget(item)
+                          }}
+                        >
+                          {deletingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </Button>
+                      )}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -660,34 +673,84 @@ export default function AiVoicePage() {
               )}
 
               <div className="space-y-2">
-                <p className="text-sm font-semibold">Transcript</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">Transcript</p>
+                    <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                      {detail.transcript_turns.length} turn{detail.transcript_turns.length === 1 ? "" : "s"} stored
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" className="gap-2" disabled={detail.transcript_turns.length === 0} onClick={() => setShowTranscript(true)}>
+                    <MessageSquare className="h-4 w-4" />
+                    View transcript
+                  </Button>
+                </div>
                 {detail.transcript_turns.length === 0 ? (
                   <p className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
                     No transcript turns stored
                   </p>
-                ) : detail.transcript_turns.map((turn) => (
-                  <div key={turn.id} className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)" }}>
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <Badge variant={turn.role === "caller" ? "default" : "outline"} className="capitalize">
-                        {turn.role}
-                      </Badge>
-                      <span className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
-                        {turn.locale?.toUpperCase() || "NA"} - STT {turn.telemetry.stt_ms ?? 0}ms - LLM {turn.telemetry.llm_ms ?? 0}ms
-                      </span>
-                    </div>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{turn.text}</p>
-                    {turn.telemetry.guardrail_flags.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {turn.telemetry.guardrail_flags.map((flag) => <Badge key={flag} variant="destructive">{flag}</Badge>)}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                ) : null}
               </div>
             </div>
           ) : null}
         </aside>
       </div>
+
+      <Dialog open={showTranscript} onOpenChange={setShowTranscript}>
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4" style={{ borderColor: "var(--color-border)" }}>
+            <DialogTitle>Transcript</DialogTitle>
+            <DialogDescription>
+              {detail?.lead_name || "Unknown lead"} - {detail ? formatDateTime(detail.answered_at ?? detail.received_at) : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[72vh] space-y-3 overflow-y-auto px-5 py-4">
+            {detail?.transcript_turns.map((turn) => (
+              <div key={turn.id} className="rounded-lg border p-3" style={{ borderColor: "var(--color-border)" }}>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <Badge variant={turn.role === "caller" ? "default" : "outline"} className="capitalize">
+                    {turn.role}
+                  </Badge>
+                  <span className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
+                    {turn.locale?.toUpperCase() || "NA"} - STT {turn.telemetry.stt_ms ?? 0}ms - LLM {turn.telemetry.llm_ms ?? 0}ms
+                  </span>
+                </div>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">{turn.text}</p>
+                {turn.telemetry.guardrail_flags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {turn.telemetry.guardrail_flags.map((flag) => <Badge key={flag} variant="destructive">{flag}</Badge>)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && !deletingId && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this call log?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the AI voice call log, transcript, score, and related voice alerts. The CRM lead will remain.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingId)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={Boolean(deletingId)}
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={(event) => {
+                event.preventDefault()
+                void deleteCallLog()
+              }}
+            >
+              {deletingId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

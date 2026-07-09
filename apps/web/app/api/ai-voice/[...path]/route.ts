@@ -10,3 +10,4 @@ async function voicePath(params: Params['params']) {
 
 export const GET = async (req: NextRequest, { params }: Params) => proxyToApi(req, await voicePath(params))
 export const PATCH = async (req: NextRequest, { params }: Params) => proxyToApi(req, await voicePath(params))
+export const DELETE = async (req: NextRequest, { params }: Params) => proxyToApi(req, await voicePath(params))

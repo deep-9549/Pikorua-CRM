@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Query, UseGuards } from '@nestjs/common'
 import { VoiceIntegrationService } from './voice-integration.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard } from '../../common/guards/roles.guard'
@@ -25,6 +25,14 @@ export class VoiceDashboardController {
     @CurrentUser() user: { id: string; role: string },
   ) {
     return this.voiceService.getCallDetail(id, user)
+  }
+
+  @Delete('calls/:id')
+  deleteCallLog(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.voiceService.deleteCallLog(id, user)
   }
 
   @Patch('calls/:id/reviewed')
