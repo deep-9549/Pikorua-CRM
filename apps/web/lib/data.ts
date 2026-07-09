@@ -169,6 +169,21 @@ export interface PropertyAppreciation {
   investmentScore: number
 }
 
+export interface PropertyUnitConfiguration {
+  configuration: string
+  bedrooms?: number | null
+  area_sqft?: string | null
+  carpet_area_sqft?: string | null
+  basic_rate?: string | null
+  price?: string | null
+  price_min?: number | null
+}
+
+export interface PropertyPlotSize {
+  superbuilt_area?: string | null
+  carpet_area?: string | null
+}
+
 export interface Lead {
   id: string
   name: string
@@ -234,6 +249,15 @@ export interface Property {
   amenities: string[]
   developer: string
   completionDate: string
+  relevance?: string
+  sampleHouse?: boolean
+  towerCount?: number | null
+  storeys?: string | null
+  totalUnits?: string | null
+  unitsPerFloor?: string | null
+  specifications?: string | null
+  plotSize?: PropertyPlotSize | null
+  unitConfigurations?: PropertyUnitConfiguration[]
   featured: boolean
 }
 

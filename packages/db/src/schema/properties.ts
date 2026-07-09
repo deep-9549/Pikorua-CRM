@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, timestamp, numeric, integer, boolean, jsonb, pgEnum } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 
 export const propertyStatusEnum = pgEnum('property_status', ['available', 'sold', 'reserved', 'upcoming'])
 export const propertyTypeEnum = pgEnum('property_type', ['apartment', 'penthouse', 'bungalow', 'villa', 'commercial', 'farmhouse', 'duplex', 'studio'])
@@ -20,6 +20,16 @@ export const properties = pgTable('properties', {
   roi: numeric('roi', { precision: 5, scale: 2 }),
   developer: text('developer'),
   completionDate: text('completion_date'),
+  relevance: text('relevance'),
+  sampleHouse: boolean('sample_house').default(false),
+  towerCount: integer('tower_count'),
+  storeys: text('storeys'),
+  totalUnits: text('total_units'),
+  unitsPerFloor: text('units_per_floor'),
+  specifications: text('specifications'),
+  plotSize: jsonb('plot_size'),
+  unitConfigurations: jsonb('unit_configurations').default(sql`'[]'::jsonb`).notNull(),
+  sourceSheet: text('source_sheet'),
   featured: boolean('featured').default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

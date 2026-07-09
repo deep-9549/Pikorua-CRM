@@ -55,6 +55,7 @@ drizzle/
 *.sql
 !db_migrations/20260703_ai_analytics_snapshots.sql
 !db_migrations/20260703_microsite_lead_sync.sql
+!db_migrations/20260709_property_inventory_live.sql
 *.dump
 *.db
 

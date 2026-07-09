@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { eq, isNull, and } from 'drizzle-orm'
+import { asc, eq, isNull, and } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { properties } from '@pikorua/db'
 
@@ -20,6 +20,7 @@ export class PropertiesService {
         amenities: true,
         appreciation: true,
       },
+      orderBy: [asc(properties.name)],
     })
   }
 

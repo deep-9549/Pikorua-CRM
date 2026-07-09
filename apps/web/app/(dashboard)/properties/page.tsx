@@ -66,15 +66,22 @@ import {
   ResponsiveContainer
 } from "recharts"
 import {
-  properties,
   Property,
-  locations,
+  PropertyUnitConfiguration,
   propertyTypes,
   formatCurrency,
   propertyCallScripts,
   propertyAppreciations,
   leads
 } from "@/lib/data"
+
+const FALLBACK_PROPERTY_IMAGE = "/placeholder.jpg"
+
+type ApiProperty = Record<string, unknown> & {
+  images?: Array<string | { url?: string | null }>
+  amenities?: Array<string | { name?: string | null }>
+  appreciation?: unknown[]
+}
 
 const container = {
   hidden: { opacity: 0 },
@@ -90,12 +97,12 @@ const item = {
 }
 
 // AI Recommendations based on leads
-function getAIRecommendations() {
+function getAIRecommendations(propertyRows: Property[]) {
   const hotLeads = leads.filter(l => l.tags.includes('hot') || l.tags.includes('vip'))
   const recommendations = []
   
   for (const lead of hotLeads.slice(0, 3)) {
-    const matchingProperties = properties.filter(p => 
+    const matchingProperties = propertyRows.filter(p => 
       lead.propertyInterest.includes(p.type) &&
       p.price >= lead.budgetMin * 0.8 &&
       p.price <= lead.budgetMax * 1.2 &&
@@ -112,6 +119,73 @@ function getAIRecommendations() {
   }
   
   return recommendations
+}
+
+function toNumber(value: unknown, fallback = 0) {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return fallback
+}
+
+function toNullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null
+  const parsed = toNumber(value, Number.NaN)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function toStringValue(value: unknown, fallback = "") {
+  if (value === null || value === undefined) return fallback
+  return String(value)
+}
+
+function parseApiProperty(row: ApiProperty): Property {
+  const imageUrls = Array.isArray(row.images)
+    ? row.images
+        .map((image) => typeof image === "string" ? image : image?.url)
+        .filter((url): url is string => Boolean(url))
+    : []
+
+  const amenityNames = Array.isArray(row.amenities)
+    ? row.amenities
+        .map((amenity) => typeof amenity === "string" ? amenity : amenity?.name)
+        .filter((name): name is string => Boolean(name))
+    : []
+
+  return {
+    id: toStringValue(row.id),
+    name: toStringValue(row.name, "Unnamed Property"),
+    type: toStringValue(row.type, "apartment") as Property["type"],
+    location: toStringValue(row.location, "Ahmedabad"),
+    area: toStringValue(row.area ?? row.relevance, ""),
+    price: toNumber(row.price),
+    pricePerSqft: toNumber(row.pricePerSqft ?? row.price_per_sqft),
+    bedrooms: toNumber(row.bedrooms),
+    bathrooms: toNumber(row.bathrooms),
+    sqft: toNumber(row.sqft),
+    status: toStringValue(row.status, "available") as Property["status"],
+    roi: toNumber(row.roi),
+    images: imageUrls.length > 0 ? imageUrls : [FALLBACK_PROPERTY_IMAGE],
+    amenities: amenityNames,
+    developer: toStringValue(row.developer),
+    completionDate: toStringValue(row.completionDate ?? row.completion_date),
+    relevance: toStringValue(row.relevance, ""),
+    sampleHouse: Boolean(row.sampleHouse ?? row.sample_house),
+    towerCount: toNullableNumber(row.towerCount ?? row.tower_count),
+    storeys: toStringValue(row.storeys, ""),
+    totalUnits: toStringValue(row.totalUnits ?? row.total_units, ""),
+    unitsPerFloor: toStringValue(row.unitsPerFloor ?? row.units_per_floor, ""),
+    specifications: toStringValue(row.specifications, ""),
+    plotSize: (row.plotSize ?? row.plot_size ?? null) as Property["plotSize"],
+    unitConfigurations: Array.isArray(row.unitConfigurations)
+      ? row.unitConfigurations as PropertyUnitConfiguration[]
+      : Array.isArray(row.unit_configurations)
+        ? row.unit_configurations as PropertyUnitConfiguration[]
+        : [],
+    featured: Boolean(row.featured),
+  }
 }
 
 function getAmenityIcon(amenity: string) {
@@ -202,9 +276,11 @@ function PropertyCard({
             <p className="text-2xl font-bold text-white">
               {formatCurrency(property.price)}
             </p>
-            <p className="text-xs text-white/80">
-              {formatCurrency(property.pricePerSqft)}/sqft
-            </p>
+            {property.pricePerSqft > 0 && (
+              <p className="text-xs text-white/80">
+                {formatCurrency(property.pricePerSqft)}/sqft
+              </p>
+            )}
           </div>
         </div>
 
@@ -228,14 +304,18 @@ function PropertyCard({
                 <span>{property.bedrooms} Beds</span>
               </div>
             )}
-            <div className="flex items-center gap-1">
-              <Bath className="w-4 h-4 text-muted-foreground" />
-              <span>{property.bathrooms} Baths</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Square className="w-4 h-4 text-muted-foreground" />
-              <span>{property.sqft.toLocaleString()} sqft</span>
-            </div>
+            {property.bathrooms > 0 && (
+              <div className="flex items-center gap-1">
+                <Bath className="w-4 h-4 text-muted-foreground" />
+                <span>{property.bathrooms} Baths</span>
+              </div>
+            )}
+            {property.sqft > 0 && (
+              <div className="flex items-center gap-1">
+                <Square className="w-4 h-4 text-muted-foreground" />
+                <span>{property.sqft.toLocaleString()} sqft</span>
+              </div>
+            )}
           </div>
 
           {/* ROI & Type */}
@@ -243,10 +323,12 @@ function PropertyCard({
             <Badge variant="outline" className="text-xs">
               {property.type.charAt(0).toUpperCase() + property.type.slice(1)}
             </Badge>
-            <div className="flex items-center gap-1 text-success">
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-sm font-semibold">{property.roi}% ROI</span>
-            </div>
+            {property.roi > 0 && (
+              <div className="flex items-center gap-1 text-success">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-sm font-semibold">{property.roi}% ROI</span>
+              </div>
+            )}
           </div>
 
           {/* Amenities Preview */}
@@ -349,12 +431,14 @@ function PropertyDetailModal({
                 <h2 className="text-2xl font-bold text-white mb-1">{property.name}</h2>
                 <div className="flex items-center gap-1 text-white/80">
                   <MapPin className="w-4 h-4" />
-                  <span>{property.location}, {property.area}</span>
+                  <span>{[property.location, property.area].filter(Boolean).join(", ")}</span>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-3xl font-bold text-white">{formatCurrency(property.price)}</p>
-                <p className="text-sm text-white/80">{formatCurrency(property.pricePerSqft)}/sqft</p>
+                {property.pricePerSqft > 0 && (
+                  <p className="text-sm text-white/80">{formatCurrency(property.pricePerSqft)}/sqft</p>
+                )}
               </div>
             </div>
           </div>
@@ -394,7 +478,7 @@ function PropertyDetailModal({
           <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
             <TabsContent value="overview" className="mt-4 space-y-6 data-[state=inactive]:hidden">
               {/* Key Stats */}
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 {property.bedrooms > 0 && (
                   <div className="p-4 rounded-xl bg-muted/30 text-center">
                     <Bed className="w-6 h-6 mx-auto mb-2 text-primary" />
@@ -402,21 +486,27 @@ function PropertyDetailModal({
                     <p className="text-xs text-muted-foreground">Bedrooms</p>
                   </div>
                 )}
-                <div className="p-4 rounded-xl bg-muted/30 text-center">
-                  <Bath className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <p className="text-2xl font-bold">{property.bathrooms}</p>
-                  <p className="text-xs text-muted-foreground">Bathrooms</p>
-                </div>
-                <div className="p-4 rounded-xl bg-muted/30 text-center">
-                  <Square className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <p className="text-2xl font-bold">{property.sqft.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Sq. Ft.</p>
-                </div>
-                <div className="p-4 rounded-xl bg-muted/30 text-center">
-                  <TrendingUp className="w-6 h-6 mx-auto mb-2 text-success" />
-                  <p className="text-2xl font-bold text-success">{property.roi}%</p>
-                  <p className="text-xs text-muted-foreground">Expected ROI</p>
-                </div>
+                {property.bathrooms > 0 && (
+                  <div className="p-4 rounded-xl bg-muted/30 text-center">
+                    <Bath className="w-6 h-6 mx-auto mb-2 text-primary" />
+                    <p className="text-2xl font-bold">{property.bathrooms}</p>
+                    <p className="text-xs text-muted-foreground">Bathrooms</p>
+                  </div>
+                )}
+                {property.sqft > 0 && (
+                  <div className="p-4 rounded-xl bg-muted/30 text-center">
+                    <Square className="w-6 h-6 mx-auto mb-2 text-primary" />
+                    <p className="text-2xl font-bold">{property.sqft.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Sq. Ft.</p>
+                  </div>
+                )}
+                {property.roi > 0 && (
+                  <div className="p-4 rounded-xl bg-muted/30 text-center">
+                    <TrendingUp className="w-6 h-6 mx-auto mb-2 text-success" />
+                    <p className="text-2xl font-bold text-success">{property.roi}%</p>
+                    <p className="text-xs text-muted-foreground">Expected ROI</p>
+                  </div>
+                )}
               </div>
 
               {/* Property Details */}
@@ -428,6 +518,12 @@ function PropertyDetailModal({
                       <span className="text-muted-foreground">Developer</span>
                       <span className="font-medium">{property.developer}</span>
                     </div>
+                    {property.relevance && (
+                      <div className="flex justify-between py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Relevance</span>
+                        <span className="font-medium">{property.relevance}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between py-2 border-b border-border/50">
                       <span className="text-muted-foreground">Completion</span>
                       <span className="font-medium">{property.completionDate}</span>
@@ -440,20 +536,72 @@ function PropertyDetailModal({
                       <span className="text-muted-foreground">Area</span>
                       <span className="font-medium">{property.area}</span>
                     </div>
+                    <div className="flex justify-between py-2 border-b border-border/50">
+                      <span className="text-muted-foreground">Sample House</span>
+                      <span className="font-medium">{property.sampleHouse ? "Yes" : "No"}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <h3 className="font-semibold">Investment Highlights</h3>
+                  <h3 className="font-semibold">Project Details</h3>
                   <div className="space-y-3">
-                    {appreciationData.locationFactors.map((factor, i) => (
-                      <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-success/5">
-                        <Zap className="w-4 h-4 text-success" />
-                        <span className="text-sm">{factor}</span>
+                    {[
+                      ["Towers", property.towerCount],
+                      ["Storeys", property.storeys],
+                      ["Units", property.totalUnits],
+                      ["Units Per Floor", property.unitsPerFloor],
+                      ["Plot Size", property.plotSize?.superbuilt_area],
+                      ["Plot Carpet", property.plotSize?.carpet_area],
+                    ].filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => (
+                      <div key={String(label)} className="flex justify-between py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-medium">{String(value)}</span>
+                      </div>
+                    ))}
+                    {property.specifications && (
+                      <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
+                        {property.specifications}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {property.unitConfigurations && property.unitConfigurations.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Available Configurations</h3>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {property.unitConfigurations.map((unit, index) => (
+                      <div key={`${unit.configuration}-${index}`} className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <Badge variant="outline">{unit.configuration}</Badge>
+                          {unit.price && <span className="text-sm font-semibold">{unit.price}</span>}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          {unit.area_sqft && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Area</p>
+                              <p className="font-medium">{unit.area_sqft} sqft</p>
+                            </div>
+                          )}
+                          {unit.carpet_area_sqft && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Carpet</p>
+                              <p className="font-medium">{unit.carpet_area_sqft} sqft</p>
+                            </div>
+                          )}
+                          {unit.basic_rate && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Basic Rate</p>
+                              <p className="font-medium">{unit.basic_rate}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Quick Actions */}
               <div className="flex gap-3">
@@ -735,11 +883,60 @@ export default function PropertiesPage() {
   const [typeFilter, setTypeFilter] = React.useState<string>("all")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [budgetRange, setBudgetRange] = React.useState([0, 200000000])
+  const [properties, setProperties] = React.useState<Property[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
   const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null)
   const [showFilters, setShowFilters] = React.useState(false)
   const [showRecommendations, setShowRecommendations] = React.useState(false)
 
-  const aiRecommendations = React.useMemo(() => getAIRecommendations(), [])
+  React.useEffect(() => {
+    let cancelled = false
+
+    async function loadProperties() {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const res = await fetch("/api/properties", { cache: "no-store" })
+        const payload = await res.json().catch(() => null)
+        if (!res.ok) {
+          throw new Error(payload?.message ?? payload?.error ?? "Unable to load properties")
+        }
+
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.properties)
+            ? payload.properties
+            : []
+
+        if (!cancelled) setProperties(rows.map((row: ApiProperty) => parseApiProperty(row)))
+      } catch (err) {
+        if (!cancelled) {
+          setProperties([])
+          setError(err instanceof Error ? err.message : "Unable to load properties")
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    void loadProperties()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const aiRecommendations = React.useMemo(() => getAIRecommendations(properties), [properties])
+
+  const locationOptions = React.useMemo(() => {
+    return [...new Set(properties.map((property) => property.location).filter(Boolean))].sort()
+  }, [properties])
+
+  const maxBudget = React.useMemo(() => {
+    return Math.max(200000000, ...properties.map((property) => property.price))
+  }, [properties])
 
   const filteredProperties = React.useMemo(() => {
     return properties.filter((property) => {
@@ -771,7 +968,7 @@ export default function PropertiesPage() {
 
       return true
     })
-  }, [search, locationFilter, typeFilter, statusFilter, budgetRange])
+  }, [properties, search, locationFilter, typeFilter, statusFilter, budgetRange])
 
   return (
     <motion.div
@@ -785,7 +982,7 @@ export default function PropertiesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Property Explorer</h1>
           <p className="text-muted-foreground mt-1">
-            {filteredProperties.length} luxury properties
+            {isLoading ? "Loading properties..." : `${filteredProperties.length} luxury properties`}
           </p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
@@ -823,7 +1020,7 @@ export default function PropertiesPage() {
           </SelectTrigger>
           <SelectContent className="glass">
             <SelectItem value="all">All Locations</SelectItem>
-            {locations.map((loc) => (
+            {locationOptions.map((loc) => (
               <SelectItem key={loc} value={loc}>{loc}</SelectItem>
             ))}
           </SelectContent>
@@ -904,7 +1101,7 @@ export default function PropertiesPage() {
                     value={budgetRange}
                     onValueChange={setBudgetRange}
                     min={0}
-                    max={200000000}
+                    max={maxBudget}
                     step={5000000}
                     className="w-full"
                   />
@@ -915,26 +1112,48 @@ export default function PropertiesPage() {
         )}
       </AnimatePresence>
 
-      {/* Properties Grid */}
-      <motion.div
-        variants={container}
-        className={cn(
-          "grid gap-6",
-          view === "grid"
-            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-            : "grid-cols-1"
-        )}
-      >
-        {filteredProperties.map((property) => (
-          <PropertyCard
-            key={property.id}
-            property={property}
-            onViewDetails={setSelectedProperty}
-          />
-        ))}
-      </motion.div>
+      {isLoading && (
+        <motion.div variants={item} className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((index) => (
+            <Card key={index} className="glass overflow-hidden">
+              <div className="h-56 animate-pulse bg-muted" />
+              <CardContent className="space-y-3 p-4">
+                <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
+                <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+                <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+              </CardContent>
+            </Card>
+          ))}
+        </motion.div>
+      )}
 
-      {filteredProperties.length === 0 && (
+      {error && !isLoading && (
+        <motion.div variants={item} className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
+        </motion.div>
+      )}
+
+      {!isLoading && !error && (
+        <motion.div
+          variants={container}
+          className={cn(
+            "grid gap-6",
+            view === "grid"
+              ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+              : "grid-cols-1"
+          )}
+        >
+          {filteredProperties.map((property) => (
+            <PropertyCard
+              key={property.id}
+              property={property}
+              onViewDetails={setSelectedProperty}
+            />
+          ))}
+        </motion.div>
+      )}
+
+      {!isLoading && !error && filteredProperties.length === 0 && (
         <motion.div variants={item} className="text-center py-16">
           <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
           <h3 className="text-lg font-semibold mb-2">No properties found</h3>

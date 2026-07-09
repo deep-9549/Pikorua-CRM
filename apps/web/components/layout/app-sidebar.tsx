@@ -45,7 +45,7 @@ const navGroups: NavGroup[] = [
       { title: "Leads", href: "/leads", icon: Users },
       { title: "AI Voice", href: "/ai-voice", icon: Bot, adminOnly: true },
       { title: "WhatsApp Hub", href: "/whatsapp", icon: MessageSquare, comingSoon: true },
-      { title: "Properties", href: "/properties", icon: Building2, comingSoon: true },
+      { title: "Properties", href: "/properties", icon: Building2 },
       { title: "Smart Matching", href: "/smart-matching", icon: Sparkles, comingSoon: true },
       { title: "Site Visits", href: "/site-visits", icon: CalendarCheck },
     ]
@@ -395,4 +395,3 @@ export function AppSidebar({
     </TooltipProvider>
   )
 }
-
