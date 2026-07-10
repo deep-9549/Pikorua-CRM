@@ -45,6 +45,7 @@ export class MetaLeadsController {
     @CurrentUser() user: { id: string; role: string },
     @Query('budget_range') budgetRange?: string,
     @Query('configuration') configuration?: string | string[],
+    @Query('preferred_locations') preferredLocations?: string | string[],
     @Query('current_area') currentArea?: string,
     @Query('current_city') currentCity?: string,
     @Query('limit') limit?: string,
@@ -52,6 +53,7 @@ export class MetaLeadsController {
     const result = await this.metaLeadsService.propertyRecommendations(id, {
       budgetRange,
       configuration: toStringArray(configuration),
+      preferredLocations: toStringArray(preferredLocations),
       currentArea,
       currentCity,
       limit: toLimit(limit),

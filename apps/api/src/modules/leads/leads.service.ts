@@ -39,6 +39,7 @@ export class LeadsService {
     company_name: 'Company',
     current_city: 'Current City',
     current_area: 'Current Area',
+    preferred_locations: 'Preferred Locations',
     remarks: 'Remarks',
   }
 
@@ -204,6 +205,7 @@ export class LeadsService {
       ...(dto.company_name !== undefined && { companyName: dto.company_name }),
       ...(dto.current_city !== undefined && { currentCity: dto.current_city }),
       ...(dto.current_area !== undefined && { currentArea: dto.current_area }),
+      ...(dto.preferred_locations !== undefined && { preferredLocations: dto.preferred_locations }),
       ...(dto.remarks !== undefined && { remarks: dto.remarks }),
     }
 

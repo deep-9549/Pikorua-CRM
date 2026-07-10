@@ -30,6 +30,7 @@ type RecommendationProperty = {
 export type PropertyRecommendationInput = {
   budgetRange?: string | null
   configuration?: string[] | null
+  preferredLocations?: string[] | null
   currentArea?: string | null
   currentCity?: string | null
   leadCity?: string | null
@@ -156,7 +157,9 @@ function propertyPriceStatus(property: RecommendationProperty, matchedUnits: Uni
 }
 
 function locationScore(property: RecommendationProperty, input: PropertyRecommendationInput) {
-  const terms = [input.currentArea, input.currentCity, input.leadCity].filter(Boolean) as string[]
+  const preferredTerms = (input.preferredLocations ?? []).filter(Boolean)
+  const contextTerms = [input.currentArea, input.currentCity, input.leadCity].filter(Boolean) as string[]
+  const terms = preferredTerms.length > 0 ? preferredTerms : contextTerms
   if (terms.length === 0) return { score: 0, reason: null as string | null }
 
   const matchedTerm = terms.find((term) => (
@@ -165,7 +168,7 @@ function locationScore(property: RecommendationProperty, input: PropertyRecommen
   ))
 
   return matchedTerm
-    ? { score: 15, reason: `Location matches ${matchedTerm}.` }
+    ? { score: 15, reason: preferredTerms.length > 0 ? `Preferred location matches ${matchedTerm}.` : `Location matches ${matchedTerm}.` }
     : { score: 0, reason: null }
 }
 

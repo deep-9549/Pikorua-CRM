@@ -123,6 +123,7 @@ interface CrmDetails {
   company_name: string | null
   current_city: string | null
   current_area: string | null
+  preferred_locations: string[] | null
   follow_up_date: string | null
   follow_up_done: boolean
   follow_up_remarks: string | null
@@ -413,6 +414,14 @@ function recommendationPitchText(recommendation: PropertyRecommendation) {
   ].join("\n")
 }
 
+function parseLocationPreference(value: string) {
+  const locations = value
+    .split(",")
+    .map(item => item.trim())
+    .filter(Boolean)
+  return locations.length > 0 ? locations : null
+}
+
 function RecommendationCard({
   recommendation,
   onUse,
@@ -682,6 +691,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     project_name: null,
     buying_status: null, budget_range: null, configuration: null,
     profession: null, company_name: null, current_city: null, current_area: null,
+    preferred_locations: null,
     follow_up_date: null, follow_up_done: false, follow_up_remarks: null, hwc: null, remarks: null,
   })
   const [clientStatus, setClientStatus] = useState<string | null>(null)
@@ -758,6 +768,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       crm.budget_range ||
       crm.current_area ||
       crm.current_city ||
+      (crm.preferred_locations && crm.preferred_locations.length > 0) ||
       (crm.configuration && crm.configuration.length > 0),
     )
 
@@ -778,6 +789,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         if (crm.budget_range) params.set("budget_range", crm.budget_range)
         if (crm.current_area) params.set("current_area", crm.current_area)
         if (crm.current_city) params.set("current_city", crm.current_city)
+        if (crm.preferred_locations?.length) params.set("preferred_locations", crm.preferred_locations.join(","))
         if (crm.configuration?.length) params.set("configuration", crm.configuration.join(","))
         params.set("limit", "6")
 
@@ -803,7 +815,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [id, lead, crm.budget_range, crm.current_area, crm.current_city, crm.configuration])
+  }, [id, lead, crm.budget_range, crm.current_area, crm.current_city, crm.preferred_locations, crm.configuration])
 
   async function handleSaveAll(): Promise<boolean> {
     const missingFields: string[] = []
@@ -843,6 +855,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         company_name: crm.company_name,
         current_city: crm.current_city,
         current_area: crm.current_area,
+        preferred_locations: crm.preferred_locations,
         remarks: crm.remarks,
       }
       // Fire the CRM save and the client-status save together instead of waiting
@@ -1153,6 +1166,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     <TextField label="Current Area" value={crm.current_area ?? ""} placeholder="e.g. Baner"
                       onChange={v => setCrm(p => ({ ...p, current_area: v || null }))} />
                   </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
+                      Location Preference
+                    </p>
+                    <p className="mt-1 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                      Areas where the client wants to buy. These are used first for smart recommendations.
+                    </p>
+                  </div>
+                  <TextField
+                    label="Preferred Locations"
+                    value={(crm.preferred_locations ?? []).join(", ")}
+                    placeholder="e.g. Gota, Science City, Thaltej"
+                    onChange={v => setCrm(p => ({ ...p, preferred_locations: parseLocationPreference(v) }))}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

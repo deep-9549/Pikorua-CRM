@@ -63,6 +63,7 @@ export function serializeCrmDetails(crm: any) {
     company_name: crm.companyName ?? crm.company_name ?? null,
     current_city: crm.currentCity ?? crm.current_city ?? null,
     current_area: crm.currentArea ?? crm.current_area ?? null,
+    preferred_locations: crm.preferredLocations ?? crm.preferred_locations ?? null,
     remarks: crm.remarks ?? null,
     updated_at: crm.updatedAt ?? crm.updated_at ?? null,
   }

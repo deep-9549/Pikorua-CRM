@@ -17,6 +17,7 @@ export class UpdateLeadDto {
   @ApiPropertyOptional() @IsString() @IsOptional() company_name?: string
   @ApiPropertyOptional() @IsString() @IsOptional() current_city?: string
   @ApiPropertyOptional() @IsString() @IsOptional() current_area?: string
+  @ApiPropertyOptional() @IsArray() @IsString({ each: true }) @IsOptional() preferred_locations?: string[]
 
   // Frontend-only fields — accepted to avoid 400, not persisted
   @ApiPropertyOptional() @IsString() @IsOptional() first_call_date?: string

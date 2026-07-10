@@ -216,6 +216,7 @@ export class MetaLeadsService {
     const recommendations = buildPropertyRecommendations(propertyRows as any[], {
       budgetRange: input.budgetRange ?? lead.crmDetails?.budgetRange ?? null,
       configuration: input.configuration ?? lead.crmDetails?.configuration ?? null,
+      preferredLocations: input.preferredLocations ?? (lead.crmDetails as any)?.preferredLocations ?? null,
       currentArea: input.currentArea ?? lead.crmDetails?.currentArea ?? null,
       currentCity: input.currentCity ?? lead.crmDetails?.currentCity ?? null,
       leadCity: input.leadCity ?? lead.city ?? null,

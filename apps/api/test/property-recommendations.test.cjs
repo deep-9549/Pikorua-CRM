@@ -58,6 +58,23 @@ test('recommendations rank exact, stretch, configuration and location matches', 
   assert.equal(recommendations[1].warnings.some(warning => warning.includes('stretch')), true)
 })
 
+test('preferred locations drive location match reasons', () => {
+  const recommendations = buildPropertyRecommendations([
+    property({ id: 'preferred', location: 'Science City', area: 'Ahmedabad' }),
+    property({ id: 'current-area', location: 'Baner', area: 'Pune' }),
+  ], {
+    budgetRange: '3 Cr',
+    configuration: ['4 BHK'],
+    preferredLocations: ['Science City'],
+    currentArea: 'Baner',
+    currentCity: 'Pune',
+    limit: 10,
+  })
+
+  assert.equal(recommendations[0].property.id, 'preferred')
+  assert.equal(recommendations[0].match_reasons.some(reason => reason.includes('Preferred location matches Science City')), true)
+})
+
 test('recommendation endpoint preserves assigned-lead access boundary', async () => {
   const controller = new MetaLeadsController({
     propertyRecommendations: async () => ({

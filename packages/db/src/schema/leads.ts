@@ -85,6 +85,7 @@ export const leadCrmDetails = pgTable('lead_crm_details', {
   companyName: text('company_name'),
   currentCity: text('current_city'),
   currentArea: text('current_area'),
+  preferredLocations: jsonb('preferred_locations').$type<string[]>(),
   remarks: text('remarks'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
