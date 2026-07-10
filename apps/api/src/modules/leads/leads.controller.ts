@@ -9,6 +9,10 @@ import { RolesGuard } from '../../common/guards/roles.guard'
 import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 
+function toBoolean(value: string | undefined) {
+  return value === 'true' || value === '1'
+}
+
 @ApiTags('Leads')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -22,8 +26,9 @@ export class LeadsController {
   findAll(
     @CurrentUser() user: { id: string; role: string },
     @Query('status') status?: string,
+    @Query('include_pools') includePools?: string,
   ) {
-    return this.leadsService.findAll(status, user)
+    return this.leadsService.findAll(status, user, toBoolean(includePools))
   }
 
   @Get(':id')

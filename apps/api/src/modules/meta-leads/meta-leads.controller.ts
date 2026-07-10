@@ -21,6 +21,10 @@ function toLimit(value: string | undefined) {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
+function toBoolean(value: string | undefined) {
+  return value === 'true' || value === '1'
+}
+
 @ApiTags('Meta Leads')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -48,8 +52,9 @@ export class MetaLeadsController {
   findAll(
     @CurrentUser() user: { id: string; role: string },
     @Query('status') status?: string,
+    @Query('include_pools') includePools?: string,
   ) {
-    return this.metaLeadsService.findAll(status, user)
+    return this.metaLeadsService.findAll(status, user, toBoolean(includePools))
   }
 
   @Get(':id/property-recommendations')

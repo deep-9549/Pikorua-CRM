@@ -13,8 +13,14 @@ function normalize(leads: RawMetaLead[]) {
   }))
 }
 
-export function metaLeadsQueryKey(status?: string) {
-  return status ? (["meta-leads", status] as const) : (["meta-leads"] as const)
+type UseMetaLeadsOptions = {
+  includePools?: boolean
+}
+
+export function metaLeadsQueryKey(status?: string, options: UseMetaLeadsOptions = {}) {
+  return status || options.includePools
+    ? (["meta-leads", status ?? "all", options.includePools ? "include-pools" : "active"] as const)
+    : (["meta-leads"] as const)
 }
 
 /**
@@ -22,13 +28,15 @@ export function metaLeadsQueryKey(status?: string) {
  * and the top-nav follow-up notifications read from this single query, so they
  * no longer each hit the API on every navigation.
  */
-export function useMetaLeads<T = unknown>(status?: string) {
+export function useMetaLeads<T = unknown>(status?: string, options: UseMetaLeadsOptions = {}) {
   return useQuery({
-    queryKey: metaLeadsQueryKey(status),
+    queryKey: metaLeadsQueryKey(status, options),
     queryFn: async () => {
-      const url = status
-        ? `/api/leads/meta?status=${encodeURIComponent(status)}`
-        : "/api/leads/meta"
+      const params = new URLSearchParams()
+      if (status) params.set("status", status)
+      if (options.includePools) params.set("include_pools", "true")
+      const query = params.toString()
+      const url = query ? `/api/leads/meta?${query}` : "/api/leads/meta"
       // A manual React Query refetch must reach the API instead of reusing a
       // browser/proxy response, otherwise the Refresh button can return stale data.
       const res = await fetch(url, { cache: "no-store" })

@@ -44,10 +44,10 @@ export class LeadsService {
     remarks: 'Remarks',
   }
 
-  async findAll(status: string | undefined, user: { id: string; role: string }) {
+  async findAll(status: string | undefined, user: { id: string; role: string }, includePools = false) {
     const conditions = [isNull(metaLeads.deletedAt)]
     if (status) conditions.push(eq(metaLeads.status, status as never))
-    else conditions.push(notInArray(metaLeads.status, META_LEAD_POOL_STATUSES as never))
+    else if (!includePools) conditions.push(notInArray(metaLeads.status, META_LEAD_POOL_STATUSES as never))
     // Sales executives may only ever see leads assigned to them.
     if (user.role !== 'super_admin') conditions.push(eq(metaLeads.assignedTo, user.id))
 

@@ -174,7 +174,13 @@ export default function LeadsPage() {
     error: queryError,
     refetch,
   } = useMetaLeads<MetaLead>()
+  const {
+    data: callStatsData,
+    isLoading: callStatsLoading,
+    refetch: refetchCallStats,
+  } = useMetaLeads<MetaLead>(undefined, { includePools: true })
   const leads = data ?? EMPTY_LEADS
+  const callStatsLeads = callStatsData ?? EMPTY_LEADS
   const error = queryError ? (queryError instanceof Error ? queryError.message : "Unknown error") : null
   const [exporting, setExporting] = useState(false)
   const [search, setSearch] = useState("")
@@ -226,7 +232,8 @@ export default function LeadsPage() {
 
   const handleLeadAdded = useCallback(() => {
     void refetch()
-  }, [refetch])
+    void refetchCallStats()
+  }, [refetch, refetchCallStats])
 
   const today = dateKey(new Date(now))
 
@@ -246,7 +253,7 @@ export default function LeadsPage() {
     let totalNotSpoken = 0
     let totalCallBack = 0
 
-    leads.forEach(lead => {
+    callStatsLeads.forEach(lead => {
       if (!calledToday(lead)) return
       const status = lead.crm?.call_status
       const exec = lead.assigned_to_profile
@@ -274,7 +281,7 @@ export default function LeadsPage() {
       totalCallBack,
       totalCalls: totalSpoken + totalNotSpoken + totalCallBack,
     }
-  }, [leads, today])
+  }, [callStatsLeads, today])
 
   // This is the exact order rendered on the page and used by the lead-detail
   // Previous/Next buttons when a sales executive opens a lead from here.
@@ -344,7 +351,7 @@ export default function LeadsPage() {
       </div>
 
       {/* Today's Call Stats */}
-      {!loading && (todayCallStats.totalCalls > 0 || isSuperAdmin) && (
+      {!callStatsLoading && (todayCallStats.totalCalls > 0 || isSuperAdmin) && (
         <div className="space-y-2">
           <p className="text-xs font-semibold tracking-wider uppercase px-1" style={{ color: "var(--color-muted-foreground)" }}>
             Today&apos;s Call Activity
