@@ -8,6 +8,19 @@ import { RolesGuard } from '../../common/guards/roles.guard'
 import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 
+function toStringArray(value: string | string[] | undefined) {
+  if (!value) return undefined
+  const values = (Array.isArray(value) ? value : [value]).flatMap(item => item.split(','))
+  const cleaned = values.map(item => item.trim()).filter(Boolean)
+  return cleaned.length > 0 ? cleaned : undefined
+}
+
+function toLimit(value: string | undefined) {
+  if (!value) return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 @ApiTags('Meta Leads')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,6 +36,32 @@ export class MetaLeadsController {
     @Query('status') status?: string,
   ) {
     return this.metaLeadsService.findAll(status, user)
+  }
+
+  @Get(':id/property-recommendations')
+  @ApiOperation({ summary: 'Recommend properties for a lead' })
+  async propertyRecommendations(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+    @Query('budget_range') budgetRange?: string,
+    @Query('configuration') configuration?: string | string[],
+    @Query('current_area') currentArea?: string,
+    @Query('current_city') currentCity?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.metaLeadsService.propertyRecommendations(id, {
+      budgetRange,
+      configuration: toStringArray(configuration),
+      currentArea,
+      currentCity,
+      limit: toLimit(limit),
+    })
+
+    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id) {
+      throw new ForbiddenException('You can only view leads assigned to you')
+    }
+
+    return { recommendations: result.recommendations }
   }
 
   @Get(':id')

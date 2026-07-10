@@ -1,12 +1,16 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { eq, inArray, desc, and, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { metaLeads, userProfiles, clients } from '@pikorua/db'
+import { metaLeads, userProfiles, clients, properties } from '@pikorua/db'
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
 import { serializeMetaLead, serializeCrmDetails } from '../leads/lead.serializer'
 import { ClientsService } from '../clients/clients.service'
 import { LeadActivityService } from '../lead-activity/lead-activity.service'
+import {
+  buildPropertyRecommendations,
+  PropertyRecommendationInput,
+} from '../properties/property-recommendation.matcher'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -186,6 +190,41 @@ export class MetaLeadsService {
       client,
       history,
       activity: await this.leadActivityService.getLeadActivity(id),
+    }
+  }
+
+  async propertyRecommendations(id: string, input: PropertyRecommendationInput) {
+    const lead = await this.db.query.metaLeads.findFirst({
+      where: and(eq(metaLeads.id, id), isNull(metaLeads.deletedAt)),
+      with: {
+        assignedToProfile: true,
+        assignedByProfile: true,
+        crmDetails: true,
+      },
+    })
+    if (!lead) throw new NotFoundException(`Meta lead ${id} not found`)
+
+    const propertyRows = await this.db.query.properties.findMany({
+      where: isNull(properties.deletedAt),
+      with: {
+        images: true,
+        amenities: true,
+        appreciation: true,
+      },
+    })
+
+    const recommendations = buildPropertyRecommendations(propertyRows as any[], {
+      budgetRange: input.budgetRange ?? lead.crmDetails?.budgetRange ?? null,
+      configuration: input.configuration ?? lead.crmDetails?.configuration ?? null,
+      currentArea: input.currentArea ?? lead.crmDetails?.currentArea ?? null,
+      currentCity: input.currentCity ?? lead.crmDetails?.currentCity ?? null,
+      leadCity: input.leadCity ?? lead.city ?? null,
+      limit: input.limit ?? 3,
+    })
+
+    return {
+      lead: serializeMetaLead(lead),
+      recommendations,
     }
   }
 

@@ -8,7 +8,7 @@ import {
   Check, Flame, Thermometer, Snowflake, User, History,
   AlertTriangle, Briefcase, Building, TrendingDown,
   PhoneOff, Clock, ChevronDown, ChevronUp, Trash2, ChevronLeft, ChevronRight,
-  Activity, ArrowRight,
+  Activity, ArrowRight, Sparkles, Copy, Home,
   type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
 import { formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -172,6 +175,42 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
         style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} />
     </div>
   )
+}
+
+interface RecommendedProperty {
+  id: string
+  name: string
+  type: string
+  location: string
+  area: string | null
+  price: string | number
+  price_per_sqft?: string | number | null
+  pricePerSqft?: string | number | null
+  status: "available" | "sold" | "reserved" | "upcoming"
+  developer: string | null
+  sample_house?: boolean | null
+  sampleHouse?: boolean | null
+  roi?: string | number | null
+  unit_configurations?: RecommendedUnit[] | null
+  unitConfigurations?: RecommendedUnit[] | null
+}
+
+interface RecommendedUnit {
+  configuration?: string | null
+  area_sqft?: string | null
+  carpet_area_sqft?: string | null
+  basic_rate?: string | null
+  price?: string | null
+  price_min?: number | string | null
+}
+
+interface PropertyRecommendation {
+  property: RecommendedProperty
+  score: number
+  match_reasons: string[]
+  pitch_points: string[]
+  warnings: string[]
+  matched_units: RecommendedUnit[]
 }
 
 function localDateTimeParts(value: string | null) {
@@ -343,6 +382,112 @@ function LeadInfoCard({ label, value, icon: Icon, href, protectedValue }: {
   return (
     <div className={className} style={style}>
       {content}
+    </div>
+  )
+}
+
+function toCurrency(value: string | number | null | undefined) {
+  const numeric = typeof value === "number"
+    ? value
+    : Number(String(value ?? "").replace(/[^0-9.]/g, ""))
+
+  if (!Number.isFinite(numeric)) return String(value ?? "Price pending")
+  if (numeric >= 10000000) return `₹${(numeric / 10000000).toFixed(2)} Cr`
+  if (numeric >= 100000) return `₹${(numeric / 100000).toFixed(2)} L`
+  return `₹${numeric.toLocaleString("en-IN")}`
+}
+
+function propertySampleHouse(property: RecommendedProperty) {
+  return Boolean(property.sampleHouse ?? property.sample_house)
+}
+
+function getPropertyUnits(property: RecommendedProperty) {
+  return property.unitConfigurations ?? property.unit_configurations ?? []
+}
+
+function recommendationPitchText(recommendation: PropertyRecommendation) {
+  return [
+    recommendation.property.name,
+    ...recommendation.pitch_points,
+    ...recommendation.warnings.map(warning => `Note: ${warning}`),
+  ].join("\n")
+}
+
+function RecommendationCard({
+  recommendation,
+  onUse,
+  onOpen,
+  onCopy,
+}: {
+  recommendation: PropertyRecommendation
+  onUse: () => void
+  onOpen: () => void
+  onCopy: () => void
+}) {
+  const property = recommendation.property
+  const matchedUnits = recommendation.matched_units ?? []
+
+  return (
+    <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: "var(--color-border)", background: "color-mix(in oklab, var(--color-card), var(--color-muted) 12%)" }}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>{property.name}</h3>
+            <Badge variant={property.status === "available" ? "default" : "secondary"} className="text-[10px]">
+              {property.status}
+            </Badge>
+            {propertySampleHouse(property) && (
+              <Badge variant="outline" className="text-[10px]">Sample house</Badge>
+            )}
+          </div>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+            <MapPin className="h-3.5 w-3.5" />
+            {[property.location, property.area].filter(Boolean).join(", ")}
+            {property.developer && <span>• {property.developer}</span>}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-sm font-bold" style={{ color: "oklch(0.700 0.130 75)" }}>{toCurrency(property.price)}</p>
+          <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>{recommendation.score}% fit</p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {matchedUnits.slice(0, 3).map((unit, index) => (
+          <span key={`${unit.configuration}-${index}`} className="rounded-md px-2 py-1 text-[11px]" style={{ background: "oklch(0.65 0.15 145 / 0.12)", color: "oklch(0.65 0.15 145)" }}>
+            {[unit.configuration, unit.price].filter(Boolean).join(" • ")}
+          </span>
+        ))}
+        {matchedUnits.length === 0 && getPropertyUnits(property).slice(0, 2).map((unit, index) => (
+          <span key={`${unit.configuration}-${index}`} className="rounded-md px-2 py-1 text-[11px]" style={{ background: "var(--color-muted)", color: "var(--color-foreground)" }}>
+            {unit.configuration}
+          </span>
+        ))}
+      </div>
+
+      <div className="space-y-1.5">
+        {recommendation.match_reasons.slice(0, 3).map((reason, index) => (
+          <p key={`${reason}-${index}`} className="flex items-start gap-2 text-xs" style={{ color: "var(--color-foreground)" }}>
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: "oklch(0.65 0.15 145)" }} />
+            {reason}
+          </p>
+        ))}
+        {recommendation.warnings.slice(0, 1).map((warning, index) => (
+          <p key={`${warning}-${index}`} className="flex items-start gap-2 text-xs" style={{ color: "oklch(0.72 0.15 85)" }}>
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {warning}
+          </p>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onUse}>Use for pitch</Button>
+        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onOpen}>Open brief</Button>
+        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onCopy}>
+          <Copy className="mr-1 h-3.5 w-3.5" />
+          Copy
+        </Button>
+      </div>
     </div>
   )
 }
@@ -550,6 +695,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [deleting, setDeleting] = useState(false)
   const [previousLeadId, setPreviousLeadId] = useState<string | null>(null)
   const [nextLeadId, setNextLeadId] = useState<string | null>(null)
+  const [propertyRecommendations, setPropertyRecommendations] = useState<PropertyRecommendation[]>([])
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false)
+  const [recommendationsError, setRecommendationsError] = useState<string | null>(null)
+  const [showAllRecommendations, setShowAllRecommendations] = useState(false)
+  const [selectedRecommendation, setSelectedRecommendation] = useState<PropertyRecommendation | null>(null)
 
   useEffect(() => {
     setIsSuperAdmin(getAuthUser()?.role === "super_admin")
@@ -602,6 +752,58 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       setNextLeadId(index >= 0 && index < ids.length - 1 ? ids[index + 1] : null)
     }).catch(() => { setPreviousLeadId(null); setNextLeadId(null) })
   }, [id])
+
+  useEffect(() => {
+    const hasInputs = Boolean(
+      crm.budget_range ||
+      crm.current_area ||
+      crm.current_city ||
+      (crm.configuration && crm.configuration.length > 0),
+    )
+
+    if (!lead || !hasInputs) {
+      setPropertyRecommendations([])
+      setRecommendationsError(null)
+      setRecommendationsLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(async () => {
+      setRecommendationsLoading(true)
+      setRecommendationsError(null)
+
+      try {
+        const params = new URLSearchParams()
+        if (crm.budget_range) params.set("budget_range", crm.budget_range)
+        if (crm.current_area) params.set("current_area", crm.current_area)
+        if (crm.current_city) params.set("current_city", crm.current_city)
+        if (crm.configuration?.length) params.set("configuration", crm.configuration.join(","))
+        params.set("limit", "6")
+
+        const res = await fetch(`/api/leads/meta/${id}/property-recommendations?${params.toString()}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json.message ?? json.error ?? "Unable to load recommendations")
+        setPropertyRecommendations(Array.isArray(json.recommendations) ? json.recommendations : [])
+        setShowAllRecommendations(false)
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setPropertyRecommendations([])
+          setRecommendationsError(error instanceof Error ? error.message : "Unable to load recommendations")
+        }
+      } finally {
+        if (!controller.signal.aborted) setRecommendationsLoading(false)
+      }
+    }, 350)
+
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [id, lead, crm.budget_range, crm.current_area, crm.current_city, crm.configuration])
 
   async function handleSaveAll(): Promise<boolean> {
     const missingFields: string[] = []
@@ -709,6 +911,19 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     })
   }
 
+  function handleUseRecommendationForPitch(recommendation: PropertyRecommendation) {
+    setCrm(prev => ({ ...prev, project_name: recommendation.property.name }))
+  }
+
+  async function copyRecommendationPitch(recommendation: PropertyRecommendation) {
+    const text = recommendationPitchText(recommendation)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      window.prompt("Copy pitch points", text)
+    }
+  }
+
   async function handleDelete() {
     setDeleting(true)
     try {
@@ -752,6 +967,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const isBuyingStatusRequired = Boolean(
     clientStatus && !BUYING_STATUS_OPTIONAL_CLIENT_STATUSES.has(clientStatus),
   )
+  const visibleRecommendations = showAllRecommendations
+    ? propertyRecommendations
+    : propertyRecommendations.slice(0, 3)
   const clientStatusSection = (
     <div className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
@@ -1053,6 +1271,64 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
 
+                <div className="space-y-3 rounded-xl border p-3" style={{ borderColor: "var(--color-border)", background: "color-mix(in oklab, var(--color-card), var(--color-muted) 10%)" }}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" style={{ color: "oklch(0.700 0.130 75)" }} />
+                        <p className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>Smart Recommendations</p>
+                      </div>
+                      <p className="mt-0.5 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                        Live matches from property inventory. Confirm latest availability before commitment.
+                      </p>
+                    </div>
+                    {recommendationsLoading && (
+                      <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Matching
+                      </span>
+                    )}
+                  </div>
+
+                  {recommendationsError && (
+                    <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "oklch(0.60 0.12 20 / 0.35)", color: "oklch(0.60 0.12 20)" }}>
+                      {recommendationsError}
+                    </div>
+                  )}
+
+                  {!recommendationsLoading && !recommendationsError && propertyRecommendations.length === 0 && (
+                    <div className="rounded-lg border border-dashed px-3 py-4 text-center text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
+                      Select a budget and configuration to see matched properties.
+                    </div>
+                  )}
+
+                  {visibleRecommendations.length > 0 && (
+                    <div className="space-y-3">
+                      {visibleRecommendations.map(recommendation => (
+                        <RecommendationCard
+                          key={recommendation.property.id}
+                          recommendation={recommendation}
+                          onUse={() => handleUseRecommendationForPitch(recommendation)}
+                          onOpen={() => setSelectedRecommendation(recommendation)}
+                          onCopy={() => void copyRecommendationPitch(recommendation)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {propertyRecommendations.length > 3 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => setShowAllRecommendations(value => !value)}
+                    >
+                      {showAllRecommendations ? "Show top 3" : `View ${propertyRecommendations.length - 3} more`}
+                    </Button>
+                  )}
+                </div>
+
                 <div className="space-y-3 rounded-lg border p-3">
                   <div className="flex items-center gap-2">
                     <Checkbox id="follow-up-done" checked={crm.follow_up_done}
@@ -1153,6 +1429,99 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={!!selectedRecommendation} onOpenChange={open => !open && setSelectedRecommendation(null)}>
+        <DialogContent className="max-w-3xl">
+          {selectedRecommendation && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Home className="h-5 w-5" />
+                  {selectedRecommendation.property.name}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Score</p>
+                    <p className="text-lg font-semibold">{selectedRecommendation.score}% fit</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Price</p>
+                    <p className="text-lg font-semibold">{toCurrency(selectedRecommendation.property.price)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <p className="text-lg font-semibold capitalize">{selectedRecommendation.property.status}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs text-muted-foreground">Sample House</p>
+                    <p className="text-lg font-semibold">{propertySampleHouse(selectedRecommendation.property) ? "Yes" : "No"}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">Why it matched</h3>
+                    {selectedRecommendation.match_reasons.map((reason, index) => (
+                      <p key={`${reason}-${index}`} className="flex items-start gap-2 text-sm">
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                        {reason}
+                      </p>
+                    ))}
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold">Pitch points</h3>
+                    {selectedRecommendation.pitch_points.map((point, index) => (
+                      <p key={`${point}-${index}`} className="text-sm text-muted-foreground">{point}</p>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedRecommendation.matched_units.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold">Matched units</h3>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {selectedRecommendation.matched_units.map((unit, index) => (
+                        <div key={`${unit.configuration}-${index}`} className="rounded-lg border p-3 text-sm">
+                          <p className="font-medium">{unit.configuration}</p>
+                          <p className="text-muted-foreground">
+                            {[unit.price, unit.area_sqft ? `${unit.area_sqft} sqft` : null, unit.carpet_area_sqft ? `${unit.carpet_area_sqft} carpet` : null]
+                              .filter(Boolean)
+                              .join(" | ")}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedRecommendation.warnings.length > 0 && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                    {selectedRecommendation.warnings.map((warning, index) => (
+                      <p key={`${warning}-${index}`} className="flex items-start gap-2 text-sm text-amber-700">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => handleUseRecommendationForPitch(selectedRecommendation)}>
+                    Use for pitch
+                  </Button>
+                  <Button variant="outline" onClick={() => void copyRecommendationPitch(selectedRecommendation)}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy pitch points
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={confirmDelete} onOpenChange={o => !deleting && setConfirmDelete(o)}>
         <AlertDialogContent>
