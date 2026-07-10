@@ -89,9 +89,6 @@ export class ClientsService {
     })
     if (!client) throw new NotFoundException(`Client ${id} not found`)
 
-    const wasСold = client.status === 'cold'
-    const isCold = status === 'cold'
-
     await this.db
       .update(clients)
       .set({
@@ -139,27 +136,6 @@ export class ClientsService {
           eq(metaLeads.clientId, id),
           inArray(metaLeads.status, META_LEAD_POOL_STATUSES as never),
           isNull(metaLeads.assignedTo),
-        ))
-    }
-
-    // Sync cold pool status on linked meta leads
-    if (isCold && !wasСold) {
-      // Mark all assigned leads for this client as cold_pool
-      await this.db
-        .update(metaLeads)
-        .set({ status: 'cold_pool' as never })
-        .where(and(
-          eq(metaLeads.clientId, id),
-          eq(metaLeads.status, 'assigned' as never),
-        ))
-    } else if (!isCold && wasСold) {
-      // Move cold_pool leads back to assigned
-      await this.db
-        .update(metaLeads)
-        .set({ status: 'assigned' as never })
-        .where(and(
-          eq(metaLeads.clientId, id),
-          eq(metaLeads.status, 'cold_pool' as never),
         ))
     }
 

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine, Snowflake, X, FileUp, Search, Undo2, ListChecks, CalendarDays
+  Plus, PenLine, X, FileUp, Search, Undo2, ListChecks, CalendarDays
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -44,7 +44,7 @@ interface MetaLead {
   city: string | null
   campaign_name: string | null
   source: "meta_ad" | "website" | "microsite" | "manual" | "migrated"
-  status: "unassigned" | "assigned" | "cold_pool" | "lost_pool" | "not_interested_pool" | "broker_pool" | "construction_biz_owner_pool"
+  status: "unassigned" | "assigned"
   received_at: string
   assigned_at: string | null
   assigned_to_profile: { id: string; full_name: string; role: string } | null
@@ -54,21 +54,6 @@ interface Employee {
   id: string
   full_name: string
   phone: string | null
-}
-
-const NON_TRANSFERABLE_POOL_STATUSES = new Set([
-  "lost_pool",
-  "not_interested_pool",
-  "broker_pool",
-  "construction_biz_owner_pool",
-])
-
-const POOL_TAB_LABELS: Record<string, string> = {
-  cold_pool: "Cold Pool",
-  lost_pool: "Lost Pool",
-  not_interested_pool: "Not Interested Pool",
-  broker_pool: "Broker Pool",
-  construction_biz_owner_pool: "Construction Owner Pool",
 }
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -293,8 +278,6 @@ function LeadRow({
   selected?: boolean
   onToggleSelect?: (leadId: string) => void
 }) {
-  const canAssignLead = canAssign && !NON_TRANSFERABLE_POOL_STATUSES.has(lead.status)
-
   return (
     <motion.div
       key={lead.id}
@@ -408,7 +391,7 @@ function LeadRow({
             <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-success)" }} />
           )}
         </div>
-      ) : canAssignLead ? (
+      ) : canAssign ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -599,8 +582,8 @@ export default function MetaAdsPage() {
   const websiteCount = leads.filter(l => l.source === "website").length
   const micrositeCount = leads.filter(l => l.source === "microsite").length
   const manualCount = leads.filter(l => l.source === "manual").length
-  // Bulk select is available where leads await (re)assignment
-  const selectable = isSuperAdmin && (activeTab === "unassigned" || activeTab === "cold_pool")
+  // Bulk select is available where leads await assignment
+  const selectable = isSuperAdmin && activeTab === "unassigned"
 
   // Distinct campaign names present in the current queue (for the filter)
   const campaigns = useMemo(() => {
@@ -722,13 +705,6 @@ export default function MetaAdsPage() {
             <TabsList className="mb-4">
               <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
               <TabsTrigger value="assigned">Assigned</TabsTrigger>
-              <TabsTrigger value="cold_pool" className="gap-1.5">
-                <Snowflake className="w-3.5 h-3.5" />Cold Pool
-              </TabsTrigger>
-              <TabsTrigger value="lost_pool">Lost</TabsTrigger>
-              <TabsTrigger value="not_interested_pool">Not Interested</TabsTrigger>
-              <TabsTrigger value="broker_pool">Broker</TabsTrigger>
-              <TabsTrigger value="construction_biz_owner_pool">Construction Owner</TabsTrigger>
               <TabsTrigger value="all">All</TabsTrigger>
             </TabsList>
 
@@ -883,13 +859,9 @@ export default function MetaAdsPage() {
                     </>
                   ) : (
                     <>
-                      {POOL_TAB_LABELS[activeTab]
-                        ? <Snowflake className="w-8 h-8 mx-auto opacity-30" />
-                        : <Users className="w-8 h-8 mx-auto opacity-30" />}
+                      <Users className="w-8 h-8 mx-auto opacity-30" />
                       <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-                        {POOL_TAB_LABELS[activeTab]
-                          ? `No leads in the ${POOL_TAB_LABELS[activeTab].toLowerCase()}`
-                          : `No ${activeTab !== "all" ? activeTab : ""} leads`}
+                        {`No ${activeTab !== "all" ? activeTab : ""} leads`}
                       </p>
                       {activeTab === "unassigned" && (
                         <Button

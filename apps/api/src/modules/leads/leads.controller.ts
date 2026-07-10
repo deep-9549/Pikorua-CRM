@@ -51,9 +51,9 @@ export class LeadsController {
   update(
     @Param('id') id: string,
     @Body() dto: UpdateLeadDto,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
   ) {
-    return this.leadsService.update(id, dto, user.id)
+    return this.leadsService.update(id, dto, user)
   }
 
   @Delete(':id')

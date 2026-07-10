@@ -698,6 +698,7 @@ function ActivityCard({ event }: { event: LeadActivity }) {
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const [openedFromTrash, setOpenedFromTrash] = useState(false)
 
   const [lead, setLead] = useState<MetaLead | null>(null)
   const [client, setClient] = useState<ClientProfile | null>(null)
@@ -733,6 +734,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     setIsSuperAdmin(getAuthUser()?.role === "super_admin")
+    setOpenedFromTrash(new URLSearchParams(window.location.search).get("from") === "trash")
   }, [])
 
   useEffect(() => {
@@ -765,6 +767,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }, [id])
 
   useEffect(() => {
+    if (openedFromTrash) {
+      setPreviousLeadId(null)
+      setNextLeadId(null)
+      return
+    }
+
     fetch('/api/leads/meta').then(res => res.json()).then(json => {
       const storedIds = JSON.parse(
         window.sessionStorage.getItem("pikorua.leads.visibleOrder") ?? "[]",
@@ -781,7 +789,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       setPreviousLeadId(index > 0 ? ids[index - 1] : null)
       setNextLeadId(index >= 0 && index < ids.length - 1 ? ids[index + 1] : null)
     }).catch(() => { setPreviousLeadId(null); setNextLeadId(null) })
-  }, [id])
+  }, [id, openedFromTrash])
 
   useEffect(() => {
     let cancelled = false
@@ -1077,16 +1085,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="max-w-2xl mx-auto space-y-5 pb-12">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.push("/leads")}>
-          <ArrowLeft className="w-4 h-4" /> Back to Leads
+        <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.push(openedFromTrash ? "/trash" : "/leads")}>
+          <ArrowLeft className="w-4 h-4" /> {openedFromTrash ? "Back to Trash" : "Back to Leads"}
         </Button>
         <div className="flex items-center gap-1">
+          {!openedFromTrash && (
+            <>
           <Button variant="outline" size="sm" disabled={!previousLeadId || saving} onClick={() => navigateToLead(previousLeadId)} aria-label="Previous lead">
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <Button variant="outline" size="sm" className="gap-1" disabled={!nextLeadId || saving} onClick={() => navigateToLead(nextLeadId)}>
             Next Lead <ChevronRight className="w-4 h-4" />
           </Button>
+            </>
+          )}
         {isSuperAdmin && (
           <Button
             variant="ghost"

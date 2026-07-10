@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { eq, desc, and, isNull, inArray, notInArray } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import {
@@ -10,7 +10,7 @@ import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
 import { serializeCrmDetails, serializeMetaLead } from './lead.serializer'
 import { LeadActivityService } from '../lead-activity/lead-activity.service'
-import { META_LEAD_POOL_STATUSES, poolStatusForClientStatus } from './lead-pools'
+import { META_LEAD_POOL_STATUSES, isMetaLeadPoolStatus, poolStatusForClientStatus } from './lead-pools'
 
 @Injectable()
 export class LeadsService {
@@ -141,10 +141,15 @@ export class LeadsService {
     return { lead: serializeMetaLead(createdLead ?? lead) }
   }
 
-  async update(id: string, dto: UpdateLeadDto, userId?: string) {
+  async update(id: string, dto: UpdateLeadDto, user?: { id: string; role: string }) {
     // Fetch the lead once (404s if missing) and reuse it for the response so we
     // don't re-query the whole lead graph after writing.
     const lead = await this.findOne(id)
+    const canUpdate = user?.role === 'super_admin'
+      || (user?.id && (lead as any).assigned_to === user.id)
+      || isMetaLeadPoolStatus((lead as any).status)
+    if (!canUpdate) throw new ForbiddenException('You can only update leads assigned to you')
+
     const existing = await this.db.query.leadCrmDetails.findFirst({
       where: eq(leadCrmDetails.leadId, id),
     })
@@ -184,6 +189,7 @@ export class LeadsService {
 
     const toDate = (v: string | null | undefined) => (v ? new Date(v) : null)
     const now = new Date()
+    const userId = user?.id
     const isAssignedOwnerSave = Boolean(userId && (lead as any).assigned_to === userId)
     const savedCallStatus = dto.call_status !== undefined
       ? dto.call_status

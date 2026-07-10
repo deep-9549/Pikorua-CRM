@@ -15,11 +15,12 @@ function normalize(leads: RawMetaLead[]) {
 
 type UseMetaLeadsOptions = {
   includePools?: boolean
+  trash?: boolean
 }
 
 export function metaLeadsQueryKey(status?: string, options: UseMetaLeadsOptions = {}) {
-  return status || options.includePools
-    ? (["meta-leads", status ?? "all", options.includePools ? "include-pools" : "active"] as const)
+  return status || options.includePools || options.trash
+    ? (["meta-leads", status ?? "all", options.trash ? "trash" : options.includePools ? "include-pools" : "active"] as const)
     : (["meta-leads"] as const)
 }
 
@@ -35,6 +36,7 @@ export function useMetaLeads<T = unknown>(status?: string, options: UseMetaLeads
       const params = new URLSearchParams()
       if (status) params.set("status", status)
       if (options.includePools) params.set("include_pools", "true")
+      if (options.trash) params.set("trash", "true")
       const query = params.toString()
       const url = query ? `/api/leads/meta?${query}` : "/api/leads/meta"
       // A manual React Query refetch must reach the API instead of reusing a

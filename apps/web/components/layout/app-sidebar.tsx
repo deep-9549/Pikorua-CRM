@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   LayoutDashboard, Users, MessageSquare, Building2, Sparkles,
   CalendarCheck, BarChart3, Bot, CreditCard, UserCog, Crown,
-  FileText, Settings, ChevronLeft,
+  FileText, Settings, ChevronLeft, Trash2,
   PieChart, FileSpreadsheet, LogOut, Activity
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -43,6 +43,7 @@ const navGroups: NavGroup[] = [
     title: "CRM",
     items: [
       { title: "Leads", href: "/leads", icon: Users },
+      { title: "Trash", href: "/trash", icon: Trash2 },
       { title: "AI Voice", href: "/ai-voice", icon: Bot, adminOnly: true },
       { title: "WhatsApp Hub", href: "/whatsapp", icon: MessageSquare, comingSoon: true },
       { title: "Properties", href: "/properties", icon: Building2 },

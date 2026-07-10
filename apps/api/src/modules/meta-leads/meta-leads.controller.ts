@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard } from '../../common/guards/roles.guard'
 import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import { isMetaLeadPoolStatus } from '../leads/lead-pools'
 
 function toStringArray(value: string | string[] | undefined) {
   if (!value) return undefined
@@ -53,8 +54,12 @@ export class MetaLeadsController {
     @CurrentUser() user: { id: string; role: string },
     @Query('status') status?: string,
     @Query('include_pools') includePools?: string,
+    @Query('trash') trash?: string,
   ) {
-    return this.metaLeadsService.findAll(status, user, toBoolean(includePools))
+    return this.metaLeadsService.findAll(status, user, {
+      includePools: toBoolean(includePools),
+      trash: toBoolean(trash),
+    })
   }
 
   @Get(':id/property-recommendations')
@@ -78,7 +83,7 @@ export class MetaLeadsController {
       limit: toLimit(limit),
     })
 
-    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id) {
+    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id && !isMetaLeadPoolStatus(result.lead?.status)) {
       throw new ForbiddenException('You can only view leads assigned to you')
     }
 
@@ -90,7 +95,7 @@ export class MetaLeadsController {
   async findOne(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
     const result = await this.metaLeadsService.findOne(id)
     // A sales executive may only open leads assigned to them.
-    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id) {
+    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id && !isMetaLeadPoolStatus(result.lead?.status)) {
       throw new ForbiddenException('You can only view leads assigned to you')
     }
     return result
@@ -101,7 +106,7 @@ export class MetaLeadsController {
   async detail(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
     const result = await this.metaLeadsService.detail(id)
     // A sales executive may only open leads assigned to them.
-    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id) {
+    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id && !isMetaLeadPoolStatus(result.lead?.status)) {
       throw new ForbiddenException('You can only view leads assigned to you')
     }
     return result

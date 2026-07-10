@@ -88,12 +88,17 @@ export class MetaLeadsService {
     return clientId
   }
 
-  async findAll(status: string | undefined, user: { id: string; role: string }, includePools = false) {
+  async findAll(
+    status: string | undefined,
+    user: { id: string; role: string },
+    options: { includePools?: boolean; trash?: boolean } = {},
+  ) {
     const conditions = [isNull(metaLeads.deletedAt)]
-    if (status) conditions.push(eq(metaLeads.status, status as never))
-    else if (!includePools) conditions.push(notInArray(metaLeads.status, META_LEAD_POOL_STATUSES as never))
+    if (options.trash) conditions.push(inArray(metaLeads.status, META_LEAD_POOL_STATUSES as never))
+    else if (status) conditions.push(eq(metaLeads.status, status as never))
+    else if (!options.includePools) conditions.push(notInArray(metaLeads.status, META_LEAD_POOL_STATUSES as never))
     // Sales executives may only ever see leads assigned to them.
-    if (user.role !== 'super_admin') conditions.push(eq(metaLeads.assignedTo, user.id))
+    if (!options.trash && user.role !== 'super_admin') conditions.push(eq(metaLeads.assignedTo, user.id))
 
     const leads = await this.db.query.metaLeads.findMany({
       where: and(...conditions),
@@ -252,7 +257,7 @@ export class MetaLeadsService {
     })
     if (!existing) throw new NotFoundException(`Meta lead ${id} not found`)
     if (isNonTransferableMetaLeadPoolStatus(existing.status)) {
-      throw new BadRequestException('Leads in lost, not interested, broker, or construction owner pools cannot be assigned or transferred')
+      throw new BadRequestException('Leads in trash cannot be assigned or transferred')
     }
     await this.ensureAssignableSalesExecutive(dto.assigned_to)
     const assignee = await this.db.query.userProfiles.findFirst({
@@ -304,7 +309,7 @@ export class MetaLeadsService {
       })
 
       if (existing.some((lead) => isNonTransferableMetaLeadPoolStatus(lead.status))) {
-        throw new BadRequestException('Selected leads include lost, not interested, broker, or construction owner pool leads that cannot be assigned or transferred')
+        throw new BadRequestException('Selected leads include trash leads that cannot be assigned or transferred')
       }
 
       const rows = await tx
@@ -346,7 +351,7 @@ export class MetaLeadsService {
     })
     if (!existing) throw new NotFoundException(`Meta lead ${id} not found`)
     if (isNonTransferableMetaLeadPoolStatus(existing.status)) {
-      throw new BadRequestException('Leads in lost, not interested, broker, or construction owner pools cannot be returned to the lead queue')
+      throw new BadRequestException('Trash leads return to the lead queue only after their client status changes')
     }
 
     const [updated] = await this.db.transaction(async (tx) => {

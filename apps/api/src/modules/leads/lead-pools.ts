@@ -9,6 +9,7 @@ export const CLIENT_STATUS_TO_META_LEAD_POOL_STATUS = {
 export const META_LEAD_POOL_STATUSES = Object.values(CLIENT_STATUS_TO_META_LEAD_POOL_STATUS)
 
 export const NON_TRANSFERABLE_META_LEAD_POOL_STATUSES = [
+  'cold_pool',
   'lost_pool',
   'not_interested_pool',
   'broker_pool',
