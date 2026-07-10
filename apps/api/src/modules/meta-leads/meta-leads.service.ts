@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { eq, inArray, desc, and, isNull } from 'drizzle-orm'
+import { eq, inArray, desc, and, isNull, notInArray } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, userProfiles, clients, properties } from '@pikorua/db'
 import { AssignLeadDto } from './dto/assign-lead.dto'
@@ -11,6 +11,12 @@ import {
   buildPropertyRecommendations,
   PropertyRecommendationInput,
 } from '../properties/property-recommendation.matcher'
+import {
+  META_LEAD_POOL_STATUSES,
+  META_LEAD_QUEUE_MANAGED_STATUSES,
+  isNonTransferableMetaLeadPoolStatus,
+  poolStatusForClientStatus,
+} from '../leads/lead-pools'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -42,7 +48,7 @@ export class MetaLeadsService {
    * Find or create a client record keyed by phone number, then link it to the
    * meta lead if not already linked. Returns the client id.
    */
-  private async ensureClient(lead: { id: string; phone: string | null; fullName: string | null; email: string | null; clientId: string | null }): Promise<string | null> {
+  private async ensureClient(lead: { id: string; phone: string | null; fullName: string | null; email: string | null; clientId: string | null; status: string }): Promise<string | null> {
     if (!lead.phone) return null
 
     // Already linked — nothing to do
@@ -53,8 +59,10 @@ export class MetaLeadsService {
     })
 
     let clientId: string
+    let nextLeadStatus: string | null = null
     if (existing) {
       clientId = existing.id
+      nextLeadStatus = poolStatusForClientStatus(existing.status)
     } else {
       const [inserted] = await this.db.insert(clients).values({
         tenantId: DEFAULT_TENANT_ID,
@@ -65,9 +73,16 @@ export class MetaLeadsService {
       clientId = inserted.id
     }
 
+    const shouldPoolLead = nextLeadStatus
+      && META_LEAD_QUEUE_MANAGED_STATUSES.includes(lead.status as never)
+
     await this.db
       .update(metaLeads)
-      .set({ clientId, updatedAt: new Date() })
+      .set({
+        clientId,
+        ...(shouldPoolLead ? { status: nextLeadStatus as never } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(metaLeads.id, lead.id))
 
     return clientId
@@ -76,6 +91,7 @@ export class MetaLeadsService {
   async findAll(status: string | undefined, user: { id: string; role: string }) {
     const conditions = [isNull(metaLeads.deletedAt)]
     if (status) conditions.push(eq(metaLeads.status, status as never))
+    else conditions.push(notInArray(metaLeads.status, META_LEAD_POOL_STATUSES as never))
     // Sales executives may only ever see leads assigned to them.
     if (user.role !== 'super_admin') conditions.push(eq(metaLeads.assignedTo, user.id))
 
@@ -235,6 +251,9 @@ export class MetaLeadsService {
       with: { assignedToProfile: true },
     })
     if (!existing) throw new NotFoundException(`Meta lead ${id} not found`)
+    if (isNonTransferableMetaLeadPoolStatus(existing.status)) {
+      throw new BadRequestException('Leads in lost, not interested, broker, or construction owner pools cannot be assigned or transferred')
+    }
     await this.ensureAssignableSalesExecutive(dto.assigned_to)
     const assignee = await this.db.query.userProfiles.findFirst({
       where: eq(userProfiles.id, dto.assigned_to),
@@ -284,6 +303,10 @@ export class MetaLeadsService {
         with: { assignedToProfile: true },
       })
 
+      if (existing.some((lead) => isNonTransferableMetaLeadPoolStatus(lead.status))) {
+        throw new BadRequestException('Selected leads include lost, not interested, broker, or construction owner pool leads that cannot be assigned or transferred')
+      }
+
       const rows = await tx
         .update(metaLeads)
         .set({ assignedTo: dto.assigned_to, assignedBy, assignedAt: new Date(), status: 'assigned', updatedAt: new Date() })
@@ -322,6 +345,9 @@ export class MetaLeadsService {
       with: { assignedToProfile: true },
     })
     if (!existing) throw new NotFoundException(`Meta lead ${id} not found`)
+    if (isNonTransferableMetaLeadPoolStatus(existing.status)) {
+      throw new BadRequestException('Leads in lost, not interested, broker, or construction owner pools cannot be returned to the lead queue')
+    }
 
     const [updated] = await this.db.transaction(async (tx) => {
       const rows = await tx

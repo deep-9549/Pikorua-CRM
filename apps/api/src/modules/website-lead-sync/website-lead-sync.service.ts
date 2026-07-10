@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { clients, leadCrmDetails, metaLeads } from '@pikorua/db'
 import { DatabaseService } from '../../database/database.service'
 import { stripPhonePrefix } from '../../common/utils/meta-format'
+import { poolStatusForClientStatus } from '../leads/lead-pools'
 
 const SYNC_INTERVAL_MS = 30 * 60 * 1000
 const STARTUP_DELAY_MS = 10 * 1000
@@ -119,6 +120,7 @@ export class WebsiteLeadSyncService implements OnModuleInit, OnModuleDestroy {
     return this.database.db.transaction(async (tx) => {
       const phone = stripPhonePrefix(sourceLead.phone)
       let clientId: string | null = null
+      let pooledStatus: string | null = null
 
       if (phone) {
         const existingClient = await tx.query.clients.findFirst({
@@ -127,6 +129,7 @@ export class WebsiteLeadSyncService implements OnModuleInit, OnModuleDestroy {
 
         if (existingClient) {
           clientId = existingClient.id
+          pooledStatus = poolStatusForClientStatus(existingClient.status)
           if (sourceLead.is_hot && (!existingClient.status || existingClient.status === 'active')) {
             await tx.update(clients).set({
               status: 'hot',
@@ -156,7 +159,7 @@ export class WebsiteLeadSyncService implements OnModuleInit, OnModuleDestroy {
         campaignName: `Website – ${humanize(sourceLead.source) ?? 'Enquiry'}`,
         source: 'website',
         clientId,
-        status: 'unassigned',
+        status: (pooledStatus ?? 'unassigned') as never,
         receivedAt: new Date(sourceLead.created_at),
         formData: sourceLead,
       }).onConflictDoNothing().returning({ id: metaLeads.id })

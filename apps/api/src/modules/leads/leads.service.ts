@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { eq, desc, and, isNull, inArray } from 'drizzle-orm'
+import { eq, desc, and, isNull, inArray, notInArray } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import {
-  metaLeads, leadCrmDetails, leadNotes, leadInteractions, siteVisits,
+  metaLeads, leadCrmDetails, leadNotes, leadInteractions, siteVisits, clients,
   bookings, conversations, messages,
 } from '@pikorua/db'
 import { CreateLeadDto } from './dto/create-lead.dto'
@@ -10,6 +10,7 @@ import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
 import { serializeCrmDetails, serializeMetaLead } from './lead.serializer'
 import { LeadActivityService } from '../lead-activity/lead-activity.service'
+import { META_LEAD_POOL_STATUSES, poolStatusForClientStatus } from './lead-pools'
 
 @Injectable()
 export class LeadsService {
@@ -46,6 +47,7 @@ export class LeadsService {
   async findAll(status: string | undefined, user: { id: string; role: string }) {
     const conditions = [isNull(metaLeads.deletedAt)]
     if (status) conditions.push(eq(metaLeads.status, status as never))
+    else conditions.push(notInArray(metaLeads.status, META_LEAD_POOL_STATUSES as never))
     // Sales executives may only ever see leads assigned to them.
     if (user.role !== 'super_admin') conditions.push(eq(metaLeads.assignedTo, user.id))
 
@@ -85,6 +87,11 @@ export class LeadsService {
   async create(dto: CreateLeadDto, user: { id: string; role: string }) {
     const shouldAssignToCreator = user.role !== 'super_admin'
     const assignedAt = shouldAssignToCreator ? new Date() : null
+    const existingClient = await this.db.query.clients.findFirst({
+      where: eq(clients.phone, dto.phone),
+    })
+    const pooledStatus = poolStatusForClientStatus(existingClient?.status)
+    const initialStatus = pooledStatus ?? (shouldAssignToCreator ? 'assigned' : 'unassigned')
 
     const [lead] = await this.db.insert(metaLeads).values({
       fullName: dto.full_name,
@@ -94,7 +101,8 @@ export class LeadsService {
       campaignName: dto.campaign_name ?? null,
       formData: dto.notes ? { notes: dto.notes } : null,
       source: 'manual',
-      status: shouldAssignToCreator ? 'assigned' : 'unassigned',
+      clientId: existingClient?.id ?? null,
+      status: initialStatus as never,
       assignedTo: shouldAssignToCreator ? user.id : null,
       assignedBy: shouldAssignToCreator ? user.id : null,
       assignedAt,
@@ -120,7 +128,7 @@ export class LeadsService {
         : 'Manual lead was created and left unassigned.',
       toUserId: shouldAssignToCreator ? user.id : null,
       changes: {
-        status: { label: 'Status', from: null, to: shouldAssignToCreator ? 'assigned' : 'unassigned' },
+        status: { label: 'Status', from: null, to: initialStatus },
         assigned_to: {
           label: 'Assigned To',
           from: null,

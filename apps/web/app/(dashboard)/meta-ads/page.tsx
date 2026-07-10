@@ -44,7 +44,7 @@ interface MetaLead {
   city: string | null
   campaign_name: string | null
   source: "meta_ad" | "website" | "microsite" | "manual" | "migrated"
-  status: "unassigned" | "assigned" | "cold_pool"
+  status: "unassigned" | "assigned" | "cold_pool" | "lost_pool" | "not_interested_pool" | "broker_pool" | "construction_biz_owner_pool"
   received_at: string
   assigned_at: string | null
   assigned_to_profile: { id: string; full_name: string; role: string } | null
@@ -54,6 +54,21 @@ interface Employee {
   id: string
   full_name: string
   phone: string | null
+}
+
+const NON_TRANSFERABLE_POOL_STATUSES = new Set([
+  "lost_pool",
+  "not_interested_pool",
+  "broker_pool",
+  "construction_biz_owner_pool",
+])
+
+const POOL_TAB_LABELS: Record<string, string> = {
+  cold_pool: "Cold Pool",
+  lost_pool: "Lost Pool",
+  not_interested_pool: "Not Interested Pool",
+  broker_pool: "Broker Pool",
+  construction_biz_owner_pool: "Construction Owner Pool",
 }
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -278,6 +293,8 @@ function LeadRow({
   selected?: boolean
   onToggleSelect?: (leadId: string) => void
 }) {
+  const canAssignLead = canAssign && !NON_TRANSFERABLE_POOL_STATUSES.has(lead.status)
+
   return (
     <motion.div
       key={lead.id}
@@ -391,7 +408,7 @@ function LeadRow({
             <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-success)" }} />
           )}
         </div>
-      ) : canAssign ? (
+      ) : canAssignLead ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -708,6 +725,10 @@ export default function MetaAdsPage() {
               <TabsTrigger value="cold_pool" className="gap-1.5">
                 <Snowflake className="w-3.5 h-3.5" />Cold Pool
               </TabsTrigger>
+              <TabsTrigger value="lost_pool">Lost</TabsTrigger>
+              <TabsTrigger value="not_interested_pool">Not Interested</TabsTrigger>
+              <TabsTrigger value="broker_pool">Broker</TabsTrigger>
+              <TabsTrigger value="construction_biz_owner_pool">Construction Owner</TabsTrigger>
               <TabsTrigger value="all">All</TabsTrigger>
             </TabsList>
 
@@ -854,7 +875,7 @@ export default function MetaAdsPage() {
                         size="sm"
                         variant="outline"
                         className="gap-2 mx-auto"
-                        onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter(""); setReceivedDateFilter("") }}
+                        onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
                       >
                         <X className="w-3.5 h-3.5" />
                         Clear filters
@@ -862,11 +883,13 @@ export default function MetaAdsPage() {
                     </>
                   ) : (
                     <>
-                      {activeTab === "cold_pool"
+                      {POOL_TAB_LABELS[activeTab]
                         ? <Snowflake className="w-8 h-8 mx-auto opacity-30" />
                         : <Users className="w-8 h-8 mx-auto opacity-30" />}
                       <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-                        {activeTab === "cold_pool" ? "No leads in the cold pool" : `No ${activeTab !== "all" ? activeTab : ""} leads`}
+                        {POOL_TAB_LABELS[activeTab]
+                          ? `No leads in the ${POOL_TAB_LABELS[activeTab].toLowerCase()}`
+                          : `No ${activeTab !== "all" ? activeTab : ""} leads`}
                       </p>
                       {activeTab === "unassigned" && (
                         <Button

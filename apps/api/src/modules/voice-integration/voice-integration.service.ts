@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { and, desc, eq, isNull, lt, or } from 'drizzle-orm'
 import {
+  clients,
   leadCrmDetails,
   metaLeads,
   voiceCallLogs,
@@ -21,6 +22,7 @@ import {
 } from '@pikorua/db'
 import { DatabaseService } from '../../database/database.service'
 import { LeadActivityService } from '../lead-activity/lead-activity.service'
+import { poolStatusForClientStatus } from '../leads/lead-pools'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 const LABELS = new Set(['hot', 'warm', 'cold'])
@@ -614,12 +616,18 @@ export class VoiceIntegrationService {
     })
     if (existing) return { lead: existing, created: false }
 
+    const existingClient = await tx.query.clients.findFirst({
+      where: eq(clients.phone, phoneE164),
+    })
+    const pooledStatus = poolStatusForClientStatus(existingClient?.status)
+
     const [lead] = await tx.insert(metaLeads).values({
       phone: phoneE164,
       campaignName: input.campaignName,
       source: 'voice_ai',
       externalId: `voice:${input.callId}`,
-      status: 'unassigned',
+      clientId: existingClient?.id ?? null,
+      status: (pooledStatus ?? 'unassigned') as never,
       formData: {
         source: 'voice_ai',
         preferred_locale: input.locale,

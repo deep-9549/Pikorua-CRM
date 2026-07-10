@@ -5,6 +5,7 @@ import { DatabaseService } from '../../database/database.service'
 import { metaLeads, leadCrmDetails, clients } from '@pikorua/db'
 import { ImportResultDto } from './dto/import-result.dto'
 import { normalizeMetaBudget, normalizeCampaignName, stripPhonePrefix } from '../../common/utils/meta-format'
+import { poolStatusForClientStatus } from '../leads/lead-pools'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -261,13 +262,18 @@ export class ImportService {
     // and timed out (504) on large files.
     const uniqueImportPhones = [...new Set(parsed.map(r => r.phone))]
     const clientIdByPhone = new Map<string, string>()
+    const clientStatusByPhone = new Map<string, string | null>()
 
     for (const batch of this.chunk(uniqueImportPhones, CHUNK)) {
       const rows = await this.db
-        .select({ id: clients.id, phone: clients.phone })
+        .select({ id: clients.id, phone: clients.phone, status: clients.status })
         .from(clients)
         .where(inArray(clients.phone, batch))
-      for (const c of rows) if (c.phone) clientIdByPhone.set(c.phone, c.id)
+      for (const c of rows) {
+        if (!c.phone) continue
+        clientIdByPhone.set(c.phone, c.id)
+        clientStatusByPhone.set(c.phone, c.status ?? null)
+      }
     }
 
     const rowByPhone = new Map(parsed.map(r => [r.phone, r]))
@@ -280,7 +286,10 @@ export class ImportService {
           return { tenantId: DEFAULT_TENANT_ID, fullName: r.fullName, phone, email: r.email }
         }))
         .returning({ id: clients.id, phone: clients.phone })
-      for (const c of inserted) if (c.phone) clientIdByPhone.set(c.phone, c.id)
+      for (const c of inserted) if (c.phone) {
+        clientIdByPhone.set(c.phone, c.id)
+        clientStatusByPhone.set(c.phone, rowByPhone.get(c.phone)?.hwc ?? 'active')
+      }
     }
 
     const clientStatusPhonesByStatus = new Map<string, string[]>()
@@ -318,7 +327,7 @@ export class ImportService {
           campaignName: r.campaignName,
           clientId:     clientIdByPhone.get(r.phone) ?? null,
           source:       'migrated',
-          status:       'unassigned' as const,
+          status:       (poolStatusForClientStatus(r.hwc ?? clientStatusByPhone.get(r.phone)) ?? 'unassigned') as never,
           receivedAt:   r.receivedAt,
         })))
         .returning({ id: metaLeads.id })

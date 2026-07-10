@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
-import { leadCrmDetails, metaLeads } from '@pikorua/db'
+import { eq } from 'drizzle-orm'
+import { clients, leadCrmDetails, metaLeads } from '@pikorua/db'
 import { DatabaseService } from '../../database/database.service'
 import {
   normalizeCampaignName,
@@ -7,6 +8,7 @@ import {
   stripPhonePrefix,
 } from '../../common/utils/meta-format'
 import { MetaLeadData } from './meta-lead.types'
+import { poolStatusForClientStatus } from '../leads/lead-pools'
 
 export type MetaLeadImportResult = 'imported' | 'duplicate'
 
@@ -35,6 +37,12 @@ export class MetaLeadImporterService {
       : undefined
 
     return this.database.db.transaction(async (tx) => {
+      const phone = rawPhone ? stripPhonePrefix(rawPhone) : null
+      const existingClient = phone
+        ? await tx.query.clients.findFirst({ where: eq(clients.phone, phone) })
+        : null
+      const pooledStatus = poolStatusForClientStatus(existingClient?.status)
+
       const [inserted] = await tx.insert(metaLeads).values({
         pageId: fallback.pageId ?? null,
         pageName: fallback.pageName ?? null,
@@ -42,13 +50,14 @@ export class MetaLeadImporterService {
         adId: metaLead.ad_id ?? fallback.adId ?? null,
         campaignName: normalizeCampaignName(metaLead.campaign_name ?? null),
         fullName: fields.full_name ?? fields.name ?? null,
-        phone: rawPhone ? stripPhonePrefix(rawPhone) : null,
+        phone,
         email: fields.email ?? null,
         city: fields.city ?? null,
         formData: metaLead,
         source: 'meta_ads',
         externalId: metaLead.id,
-        status: 'unassigned',
+        clientId: existingClient?.id ?? null,
+        status: (pooledStatus ?? 'unassigned') as never,
         ...(receivedAt ? { receivedAt } : {}),
       }).onConflictDoNothing().returning({ id: metaLeads.id })
 

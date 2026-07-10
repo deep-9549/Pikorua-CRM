@@ -30,7 +30,21 @@ export class MetaLeadsController {
 
   @Get()
   @ApiOperation({ summary: 'List meta leads (optionally filter by status)' })
-  @ApiQuery({ name: 'status', required: false, enum: ['unassigned', 'assigned', 'converted', 'rejected'] })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: [
+      'unassigned',
+      'assigned',
+      'converted',
+      'rejected',
+      'cold_pool',
+      'lost_pool',
+      'not_interested_pool',
+      'broker_pool',
+      'construction_biz_owner_pool',
+    ],
+  })
   findAll(
     @CurrentUser() user: { id: string; role: string },
     @Query('status') status?: string,

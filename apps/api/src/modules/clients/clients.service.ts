@@ -1,10 +1,15 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray, isNotNull, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { clients, metaLeads } from '@pikorua/db'
 import { serializeMetaLead } from '../leads/lead.serializer'
 import { serializeProfile } from '../../common/serializers/profile.serializer'
 import { LeadActivityService } from '../lead-activity/lead-activity.service'
+import {
+  META_LEAD_POOL_STATUSES,
+  META_LEAD_QUEUE_MANAGED_STATUSES,
+  poolStatusForClientStatus,
+} from '../leads/lead-pools'
 
 function serializeClient(client: any) {
   return {
@@ -103,6 +108,39 @@ export class ClientsService {
       { status: status ?? null, status_note: statusNote ?? null },
       { status: 'Client Status', status_note: 'Client Status Note' },
     )
+
+    const previousPoolStatus = poolStatusForClientStatus(client.status)
+    const nextPoolStatus = poolStatusForClientStatus(status)
+
+    // Sync queue pool status on linked meta leads. Converted/rejected rows stay
+    // terminal; active queue rows move in/out of pools with the client status.
+    if (nextPoolStatus) {
+      await this.db
+        .update(metaLeads)
+        .set({ status: nextPoolStatus as never, updatedAt: new Date() })
+        .where(and(
+          eq(metaLeads.clientId, id),
+          inArray(metaLeads.status, META_LEAD_QUEUE_MANAGED_STATUSES as never),
+        ))
+    } else if (previousPoolStatus) {
+      await this.db
+        .update(metaLeads)
+        .set({ status: 'assigned' as never, updatedAt: new Date() })
+        .where(and(
+          eq(metaLeads.clientId, id),
+          inArray(metaLeads.status, META_LEAD_POOL_STATUSES as never),
+          isNotNull(metaLeads.assignedTo),
+        ))
+
+      await this.db
+        .update(metaLeads)
+        .set({ status: 'unassigned' as never, updatedAt: new Date() })
+        .where(and(
+          eq(metaLeads.clientId, id),
+          inArray(metaLeads.status, META_LEAD_POOL_STATUSES as never),
+          isNull(metaLeads.assignedTo),
+        ))
+    }
 
     // Sync cold pool status on linked meta leads
     if (isCold && !wasСold) {

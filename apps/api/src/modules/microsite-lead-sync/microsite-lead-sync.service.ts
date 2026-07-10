@@ -8,6 +8,7 @@ import {
 } from './microsite-lead-source-config'
 import { mapMicrositeLeadToCrm } from './microsite-lead.mapper'
 import { MicrositeJob, MicrositeLead, MicrositeLeadImportResult } from './microsite-lead.types'
+import { poolStatusForClientStatus } from '../leads/lead-pools'
 
 const SYNC_INTERVAL_MS = 3 * 60 * 60 * 1000
 const STARTUP_DELAY_MS = 10 * 1000
@@ -156,6 +157,7 @@ export class MicrositeLeadSyncService implements OnModuleInit, OnModuleDestroy {
 
     return this.database.db.transaction(async (tx) => {
       let clientId: string | null = null
+      let pooledStatus: string | null = null
 
       if (mapped.metaLead.phone) {
         const existingClient = await tx.query.clients.findFirst({
@@ -164,6 +166,7 @@ export class MicrositeLeadSyncService implements OnModuleInit, OnModuleDestroy {
 
         if (existingClient) {
           clientId = existingClient.id
+          pooledStatus = poolStatusForClientStatus(existingClient.status)
         } else {
           const [insertedClient] = await tx.insert(clients).values({
             tenantId: DEFAULT_TENANT_ID,
@@ -179,6 +182,7 @@ export class MicrositeLeadSyncService implements OnModuleInit, OnModuleDestroy {
       const [inserted] = await tx.insert(metaLeads).values({
         ...mapped.metaLead,
         clientId,
+        status: (pooledStatus ?? mapped.metaLead.status) as never,
       }).onConflictDoNothing().returning({ id: metaLeads.id })
 
       if (!inserted) return 'duplicate'
