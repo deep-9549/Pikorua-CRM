@@ -1,39 +1,28 @@
 "use client"
 
 import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import {
-  Search,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  DoorOpen,
+  FileText,
   Filter,
+  Home,
   LayoutGrid,
   List,
   MapPin,
-  Bed,
-  Bath,
-  Square,
-  TrendingUp,
-  Heart,
-  Share2,
-  Eye,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
   Phone,
-  Calendar,
-  FileText,
-  Building2,
-  DollarSign,
-  BarChart3,
-  Star,
-  Wifi,
-  Car,
-  Dumbbell,
-  Waves,
-  Trees,
+  Search,
   Shield,
-  Home,
-  Zap
+  Sparkles,
+  Star,
+  TrendingUp,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -41,7 +30,6 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Dialog,
   DialogContent,
@@ -57,22 +45,13 @@ import {
 } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from "recharts"
-import {
   Property,
   PropertyUnitConfiguration,
-  propertyTypes,
   formatCurrency,
-  propertyCallScripts,
+  leads,
   propertyAppreciations,
-  leads
+  propertyCallScripts,
+  propertyTypes,
 } from "@/lib/data"
 
 const FALLBACK_PROPERTY_IMAGE = "/placeholder.jpg"
@@ -83,42 +62,23 @@ type ApiProperty = Record<string, unknown> & {
   appreciation?: unknown[]
 }
 
+type PropertyRecommendation = {
+  lead: (typeof leads)[number]
+  property: Property
+  matchScore: number
+}
+
 const container = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.05 }
-  }
+    transition: { staggerChildren: 0.04 },
+  },
 }
 
 const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 }
-}
-
-// AI Recommendations based on leads
-function getAIRecommendations(propertyRows: Property[]) {
-  const hotLeads = leads.filter(l => l.tags.includes('hot') || l.tags.includes('vip'))
-  const recommendations = []
-  
-  for (const lead of hotLeads.slice(0, 3)) {
-    const matchingProperties = propertyRows.filter(p => 
-      lead.propertyInterest.includes(p.type) &&
-      p.price >= lead.budgetMin * 0.8 &&
-      p.price <= lead.budgetMax * 1.2 &&
-      p.status === 'available'
-    )
-    
-    if (matchingProperties.length > 0) {
-      recommendations.push({
-        lead,
-        property: matchingProperties[0],
-        matchScore: Math.floor(85 + Math.random() * 10)
-      })
-    }
-  }
-  
-  return recommendations
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0 },
 }
 
 function toNumber(value: unknown, fallback = 0) {
@@ -188,164 +148,103 @@ function parseApiProperty(row: ApiProperty): Property {
   }
 }
 
-function getAmenityIcon(amenity: string) {
-  const lower = amenity.toLowerCase()
-  if (lower.includes('pool') || lower.includes('sea')) return Waves
-  if (lower.includes('gym') || lower.includes('fitness')) return Dumbbell
-  if (lower.includes('parking') || lower.includes('valet')) return Car
-  if (lower.includes('garden') || lower.includes('terrace')) return Trees
-  if (lower.includes('smart') || lower.includes('home')) return Wifi
-  if (lower.includes('security') || lower.includes('concierge')) return Shield
-  return Star
+function getAIRecommendations(propertyRows: Property[]): PropertyRecommendation[] {
+  const hotLeads = leads.filter((lead) => lead.tags.includes("hot") || lead.tags.includes("vip"))
+
+  return hotLeads.slice(0, 4).flatMap((lead) => {
+    const matchingProperty = propertyRows.find((property) => (
+      lead.propertyInterest.includes(property.type) &&
+      property.price >= lead.budgetMin * 0.8 &&
+      property.price <= lead.budgetMax * 1.2 &&
+      property.status === "available"
+    ))
+
+    if (!matchingProperty) return []
+
+    const budgetFit = Math.max(
+      0,
+      12 - Math.round(Math.abs(matchingProperty.price - lead.budgetMax) / Math.max(lead.budgetMax, 1) * 12),
+    )
+
+    return [{
+      lead,
+      property: matchingProperty,
+      matchScore: Math.min(97, 82 + budgetFit + (matchingProperty.sampleHouse ? 3 : 0)),
+    }]
+  })
 }
 
-function PropertyCard({
-  property,
-  onViewDetails
-}: {
-  property: Property
-  onViewDetails: (property: Property) => void
-}) {
-  const [isLiked, setIsLiked] = React.useState(false)
+function formatPropertyType(type: Property["type"]) {
+  return propertyTypes.find((item) => item.value === type)?.label ?? type
+}
 
+function formatStatus(status: Property["status"]) {
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function getStatusClass(status: Property["status"]) {
+  return cn(
+    "border",
+    status === "available" && "border-success/20 bg-success/10 text-success",
+    status === "reserved" && "border-warning/20 bg-warning/10 text-warning",
+    status === "upcoming" && "border-info/20 bg-info/10 text-info",
+    status === "sold" && "border-destructive/20 bg-destructive/10 text-destructive",
+  )
+}
+
+function getConfigurationSummary(property: Property) {
+  const configurations = property.unitConfigurations
+    ?.map((unit) => unit.configuration)
+    .filter(Boolean)
+
+  if (configurations?.length) {
+    return Array.from(new Set(configurations)).slice(0, 3).join(", ")
+  }
+
+  const fallback = [
+    property.bedrooms > 0 ? `${property.bedrooms} BHK` : null,
+    property.sqft > 0 ? `${property.sqft.toLocaleString()} sqft` : null,
+  ].filter(Boolean)
+
+  return fallback.join(" / ") || "Configuration pending"
+}
+
+function getPitchReadiness(property: Property) {
+  if (property.status === "sold") return "Closed inventory"
+  if (property.status === "reserved") return "Check hold before pitching"
+  if (property.status === "upcoming") return "Good for pipeline nurturing"
+  if (property.sampleHouse) return "Ready for site visit pitch"
+  return "Ready for matching"
+}
+
+function getVisitNote(property: Property) {
+  if (property.sampleHouse) return "Sample house available"
+  if (property.status === "upcoming") return "Confirm launch timeline"
+  return "Confirm visit slot with developer"
+}
+
+function SummaryCard({
+  title,
+  value,
+  detail,
+  icon: Icon,
+}: {
+  title: string
+  value: string | number
+  detail: string
+  icon: React.ElementType
+}) {
   return (
     <motion.div variants={item}>
-      <Card className="glass group overflow-hidden hover:shadow-luxury-lg transition-all duration-300">
-        {/* Image */}
-        <div className="relative h-56 overflow-hidden">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-            style={{ backgroundImage: `url(${property.images[0]})` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
-
-          {/* Badges */}
-          <div className="absolute top-3 left-3 flex gap-2">
-            <Badge className={cn(
-              "text-[10px] font-semibold",
-              property.status === "available" && "bg-success text-success-foreground",
-              property.status === "sold" && "bg-destructive text-destructive-foreground",
-              property.status === "reserved" && "bg-warning text-warning-foreground",
-              property.status === "upcoming" && "bg-info text-info-foreground"
-            )}>
-              {property.status.charAt(0).toUpperCase() + property.status.slice(1)}
-            </Badge>
-            {property.featured && (
-              <Badge className="text-[10px] font-semibold bg-primary/90 text-primary-foreground">
-                Featured
-              </Badge>
-            )}
+      <Card className="glass">
+        <CardContent className="flex items-center gap-4 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <Icon className="h-5 w-5 text-primary" />
           </div>
-
-          {/* Actions */}
-          <div className="absolute top-3 right-3 flex gap-2">
-            <Button
-              variant="secondary"
-              size="icon"
-              className="h-8 w-8 rounded-full bg-card/80 backdrop-blur-sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                setIsLiked(!isLiked)
-              }}
-            >
-              <Heart className={cn("w-4 h-4", isLiked && "fill-destructive text-destructive")} />
-            </Button>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="h-8 w-8 rounded-full bg-card/80 backdrop-blur-sm"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Share2 className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* View Details Button */}
-          <Button
-            variant="secondary"
-            size="sm"
-            className="absolute bottom-3 right-3 gap-1 bg-card/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => onViewDetails(property)}
-          >
-            <Eye className="w-3 h-3" />
-            View Details
-          </Button>
-
-          {/* Price */}
-          <div className="absolute bottom-3 left-3">
-            <p className="text-2xl font-bold text-white">
-              {formatCurrency(property.price)}
-            </p>
-            {property.pricePerSqft > 0 && (
-              <p className="text-xs text-white/80">
-                {formatCurrency(property.pricePerSqft)}/sqft
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Content */}
-        <CardContent className="p-4 cursor-pointer" onClick={() => onViewDetails(property)}>
-          <div className="mb-3">
-            <h3 className="text-lg font-semibold mb-1 group-hover:text-primary transition-colors">
-              {property.name}
-            </h3>
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="w-4 h-4" />
-              {property.location}, {property.area}
-            </div>
-          </div>
-
-          {/* Features */}
-          <div className="flex items-center gap-4 mb-4 text-sm">
-            {property.bedrooms > 0 && (
-              <div className="flex items-center gap-1">
-                <Bed className="w-4 h-4 text-muted-foreground" />
-                <span>{property.bedrooms} Beds</span>
-              </div>
-            )}
-            {property.bathrooms > 0 && (
-              <div className="flex items-center gap-1">
-                <Bath className="w-4 h-4 text-muted-foreground" />
-                <span>{property.bathrooms} Baths</span>
-              </div>
-            )}
-            {property.sqft > 0 && (
-              <div className="flex items-center gap-1">
-                <Square className="w-4 h-4 text-muted-foreground" />
-                <span>{property.sqft.toLocaleString()} sqft</span>
-              </div>
-            )}
-          </div>
-
-          {/* ROI & Type */}
-          <div className="flex items-center justify-between">
-            <Badge variant="outline" className="text-xs">
-              {property.type.charAt(0).toUpperCase() + property.type.slice(1)}
-            </Badge>
-            {property.roi > 0 && (
-              <div className="flex items-center gap-1 text-success">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm font-semibold">{property.roi}% ROI</span>
-              </div>
-            )}
-          </div>
-
-          {/* Amenities Preview */}
-          <div className="mt-3 flex flex-wrap gap-1">
-            {property.amenities.slice(0, 3).map((amenity, index) => (
-              <span
-                key={index}
-                className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground"
-              >
-                {amenity}
-              </span>
-            ))}
-            {property.amenities.length > 3 && (
-              <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                +{property.amenities.length - 3} more
-              </span>
-            )}
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground">{title}</p>
+            <p className="text-2xl font-semibold leading-tight">{value}</p>
+            <p className="truncate text-xs text-muted-foreground">{detail}</p>
           </div>
         </CardContent>
       </Card>
@@ -353,519 +252,430 @@ function PropertyCard({
   )
 }
 
+function PropertyCard({
+  property,
+  view,
+  onViewDetails,
+}: {
+  property: Property
+  view: "grid" | "list"
+  onViewDetails: (property: Property) => void
+}) {
+  const callScript = propertyCallScripts.find((script) => script.propertyId === property.id)
+  const content = (
+    <>
+      <div className={cn(
+        "relative shrink-0 overflow-hidden bg-muted",
+        view === "grid" ? "h-36 w-full" : "h-28 w-full sm:h-auto sm:w-44",
+      )}>
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${property.images[0]})` }}
+        />
+        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+          <Badge className={getStatusClass(property.status)}>
+            {formatStatus(property.status)}
+          </Badge>
+          {property.sampleHouse && (
+            <Badge variant="secondary" className="border border-border/60 bg-card/90">
+              Sample house
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <CardContent className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-semibold leading-tight">{property.name}</h3>
+              {property.featured && <Badge variant="outline">Priority</Badge>}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-4 w-4" />
+                {[property.location, property.area].filter(Boolean).join(", ")}
+              </span>
+              <span>{formatPropertyType(property.type)}</span>
+              {property.developer && <span>{property.developer}</span>}
+            </div>
+          </div>
+          <div className="shrink-0 sm:text-right">
+            <p className="text-xl font-semibold">{formatCurrency(property.price)}</p>
+            {property.pricePerSqft > 0 && (
+              <p className="text-xs text-muted-foreground">{formatCurrency(property.pricePerSqft)}/sqft</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-3 text-sm sm:grid-cols-3">
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Configuration</p>
+            <p className="mt-1 font-medium">{getConfigurationSummary(property)}</p>
+          </div>
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Visit readiness</p>
+            <p className="mt-1 font-medium">{getVisitNote(property)}</p>
+          </div>
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Sales cue</p>
+            <p className="mt-1 font-medium">{getPitchReadiness(property)}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            {property.towerCount !== null && property.towerCount !== undefined && (
+              <span className="rounded bg-muted px-2 py-1">{property.towerCount} towers</span>
+            )}
+            {property.totalUnits && <span className="rounded bg-muted px-2 py-1">{property.totalUnits} units</span>}
+            {property.completionDate && <span className="rounded bg-muted px-2 py-1">{property.completionDate}</span>}
+            {callScript && <span className="rounded bg-primary/10 px-2 py-1 text-primary">Script ready</span>}
+          </div>
+          <Button size="sm" className="gap-2" onClick={() => onViewDetails(property)}>
+            <ClipboardList className="h-4 w-4" />
+            Open Sales Brief
+          </Button>
+        </div>
+      </CardContent>
+    </>
+  )
+
+  return (
+    <motion.div variants={item}>
+      <Card
+        className={cn(
+          "glass overflow-hidden transition-colors hover:border-primary/30",
+          view === "list" && "sm:flex",
+        )}
+      >
+        {content}
+      </Card>
+    </motion.div>
+  )
+}
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  if (value === null || value === undefined || value === "") return null
+
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-border/50 py-2 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-medium">{value}</span>
+    </div>
+  )
+}
+
 function PropertyDetailModal({
   property,
-  onClose
+  onClose,
 }: {
   property: Property | null
   onClose: () => void
 }) {
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0)
-  const [activeTab, setActiveTab] = React.useState("overview")
+  const [activeTab, setActiveTab] = React.useState("snapshot")
+
+  React.useEffect(() => {
+    setCurrentImageIndex(0)
+    setActiveTab("snapshot")
+  }, [property?.id])
 
   if (!property) return null
 
-  const callScript = propertyCallScripts.find(s => s.propertyId === property.id)
-  const appreciation = propertyAppreciations.find(a => a.propertyId === property.id)
-  
-  const defaultAppreciation = {
-    historicalRates: [],
-    projectedRates: [],
-    locationFactors: [],
-    investmentScore: 0
-  }
-
-  const appreciationData = appreciation || defaultAppreciation
+  const callScript = propertyCallScripts.find((script) => script.propertyId === property.id)
+  const appreciation = propertyAppreciations.find((item) => item.propertyId === property.id)
+  const imageUrl = property.images[currentImageIndex] ?? FALLBACK_PROPERTY_IMAGE
 
   return (
     <Dialog open={!!property} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-5xl h-[90vh] overflow-hidden p-0 flex flex-col">
-        {/* Header with Image */}
-        <div className="relative h-56 shrink-0">
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${property.images[currentImageIndex]})` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
-          
-          {/* Navigation Arrows */}
-          {property.images.length > 1 && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card"
-                onClick={() => setCurrentImageIndex((i) => (i - 1 + property.images.length) % property.images.length)}
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-card/80 hover:bg-card"
-                onClick={() => setCurrentImageIndex((i) => (i + 1) % property.images.length)}
-              >
-                <ChevronRight className="w-5 h-5" />
-              </Button>
-            </>
-          )}
+      <DialogContent className="flex h-[90vh] max-w-6xl flex-col overflow-hidden p-0">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{property.name} sales brief</DialogTitle>
+        </DialogHeader>
 
-          {/* Property Info */}
-          <div className="absolute bottom-4 left-6 right-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge className={cn(
-                    "text-xs",
-                    property.status === "available" && "bg-success text-success-foreground",
-                    property.status === "sold" && "bg-destructive text-destructive-foreground",
-                    property.status === "reserved" && "bg-warning text-warning-foreground",
-                    property.status === "upcoming" && "bg-info text-info-foreground"
-                  )}>
-                    {property.status.toUpperCase()}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs bg-card/50">
-                    {property.type.charAt(0).toUpperCase() + property.type.slice(1)}
-                  </Badge>
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-1">{property.name}</h2>
-                <div className="flex items-center gap-1 text-white/80">
-                  <MapPin className="w-4 h-4" />
-                  <span>{[property.location, property.area].filter(Boolean).join(", ")}</span>
-                </div>
+        <div className="flex shrink-0 flex-col border-b border-border bg-card lg:flex-row">
+          <div className="relative h-48 overflow-hidden bg-muted lg:h-auto lg:w-72">
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${imageUrl})` }}
+            />
+            <div className="absolute left-3 top-3 flex gap-2">
+              <Badge className={getStatusClass(property.status)}>{formatStatus(property.status)}</Badge>
+              {property.sampleHouse && <Badge variant="secondary">Sample house</Badge>}
+            </div>
+            {property.images.length > 1 && (
+              <div className="absolute bottom-3 right-3 flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="h-8 w-8 bg-card/90"
+                  onClick={() => setCurrentImageIndex((index) => (index - 1 + property.images.length) % property.images.length)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="h-8 w-8 bg-card/90"
+                  onClick={() => setCurrentImageIndex((index) => (index + 1) % property.images.length)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="text-right">
-                <p className="text-3xl font-bold text-white">{formatCurrency(property.price)}</p>
-                {property.pricePerSqft > 0 && (
-                  <p className="text-sm text-white/80">{formatCurrency(property.pricePerSqft)}/sqft</p>
-                )}
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col justify-between gap-4 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{formatPropertyType(property.type)}</Badge>
+                  {property.featured && <Badge variant="outline">Priority inventory</Badge>}
+                </div>
+                <h2 className="text-2xl font-semibold tracking-tight">{property.name}</h2>
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  {[property.location, property.area].filter(Boolean).join(", ")}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">Base price</p>
+                <p className="mt-1 font-semibold">{formatCurrency(property.price)}</p>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">Configuration</p>
+                <p className="mt-1 font-semibold">{getConfigurationSummary(property)}</p>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">Visit cue</p>
+                <p className="mt-1 font-semibold">{getVisitNote(property)}</p>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">Sales status</p>
+                <p className="mt-1 font-semibold">{getPitchReadiness(property)}</p>
               </div>
             </div>
           </div>
-
-          {/* Close Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 bg-card/80 hover:bg-card"
-            onClick={onClose}
-          >
-            <X className="w-5 h-5" />
-          </Button>
         </div>
 
-        {/* Tabs Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="shrink-0 mx-6 mt-4 grid w-auto grid-cols-4 bg-muted/50">
-            <TabsTrigger value="overview" className="gap-2">
-              <Home className="w-4 h-4" />
-              Overview
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
+          <TabsList className="mx-5 mt-4 grid shrink-0 grid-cols-2 bg-muted/50 md:grid-cols-4">
+            <TabsTrigger value="snapshot" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Snapshot
             </TabsTrigger>
-            <TabsTrigger value="appreciation" className="gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Appreciation
+            <TabsTrigger value="inventory" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Inventory
             </TabsTrigger>
-            <TabsTrigger value="amenities" className="gap-2">
-              <Star className="w-4 h-4" />
-              Amenities
+            <TabsTrigger value="visit" className="gap-2">
+              <DoorOpen className="h-4 w-4" />
+              Visit Prep
             </TabsTrigger>
-            <TabsTrigger value="callscript" className="gap-2">
-              <Phone className="w-4 h-4" />
-              Call Script
+            <TabsTrigger value="script" className="gap-2">
+              <Phone className="h-4 w-4" />
+              Call Notes
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
-            <TabsContent value="overview" className="mt-4 space-y-6 data-[state=inactive]:hidden">
-              {/* Key Stats */}
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {property.bedrooms > 0 && (
-                  <div className="p-4 rounded-xl bg-muted/30 text-center">
-                    <Bed className="w-6 h-6 mx-auto mb-2 text-primary" />
-                    <p className="text-2xl font-bold">{property.bedrooms}</p>
-                    <p className="text-xs text-muted-foreground">Bedrooms</p>
-                  </div>
-                )}
-                {property.bathrooms > 0 && (
-                  <div className="p-4 rounded-xl bg-muted/30 text-center">
-                    <Bath className="w-6 h-6 mx-auto mb-2 text-primary" />
-                    <p className="text-2xl font-bold">{property.bathrooms}</p>
-                    <p className="text-xs text-muted-foreground">Bathrooms</p>
-                  </div>
-                )}
-                {property.sqft > 0 && (
-                  <div className="p-4 rounded-xl bg-muted/30 text-center">
-                    <Square className="w-6 h-6 mx-auto mb-2 text-primary" />
-                    <p className="text-2xl font-bold">{property.sqft.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">Sq. Ft.</p>
-                  </div>
-                )}
-                {property.roi > 0 && (
-                  <div className="p-4 rounded-xl bg-muted/30 text-center">
-                    <TrendingUp className="w-6 h-6 mx-auto mb-2 text-success" />
-                    <p className="text-2xl font-bold text-success">{property.roi}%</p>
-                    <p className="text-xs text-muted-foreground">Expected ROI</p>
-                  </div>
-                )}
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+            <TabsContent value="snapshot" className="mt-4 space-y-5 data-[state=inactive]:hidden">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Sales Snapshot</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DetailRow label="Developer" value={property.developer || "Pending"} />
+                    <DetailRow label="Completion" value={property.completionDate || "Pending"} />
+                    <DetailRow label="Location" value={property.location} />
+                    <DetailRow label="Area" value={property.area || "Pending"} />
+                    <DetailRow label="Sample House" value={property.sampleHouse ? "Yes" : "No"} />
+                    <DetailRow label="Expected ROI" value={property.roi > 0 ? `${property.roi}%` : "Pending"} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Project Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DetailRow label="Towers" value={property.towerCount} />
+                    <DetailRow label="Storeys" value={property.storeys} />
+                    <DetailRow label="Total Units" value={property.totalUnits} />
+                    <DetailRow label="Units Per Floor" value={property.unitsPerFloor} />
+                    <DetailRow label="Super Built Area" value={property.plotSize?.superbuilt_area} />
+                    <DetailRow label="Carpet Area" value={property.plotSize?.carpet_area} />
+                  </CardContent>
+                </Card>
               </div>
 
-              {/* Property Details */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Property Information</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between py-2 border-b border-border/50">
-                      <span className="text-muted-foreground">Developer</span>
-                      <span className="font-medium">{property.developer}</span>
-                    </div>
-                    {property.relevance && (
-                      <div className="flex justify-between py-2 border-b border-border/50">
-                        <span className="text-muted-foreground">Relevance</span>
-                        <span className="font-medium">{property.relevance}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between py-2 border-b border-border/50">
-                      <span className="text-muted-foreground">Completion</span>
-                      <span className="font-medium">{property.completionDate}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-border/50">
-                      <span className="text-muted-foreground">Location</span>
-                      <span className="font-medium">{property.location}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-border/50">
-                      <span className="text-muted-foreground">Area</span>
-                      <span className="font-medium">{property.area}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-border/50">
-                      <span className="text-muted-foreground">Sample House</span>
-                      <span className="font-medium">{property.sampleHouse ? "Yes" : "No"}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Project Details</h3>
-                  <div className="space-y-3">
-                    {[
-                      ["Towers", property.towerCount],
-                      ["Storeys", property.storeys],
-                      ["Units", property.totalUnits],
-                      ["Units Per Floor", property.unitsPerFloor],
-                      ["Plot Size", property.plotSize?.superbuilt_area],
-                      ["Plot Carpet", property.plotSize?.carpet_area],
-                    ].filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => (
-                      <div key={String(label)} className="flex justify-between py-2 border-b border-border/50">
-                        <span className="text-muted-foreground">{label}</span>
-                        <span className="font-medium">{String(value)}</span>
-                      </div>
-                    ))}
-                    {property.specifications && (
-                      <div className="rounded-lg bg-muted/30 p-3 text-sm text-muted-foreground">
-                        {property.specifications}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {property.unitConfigurations && property.unitConfigurations.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold">Available Configurations</h3>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {property.unitConfigurations.map((unit, index) => (
-                      <div key={`${unit.configuration}-${index}`} className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <Badge variant="outline">{unit.configuration}</Badge>
-                          {unit.price && <span className="text-sm font-semibold">{unit.price}</span>}
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          {unit.area_sqft && (
-                            <div>
-                              <p className="text-xs text-muted-foreground">Area</p>
-                              <p className="font-medium">{unit.area_sqft} sqft</p>
-                            </div>
-                          )}
-                          {unit.carpet_area_sqft && (
-                            <div>
-                              <p className="text-xs text-muted-foreground">Carpet</p>
-                              <p className="font-medium">{unit.carpet_area_sqft} sqft</p>
-                            </div>
-                          )}
-                          {unit.basic_rate && (
-                            <div>
-                              <p className="text-xs text-muted-foreground">Basic Rate</p>
-                              <p className="font-medium">{unit.basic_rate}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              {property.specifications && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Internal Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground">
+                    {property.specifications}
+                  </CardContent>
+                </Card>
               )}
-
-              {/* Quick Actions */}
-              <div className="flex gap-3">
-                <Button className="flex-1 gap-2 gold-gradient text-primary-foreground">
-                  <Phone className="w-4 h-4" />
-                  Contact Agent
-                </Button>
-                <Button variant="outline" className="flex-1 gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Schedule Visit
-                </Button>
-                <Button variant="outline" className="flex-1 gap-2">
-                  <Share2 className="w-4 h-4" />
-                  Share Property
-                </Button>
-              </div>
             </TabsContent>
 
-            <TabsContent value="appreciation" className="mt-4 space-y-6 data-[state=inactive]:hidden">
-              {/* Investment Score */}
-              <div className="flex items-center gap-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-orange-600/10 border border-primary/20">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-primary">{appreciationData.investmentScore}</div>
-                  <div className="text-sm text-muted-foreground">Investment Score</div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    This property scores in the top {100 - appreciationData.investmentScore}% of Mumbai luxury real estate for investment potential.
-                  </p>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-primary to-orange-600 h-2 rounded-full transition-all"
-                      style={{ width: `${appreciationData.investmentScore}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Projected Appreciation - Visual Cards instead of Bar Chart */}
-              <div>
-                <h3 className="font-semibold mb-4">Projected Property Value</h3>
-                <div className="grid grid-cols-4 gap-4">
-                  {appreciationData.projectedRates.map((rate, index) => {
-                    const progressHeight = Math.min(100, (rate.appreciationPercent / 200) * 100)
-                    return (
-                      <div 
-                        key={rate.years} 
-                        className="relative p-4 rounded-xl bg-gradient-to-b from-muted/50 to-muted/20 border border-border/50 overflow-hidden group hover:border-primary/30 transition-all"
-                      >
-                        {/* Background growth indicator */}
-                        <div 
-                          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary/20 to-transparent transition-all duration-500"
-                          style={{ height: `${progressHeight}%` }}
-                        />
-                        
-                        {/* Content */}
-                        <div className="relative z-10">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{rate.years} Years</span>
-                            <Badge className="bg-success/10 text-success border-0 text-xs">
-                              +{rate.appreciationPercent}%
-                            </Badge>
-                          </div>
-                          <p className="text-xl font-bold mb-1">{formatCurrency(rate.estimatedValue)}</p>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <TrendingUp className="w-3 h-3 text-success" />
-                            <span>from {formatCurrency(property.price)}</span>
-                          </div>
-                        </div>
+            <TabsContent value="inventory" className="mt-4 space-y-5 data-[state=inactive]:hidden">
+              {property.unitConfigurations && property.unitConfigurations.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {property.unitConfigurations.map((unit, index) => (
+                    <div key={`${unit.configuration}-${index}`} className="rounded-lg border border-border/70 bg-card p-4">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                        <Badge variant="outline">{unit.configuration}</Badge>
+                        {unit.price && <span className="font-semibold">{unit.price}</span>}
                       </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Historical Rates - Clean Line Chart */}
-              <div>
-                <h3 className="font-semibold mb-4">Historical Appreciation Rates</h3>
-                <div className="p-4 rounded-xl bg-muted/20 border border-border/50">
-                  <div className="h-40">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={appreciationData.historicalRates}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                        <XAxis 
-                          dataKey="year" 
-                          stroke="hsl(var(--muted-foreground))" 
-                          fontSize={11}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis 
-                          stroke="hsl(var(--muted-foreground))" 
-                          fontSize={11}
-                          tickLine={false}
-                          axisLine={false}
-                          tickFormatter={(v) => `${v}%`}
-                          width={35}
-                        />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: "hsl(var(--card))", 
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                            boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
-                          }}
-                          formatter={(value: number) => [`${value}%`, "Annual Rate"]}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="rate" 
-                          stroke="hsl(var(--primary))" 
-                          strokeWidth={2.5}
-                          dot={{ fill: "hsl(var(--primary))", strokeWidth: 0, r: 4 }}
-                          activeDot={{ r: 6, fill: "hsl(var(--primary))" }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex items-center justify-center gap-4 mt-3 pt-3 border-t border-border/50">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <div className="w-3 h-3 rounded-full bg-primary" />
-                      <span>Annual Appreciation Rate (%)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Location Factors */}
-              <div>
-                <h3 className="font-semibold mb-4">Growth Factors</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  {appreciationData.locationFactors.map((factor, i) => (
-                    <div key={i} className="flex items-center gap-2 p-3 rounded-lg bg-success/5 border border-success/10">
-                      <Zap className="w-4 h-4 text-success shrink-0" />
-                      <span className="text-sm">{factor}</span>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <DetailRow label="Area" value={unit.area_sqft ? `${unit.area_sqft} sqft` : null} />
+                        <DetailRow label="Carpet" value={unit.carpet_area_sqft ? `${unit.carpet_area_sqft} sqft` : null} />
+                        <DetailRow label="Basic Rate" value={unit.basic_rate} />
+                        <DetailRow label="Min Price" value={unit.price_min ? formatCurrency(unit.price_min) : null} />
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                  <Building2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/60" />
+                  <h3 className="font-semibold">Unit configuration is not uploaded yet</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Sales users can still pitch from the base project details, but exact unit options are pending.
+                  </p>
+                </div>
+              )}
             </TabsContent>
 
-            <TabsContent value="amenities" className="mt-4 space-y-6 data-[state=inactive]:hidden">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {property.amenities.map((amenity, index) => {
-                  const Icon = getAmenityIcon(amenity)
-                  return (
-                    <div 
-                      key={index}
-                      className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-primary" />
-                      </div>
-                      <span className="font-medium">{amenity}</span>
+            <TabsContent value="visit" className="mt-4 space-y-5 data-[state=inactive]:hidden">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg border border-border/70 bg-card p-4">
+                  <CheckCircle2 className="mb-3 h-5 w-5 text-success" />
+                  <h3 className="font-semibold">Before Calling</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Check status, available configuration, price band, and whether the sample house can be shown.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/70 bg-card p-4">
+                  <Calendar className="mb-3 h-5 w-5 text-primary" />
+                  <h3 className="font-semibold">Visit Positioning</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{getVisitNote(property)}</p>
+                </div>
+                <div className="rounded-lg border border-border/70 bg-card p-4">
+                  <Shield className="mb-3 h-5 w-5 text-warning" />
+                  <h3 className="font-semibold">Availability Check</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {property.status === "available"
+                      ? "Pitchable now. Confirm final inventory before commitment."
+                      : `${formatStatus(property.status)} status. Confirm before promising availability.`}
+                  </p>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Facilities To Mention</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {property.amenities.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {property.amenities.map((amenity, index) => (
+                        <Badge key={`${amenity}-${index}`} variant="secondary" className="px-3 py-1">
+                          {amenity}
+                        </Badge>
+                      ))}
                     </div>
-                  )
-                })}
-              </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Facilities are pending in the inventory sheet.</p>
+                  )}
+                </CardContent>
+              </Card>
 
-              {/* Special Features */}
-              <div className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-orange-600/5 border border-primary/10">
-                <h4 className="font-semibold mb-3">Why This Property Stands Out</h4>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-primary mt-1 shrink-0" />
-                    <span className="text-sm">Developed by {property.developer} - known for premium quality construction</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-primary mt-1 shrink-0" />
-                    <span className="text-sm">Prime {property.location} location with excellent connectivity</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-primary mt-1 shrink-0" />
-                    <span className="text-sm">Expected {property.roi}% annual appreciation based on area trends</span>
-                  </li>
-                </ul>
-              </div>
+              {(property.roi > 0 || appreciation) && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Investment Talking Points</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    {property.roi > 0 && (
+                      <div className="flex items-center gap-2 rounded-lg bg-success/5 p-3 text-success">
+                        <TrendingUp className="h-4 w-4" />
+                        <span>Expected ROI: {property.roi}%</span>
+                      </div>
+                    )}
+                    {appreciation?.locationFactors?.map((factor, index) => (
+                      <div key={`${factor}-${index}`} className="rounded-lg border border-border/70 p-3">
+                        {factor}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
-            <TabsContent value="callscript" className="mt-4 space-y-6 data-[state=inactive]:hidden">
+            <TabsContent value="script" className="mt-4 space-y-5 data-[state=inactive]:hidden">
               {callScript ? (
                 <>
-                  {/* Introduction */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-primary" />
-                      Opening Script
-                    </h3>
-                    <div className="p-4 rounded-xl bg-muted/30 whitespace-pre-wrap text-sm">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Phone className="h-4 w-4 text-primary" />
+                        Opening
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="whitespace-pre-wrap text-sm text-muted-foreground">
                       {callScript.introduction}
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
 
-                  {/* Key Highlights */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Star className="w-4 h-4 text-primary" />
-                      Key Highlights to Mention
-                    </h3>
-                    <div className="space-y-2">
-                      {callScript.keyHighlights.map((highlight, i) => (
-                        <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-success/5 border border-success/10">
-                          <span className="w-6 h-6 rounded-full bg-success/10 flex items-center justify-center text-xs font-bold text-success shrink-0">
-                            {i + 1}
-                          </span>
-                          <span className="text-sm">{highlight}</span>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Star className="h-4 w-4 text-primary" />
+                        Highlights
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {callScript.keyHighlights.map((highlight, index) => (
+                        <div key={`${highlight}-${index}`} className="rounded-lg border border-border/70 p-3 text-sm">
+                          {highlight}
                         </div>
                       ))}
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
 
-                  {/* Price Justification */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-primary" />
-                      Price Justification
-                    </h3>
-                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 text-sm">
-                      {callScript.priceJustification}
-                    </div>
-                  </div>
-
-                  {/* Objection Handling */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-warning" />
-                      Objection Handling
-                    </h3>
-                    <div className="space-y-3">
-                      {callScript.objectionHandling.map((item, i) => (
-                        <div key={i} className="p-4 rounded-xl bg-muted/30 space-y-2">
-                          <p className="text-sm font-medium text-destructive">
-                            Objection: &quot;{item.objection}&quot;
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            <span className="font-medium text-success">Response:</span> {item.response}
-                          </p>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Objection Handling</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {callScript.objectionHandling.map((scriptItem, index) => (
+                        <div key={`${scriptItem.objection}-${index}`} className="rounded-lg bg-muted/30 p-3 text-sm">
+                          <p className="font-medium">Objection: &quot;{scriptItem.objection}&quot;</p>
+                          <p className="mt-1 text-muted-foreground">Response: {scriptItem.response}</p>
                         </div>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Closing */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-success" />
-                      Closing Statement
-                    </h3>
-                    <div className="p-4 rounded-xl bg-success/5 border border-success/10 text-sm font-medium">
-                      {callScript.closingStatement}
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 </>
               ) : (
-                <div className="text-center py-12">
-                  <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Custom Script Available</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Use the general calling scripts from the Scripts section for this property.
+                <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                  <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground/60" />
+                  <h3 className="font-semibold">No property-specific script yet</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Use the general scripts tab, then tailor the pitch with the snapshot and visit prep above.
                   </p>
-                  <Button variant="outline">
-                    <FileText className="w-4 h-4 mr-2" />
-                    View General Scripts
-                  </Button>
                 </div>
               )}
             </TabsContent>
@@ -877,7 +687,7 @@ function PropertyDetailModal({
 }
 
 export default function PropertiesPage() {
-  const [view, setView] = React.useState<"grid" | "list">("grid")
+  const [view, setView] = React.useState<"grid" | "list">("list")
   const [search, setSearch] = React.useState("")
   const [locationFilter, setLocationFilter] = React.useState<string>("all")
   const [typeFilter, setTypeFilter] = React.useState<string>("all")
@@ -938,33 +748,35 @@ export default function PropertiesPage() {
     return Math.max(200000000, ...properties.map((property) => property.price))
   }, [properties])
 
+  const stats = React.useMemo(() => {
+    const available = properties.filter((property) => property.status === "available").length
+    const sampleHouses = properties.filter((property) => property.sampleHouse).length
+    const withUnitData = properties.filter((property) => property.unitConfigurations?.length).length
+    const reservedOrUpcoming = properties.filter((property) => property.status === "reserved" || property.status === "upcoming").length
+
+    return { available, sampleHouses, withUnitData, reservedOrUpcoming }
+  }, [properties])
+
   const filteredProperties = React.useMemo(() => {
     return properties.filter((property) => {
       if (search) {
         const searchLower = search.toLowerCase()
-        if (
-          !property.name.toLowerCase().includes(searchLower) &&
-          !property.location.toLowerCase().includes(searchLower)
-        ) {
-          return false
-        }
+        const searchableText = [
+          property.name,
+          property.location,
+          property.area,
+          property.developer,
+          property.relevance,
+          getConfigurationSummary(property),
+        ].join(" ").toLowerCase()
+
+        if (!searchableText.includes(searchLower)) return false
       }
 
-      if (locationFilter !== "all" && property.location !== locationFilter) {
-        return false
-      }
-
-      if (typeFilter !== "all" && property.type !== typeFilter) {
-        return false
-      }
-
-      if (statusFilter !== "all" && property.status !== statusFilter) {
-        return false
-      }
-
-      if (property.price < budgetRange[0] || property.price > budgetRange[1]) {
-        return false
-      }
+      if (locationFilter !== "all" && property.location !== locationFilter) return false
+      if (typeFilter !== "all" && property.type !== typeFilter) return false
+      if (statusFilter !== "all" && property.status !== statusFilter) return false
+      if (property.price < budgetRange[0] || property.price > budgetRange[1]) return false
 
       return true
     })
@@ -977,60 +789,63 @@ export default function PropertiesPage() {
       animate="show"
       className="space-y-6"
     >
-      {/* Header */}
-      <motion.div variants={item} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <motion.div variants={item} className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Property Explorer</h1>
-          <p className="text-muted-foreground mt-1">
-            {isLoading ? "Loading properties..." : `${filteredProperties.length} luxury properties`}
+          <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
+          <p className="mt-1 text-muted-foreground">
+            Internal property inventory for matching leads, preparing calls, and booking site visits.
           </p>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-          <Button 
-            variant="outline" 
-            className="gap-2"
-            onClick={() => setShowRecommendations(true)}
-          >
-            <Sparkles className="w-4 h-4" />
-            AI Recommendations
-            {aiRecommendations.length > 0 && (
-              <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center bg-primary text-primary-foreground">
-                {aiRecommendations.length}
-              </Badge>
-            )}
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => setShowRecommendations(true)}
+        >
+          <Sparkles className="h-4 w-4" />
+          Lead Matches
+          {aiRecommendations.length > 0 && (
+            <Badge className="ml-1 flex h-5 w-5 items-center justify-center p-0">
+              {aiRecommendations.length}
+            </Badge>
+          )}
+        </Button>
       </motion.div>
 
-      {/* Filters Bar */}
-      <motion.div variants={item} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-        <div className="relative w-full sm:flex-1 sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard title="Total Inventory" value={properties.length} detail="All active CRM properties" icon={Building2} />
+        <SummaryCard title="Available" value={stats.available} detail="Can be pitched after final check" icon={CheckCircle2} />
+        <SummaryCard title="Sample Houses" value={stats.sampleHouses} detail="Useful for visit conversion" icon={Home} />
+        <SummaryCard title="Pipeline Stock" value={stats.reservedOrUpcoming} detail="Reserved or upcoming inventory" icon={TrendingUp} />
+      </div>
+
+      <motion.div variants={item} className="flex flex-col gap-3 rounded-lg border border-border/60 bg-card p-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative w-full sm:min-w-72 sm:flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search properties..."
+            placeholder="Search project, developer, location, configuration..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 bg-muted/50 border-border/50"
+            onChange={(event) => setSearch(event.target.value)}
+            className="pl-10"
           />
         </div>
 
         <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger className="w-full bg-muted/50 sm:w-40">
+          <SelectTrigger className="w-full sm:w-44">
             <SelectValue placeholder="Location" />
           </SelectTrigger>
-          <SelectContent className="glass">
+          <SelectContent>
             <SelectItem value="all">All Locations</SelectItem>
-            {locationOptions.map((loc) => (
-              <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+            {locationOptions.map((location) => (
+              <SelectItem key={location} value={location}>{location}</SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-full bg-muted/50 sm:w-40">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
-          <SelectContent className="glass">
+          <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             {propertyTypes.map((type) => (
               <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
@@ -1039,48 +854,47 @@ export default function PropertiesPage() {
         </Select>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full bg-muted/50 sm:w-36">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent className="glass">
+          <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="available">Available</SelectItem>
-            <SelectItem value="sold">Sold</SelectItem>
             <SelectItem value="reserved">Reserved</SelectItem>
             <SelectItem value="upcoming">Upcoming</SelectItem>
+            <SelectItem value="sold">Sold</SelectItem>
           </SelectContent>
         </Select>
 
         <Button
           variant="outline"
-          className={cn("gap-2", showFilters && "bg-primary/10 border-primary/30")}
+          className={cn("gap-2", showFilters && "border-primary/30 bg-primary/10")}
           onClick={() => setShowFilters(!showFilters)}
         >
-          <Filter className="w-4 h-4" />
-          Budget
+          <Filter className="h-4 w-4" />
+          Price
         </Button>
 
-        <div className="flex items-center border border-border rounded-lg p-1">
-          <Button
-            variant={view === "grid" ? "secondary" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setView("grid")}
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </Button>
+        <div className="flex items-center rounded-lg border border-border p-1">
           <Button
             variant={view === "list" ? "secondary" : "ghost"}
             size="icon"
             className="h-8 w-8"
             onClick={() => setView("list")}
           >
-            <List className="w-4 h-4" />
+            <List className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={view === "grid" ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setView("grid")}
+          >
+            <LayoutGrid className="h-4 w-4" />
           </Button>
         </div>
       </motion.div>
 
-      {/* Budget Range Filter */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
@@ -1088,11 +902,11 @@ export default function PropertiesPage() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <Card className="glass">
+            <Card>
               <CardContent className="p-4">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Budget Range</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-medium">Price Range</span>
                     <span className="text-sm text-muted-foreground">
                       {formatCurrency(budgetRange[0])} - {formatCurrency(budgetRange[1])}
                     </span>
@@ -1112,15 +926,24 @@ export default function PropertiesPage() {
         )}
       </AnimatePresence>
 
+      <motion.div variants={item} className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>{isLoading ? "Loading inventory..." : `${filteredProperties.length} properties in current view`}</span>
+        <span>{stats.withUnitData} properties include unit-level configuration data</span>
+      </motion.div>
+
       {isLoading && (
-        <motion.div variants={item} className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <motion.div variants={item} className="grid gap-4">
           {[0, 1, 2].map((index) => (
-            <Card key={index} className="glass overflow-hidden">
-              <div className="h-56 animate-pulse bg-muted" />
-              <CardContent className="space-y-3 p-4">
+            <Card key={index} className="overflow-hidden sm:flex">
+              <div className="h-28 animate-pulse bg-muted sm:w-44" />
+              <CardContent className="flex-1 space-y-3 p-4">
                 <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
                 <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
-                <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="h-14 animate-pulse rounded bg-muted" />
+                  <div className="h-14 animate-pulse rounded bg-muted" />
+                  <div className="h-14 animate-pulse rounded bg-muted" />
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -1128,7 +951,7 @@ export default function PropertiesPage() {
       )}
 
       {error && !isLoading && (
-        <motion.div variants={item} className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+        <motion.div variants={item} className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
           {error}
         </motion.div>
       )}
@@ -1137,16 +960,15 @@ export default function PropertiesPage() {
         <motion.div
           variants={container}
           className={cn(
-            "grid gap-6",
-            view === "grid"
-              ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-              : "grid-cols-1"
+            "grid gap-4",
+            view === "grid" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1",
           )}
         >
           {filteredProperties.map((property) => (
             <PropertyCard
               key={property.id}
               property={property}
+              view={view}
               onViewDetails={setSelectedProperty}
             />
           ))}
@@ -1154,73 +976,65 @@ export default function PropertiesPage() {
       )}
 
       {!isLoading && !error && filteredProperties.length === 0 && (
-        <motion.div variants={item} className="text-center py-16">
-          <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No properties found</h3>
-          <p className="text-muted-foreground">Try adjusting your filters</p>
+        <motion.div variants={item} className="rounded-lg border border-dashed border-border p-12 text-center">
+          <Search className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" />
+          <h3 className="text-lg font-semibold">No matching inventory</h3>
+          <p className="mt-1 text-muted-foreground">Adjust filters or search another project, developer, or location.</p>
         </motion.div>
       )}
 
-      {/* Property Detail Modal */}
       <PropertyDetailModal
         property={selectedProperty}
         onClose={() => setSelectedProperty(null)}
       />
 
-      {/* AI Recommendations Modal */}
       <Dialog open={showRecommendations} onOpenChange={setShowRecommendations}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              AI Property Recommendations
+              <Sparkles className="h-5 w-5 text-primary" />
+              Lead Matches
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 mt-4">
+          <div className="mt-4 space-y-3">
             {aiRecommendations.length > 0 ? (
-              aiRecommendations.map((rec) => (
-                <Card 
-                  key={rec.lead.id} 
-                  className="border-border/50 hover:border-primary/30 transition-colors cursor-pointer"
+              aiRecommendations.map((recommendation) => (
+                <button
+                  key={`${recommendation.lead.id}-${recommendation.property.id}`}
+                  className="w-full rounded-lg border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40"
                   onClick={() => {
-                    setSelectedProperty(rec.property)
+                    setSelectedProperty(recommendation.property)
                     setShowRecommendations(false)
                   }}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div 
-                        className="w-24 h-24 rounded-lg bg-cover bg-center shrink-0"
-                        style={{ backgroundImage: `url(${rec.property.images[0]})` }}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold">{rec.property.name}</h4>
-                          <Badge className="bg-success/10 text-success border-0">
-                            {rec.matchScore}% Match
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {rec.property.location} | {formatCurrency(rec.property.price)}
-                        </p>
-                        <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5">
-                          <Sparkles className="w-4 h-4 text-primary" />
-                          <span className="text-sm">
-                            Perfect for <span className="font-medium">{rec.lead.name}</span> - 
-                            Looking for {rec.lead.propertyInterest.join(", ")} in {rec.lead.location}
-                          </span>
-                        </div>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                    <div
+                      className="h-24 w-full shrink-0 rounded-lg bg-muted bg-cover bg-center sm:w-28"
+                      style={{ backgroundImage: `url(${recommendation.property.images[0]})` }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="font-semibold">{recommendation.property.name}</h4>
+                        <Badge className="border-success/20 bg-success/10 text-success">
+                          {recommendation.matchScore}% fit
+                        </Badge>
                       </div>
+                      <p className="text-sm text-muted-foreground">
+                        Match for {recommendation.lead.name}: {recommendation.lead.propertyInterest.join(", ")} in {recommendation.lead.location}
+                      </p>
+                      <p className="mt-2 text-sm">
+                        {formatCurrency(recommendation.property.price)} | {getConfigurationSummary(recommendation.property)} | {getVisitNote(recommendation.property)}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </button>
               ))
             ) : (
-              <div className="text-center py-8">
-                <Sparkles className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Recommendations Available</h3>
-                <p className="text-muted-foreground">
-                  Add more hot leads to get AI-powered property recommendations
+              <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                <Sparkles className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+                <h3 className="font-semibold">No lead matches right now</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add or qualify hot leads to surface property matches for sales follow-up.
                 </p>
               </div>
             )}
@@ -1230,4 +1044,3 @@ export default function PropertiesPage() {
     </motion.div>
   )
 }
-
