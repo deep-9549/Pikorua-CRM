@@ -21,13 +21,19 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command"
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
-import { formatPhone, phoneHref } from "@/lib/utils"
+import { cn, formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -708,6 +714,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [showAllRecommendations, setShowAllRecommendations] = useState(false)
   const [selectedRecommendation, setSelectedRecommendation] = useState<PropertyRecommendation | null>(null)
   const [preferredLocationOptions, setPreferredLocationOptions] = useState<string[]>([])
+  const [preferredLocationOpen, setPreferredLocationOpen] = useState(false)
 
   useEffect(() => {
     setIsSuperAdmin(getAuthUser()?.role === "super_admin")
@@ -1213,20 +1220,65 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Preferred Location</Label>
-                    <Select
-                      value={crm.preferred_locations?.[0] ?? "none"}
-                      onValueChange={value => setCrm(p => ({ ...p, preferred_locations: value === "none" ? null : [value] }))}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Select preferred location..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No preference yet</SelectItem>
-                        {preferredLocationSelectOptions.map(location => (
-                          <SelectItem key={location} value={location}>{location}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={preferredLocationOpen} onOpenChange={setPreferredLocationOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={preferredLocationOpen}
+                          className="h-9 w-full justify-between px-3 text-sm font-normal"
+                        >
+                          <span className="truncate">
+                            {crm.preferred_locations?.[0] ?? "Select preferred location..."}
+                          </span>
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search location..." />
+                          <CommandList>
+                            <CommandEmpty>No matching location.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                value="No preference yet"
+                                onSelect={() => {
+                                  setCrm(p => ({ ...p, preferred_locations: null }))
+                                  setPreferredLocationOpen(false)
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    crm.preferred_locations?.[0] ? "opacity-0" : "opacity-100"
+                                  )}
+                                />
+                                No preference yet
+                              </CommandItem>
+                              {preferredLocationSelectOptions.map(location => (
+                                <CommandItem
+                                  key={location}
+                                  value={location}
+                                  onSelect={() => {
+                                    setCrm(p => ({ ...p, preferred_locations: [location] }))
+                                    setPreferredLocationOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      crm.preferred_locations?.[0] === location ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {location}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 
