@@ -214,6 +214,11 @@ interface PropertyRecommendation {
   matched_units: RecommendedUnit[]
 }
 
+type PropertyLocationRow = {
+  location?: unknown
+  area?: unknown
+}
+
 function localDateTimeParts(value: string | null) {
   if (!value) return { date: "", time: "" }
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return { date: value, time: "00:00" }
@@ -412,14 +417,6 @@ function recommendationPitchText(recommendation: PropertyRecommendation) {
     ...recommendation.pitch_points,
     ...recommendation.warnings.map(warning => `Note: ${warning}`),
   ].join("\n")
-}
-
-function parseLocationPreference(value: string) {
-  const locations = value
-    .split(",")
-    .map(item => item.trim())
-    .filter(Boolean)
-  return locations.length > 0 ? locations : null
 }
 
 function RecommendationCard({
@@ -710,6 +707,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [recommendationsError, setRecommendationsError] = useState<string | null>(null)
   const [showAllRecommendations, setShowAllRecommendations] = useState(false)
   const [selectedRecommendation, setSelectedRecommendation] = useState<PropertyRecommendation | null>(null)
+  const [preferredLocationOptions, setPreferredLocationOptions] = useState<string[]>([])
 
   useEffect(() => {
     setIsSuperAdmin(getAuthUser()?.role === "super_admin")
@@ -762,6 +760,38 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       setNextLeadId(index >= 0 && index < ids.length - 1 ? ids[index + 1] : null)
     }).catch(() => { setPreviousLeadId(null); setNextLeadId(null) })
   }, [id])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadPreferredLocationOptions() {
+      try {
+        const res = await fetch("/api/properties", { cache: "no-store" })
+        const payload = await res.json().catch(() => null)
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.properties)
+            ? payload.properties
+            : []
+        const options = Array.from(new Set(
+          (rows as PropertyLocationRow[])
+            .flatMap(row => [row.location, row.area])
+            .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+            .map(value => value.trim()),
+        )).sort((a, b) => a.localeCompare(b))
+
+        if (!cancelled) setPreferredLocationOptions(options)
+      } catch {
+        if (!cancelled) setPreferredLocationOptions([])
+      }
+    }
+
+    void loadPreferredLocationOptions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const hasInputs = Boolean(
@@ -983,6 +1013,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const visibleRecommendations = showAllRecommendations
     ? propertyRecommendations
     : propertyRecommendations.slice(0, 3)
+  const preferredLocationSelectOptions = Array.from(new Set([
+    ...preferredLocationOptions,
+    ...(crm.preferred_locations ?? []),
+  ].filter(Boolean))).sort((a, b) => a.localeCompare(b))
   const clientStatusSection = (
     <div className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
@@ -1177,12 +1211,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       Areas where the client wants to buy. These are used first for smart recommendations.
                     </p>
                   </div>
-                  <TextField
-                    label="Preferred Locations"
-                    value={(crm.preferred_locations ?? []).join(", ")}
-                    placeholder="e.g. Gota, Science City, Thaltej"
-                    onChange={v => setCrm(p => ({ ...p, preferred_locations: parseLocationPreference(v) }))}
-                  />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Preferred Location</Label>
+                    <Select
+                      value={crm.preferred_locations?.[0] ?? "none"}
+                      onValueChange={value => setCrm(p => ({ ...p, preferred_locations: value === "none" ? null : [value] }))}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select preferred location..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No preference yet</SelectItem>
+                        {preferredLocationSelectOptions.map(location => (
+                          <SelectItem key={location} value={location}>{location}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
