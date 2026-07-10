@@ -252,6 +252,21 @@ function SummaryCard({
   )
 }
 
+function BriefMetric({
+  label,
+  value,
+}: {
+  label: string
+  value: React.ReactNode
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border/60 bg-muted/20 p-3">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="mt-1 break-words text-base font-semibold leading-snug">{value}</div>
+    </div>
+  )
+}
+
 function PropertyCard({
   property,
   view,
@@ -386,81 +401,76 @@ function PropertyDetailModal({
   const callScript = propertyCallScripts.find((script) => script.propertyId === property.id)
   const appreciation = propertyAppreciations.find((item) => item.propertyId === property.id)
   const imageUrl = property.images[currentImageIndex] ?? FALLBACK_PROPERTY_IMAGE
+  const hasPropertyImage = imageUrl !== FALLBACK_PROPERTY_IMAGE
 
   return (
     <Dialog open={!!property} onOpenChange={() => onClose()}>
-      <DialogContent className="flex h-[90vh] max-w-6xl flex-col overflow-hidden p-0">
+      <DialogContent
+        showCloseButton={false}
+        className="flex h-[min(90vh,780px)] w-[min(1040px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0 sm:max-w-none"
+      >
         <DialogHeader className="sr-only">
           <DialogTitle>{property.name} sales brief</DialogTitle>
         </DialogHeader>
 
-        <div className="flex shrink-0 flex-col border-b border-border bg-card lg:flex-row">
-          <div className="relative h-48 overflow-hidden bg-muted lg:h-auto lg:w-72">
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${imageUrl})` }}
-            />
-            <div className="absolute left-3 top-3 flex gap-2">
-              <Badge className={getStatusClass(property.status)}>{formatStatus(property.status)}</Badge>
-              {property.sampleHouse && <Badge variant="secondary">Sample house</Badge>}
-            </div>
-            {property.images.length > 1 && (
-              <div className="absolute bottom-3 right-3 flex gap-2">
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="h-8 w-8 bg-card/90"
-                  onClick={() => setCurrentImageIndex((index) => (index - 1 + property.images.length) % property.images.length)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="h-8 w-8 bg-card/90"
-                  onClick={() => setCurrentImageIndex((index) => (index + 1) % property.images.length)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
+        <div className="shrink-0 border-b border-border bg-card p-5">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 gap-4">
+                {hasPropertyImage && (
+                  <div className="relative hidden h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted sm:block">
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${imageUrl})` }}
+                    />
+                    {property.images.length > 1 && (
+                      <div className="absolute bottom-1 right-1 flex gap-1">
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-6 w-6 bg-card/90"
+                          onClick={() => setCurrentImageIndex((index) => (index - 1 + property.images.length) % property.images.length)}
+                        >
+                          <ChevronLeft className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-6 w-6 bg-card/90"
+                          onClick={() => setCurrentImageIndex((index) => (index + 1) % property.images.length)}
+                        >
+                          <ChevronRight className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-          <div className="flex min-w-0 flex-1 flex-col justify-between gap-4 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{formatPropertyType(property.type)}</Badge>
-                  {property.featured && <Badge variant="outline">Priority inventory</Badge>}
+                <div className="min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <Badge className={getStatusClass(property.status)}>{formatStatus(property.status)}</Badge>
+                    <Badge variant="outline">{formatPropertyType(property.type)}</Badge>
+                    {property.sampleHouse && <Badge variant="secondary">Sample house</Badge>}
+                    {property.featured && <Badge variant="outline">Priority inventory</Badge>}
+                  </div>
+                  <h2 className="break-words text-2xl font-semibold tracking-tight">{property.name}</h2>
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    {[property.location, property.area].filter(Boolean).join(", ")}
+                  </p>
                 </div>
-                <h2 className="text-2xl font-semibold tracking-tight">{property.name}</h2>
-                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  {[property.location, property.area].filter(Boolean).join(", ")}
-                </p>
               </div>
+
               <Button variant="ghost" size="icon" onClick={onClose}>
                 <X className="h-5 w-5" />
               </Button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-4">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Base price</p>
-                <p className="mt-1 font-semibold">{formatCurrency(property.price)}</p>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Configuration</p>
-                <p className="mt-1 font-semibold">{getConfigurationSummary(property)}</p>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Visit cue</p>
-                <p className="mt-1 font-semibold">{getVisitNote(property)}</p>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground">Sales status</p>
-                <p className="mt-1 font-semibold">{getPitchReadiness(property)}</p>
-              </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <BriefMetric label="Base price" value={formatCurrency(property.price)} />
+              <BriefMetric label="Configuration" value={getConfigurationSummary(property)} />
+              <BriefMetric label="Visit cue" value={getVisitNote(property)} />
+              <BriefMetric label="Sales status" value={getPitchReadiness(property)} />
             </div>
           </div>
         </div>
