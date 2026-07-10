@@ -29,13 +29,7 @@ import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
 import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 
 const aiModules = [
   {
@@ -270,16 +264,15 @@ export default function AIControlPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm">Processing Mode</Label>
-                  <Select defaultValue="realtime">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="realtime">Real-time</SelectItem>
-                      <SelectItem value="batch">Batch Processing</SelectItem>
-                      <SelectItem value="scheduled">Scheduled</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    defaultValue="realtime"
+                    options={[
+                      { value: "realtime", label: "Real-time" },
+                      { value: "batch", label: "Batch Processing" },
+                      { value: "scheduled", label: "Scheduled" },
+                    ]}
+                    searchPlaceholder="Search mode..."
+                  />
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <Label className="text-sm">Auto-approve suggestions</Label>

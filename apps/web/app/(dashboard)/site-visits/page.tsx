@@ -19,9 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getAuthUser } from "@/lib/auth/cookies"
@@ -355,9 +353,16 @@ function VisitOutcomeDialog({ visit, onClose, onSaved }: { visit: VisitRow | nul
         <DialogHeader><DialogTitle>Update Site Visit Outcome</DialogTitle><DialogDescription>{visit?.lead.full_name ?? 'Lead'} · record what happened after the visit time passed.</DialogDescription></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5"><Label>Outcome</Label>
-            <Select value={outcome} onValueChange={v => setOutcome(v as typeof outcome)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
-              <SelectItem value="visit_done">Visit Done</SelectItem><SelectItem value="visit_rescheduled">Visit Rescheduled</SelectItem><SelectItem value="visit_cancelled">Visit Cancelled</SelectItem>
-            </SelectContent></Select>
+            <SearchableSelect
+              value={outcome}
+              onValueChange={v => setOutcome(v as typeof outcome)}
+              options={[
+                { value: "visit_done", label: "Visit Done" },
+                { value: "visit_rescheduled", label: "Visit Rescheduled" },
+                { value: "visit_cancelled", label: "Visit Cancelled" },
+              ]}
+              searchPlaceholder="Search outcome..."
+            />
           </div>
           {outcome === 'visit_done' && <div className="space-y-1.5"><Label>Visit Remarks</Label><Textarea value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Customer response, project feedback..." /></div>}
           {outcome === 'visit_rescheduled' && <div className="space-y-1.5"><Label>Rescheduled Date & Time</Label><Input type="datetime-local" value={rescheduledDate} onChange={e => setRescheduledDate(e.target.value)} /></div>}
@@ -494,15 +499,18 @@ function ScheduleVisitDialog({
 
           <div className="space-y-1.5">
             <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Visit Status</Label>
-            <Select value={status} onValueChange={v => setStatus(v as VisitRow["site_visit_status"])}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="yet_to_visit">Yet to Visit</SelectItem>
-                <SelectItem value="visit_week_confirmed">Visit Week Confirmed</SelectItem>
-                <SelectItem value="visit_date_confirmed">Visit Date Confirmed</SelectItem>
-                <SelectItem value="visited">Visited</SelectItem>
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={status}
+              onValueChange={v => setStatus(v as VisitRow["site_visit_status"])}
+              options={[
+                { value: "yet_to_visit", label: "Yet to Visit" },
+                { value: "visit_week_confirmed", label: "Visit Week Confirmed" },
+                { value: "visit_date_confirmed", label: "Visit Date Confirmed" },
+                { value: "visited", label: "Visited" },
+              ]}
+              searchPlaceholder="Search visit status..."
+              triggerClassName="h-9 text-sm"
+            />
           </div>
 
           {needsDate && (

@@ -17,15 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover"
-import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
-} from "@/components/ui/command"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -33,7 +25,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
-import { cn, formatPhone, phoneHref } from "@/lib/utils"
+import { formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -146,6 +138,30 @@ const BUDGET_OPTIONS = [
   "21 Cr+",
 ]
 const CONFIGURATIONS = ["3 BHK","4 BHK","5 BHK","Penthouse","Bungalows","Duplex","Plot","Other"]
+const CALL_STATUS_OPTIONS = [
+  { value: "spoken", label: "Spoken" },
+  { value: "not_spoken", label: "Not Spoken" },
+  { value: "call_back_later", label: "Call Back Later" },
+]
+const NOT_SPOKEN_REASON_OPTIONS = [
+  { value: "customer_busy", label: "Customer is Busy" },
+  { value: "wrong_number", label: "Wrong Number" },
+  { value: "out_of_reach", label: "Number Out of Reach" },
+  { value: "did_not_pickup", label: "Did Not Pick Up" },
+]
+const SITE_VISIT_STATUS_OPTIONS = [
+  { value: "yet_to_visit", label: "Yet to Visit" },
+  { value: "visit_week_confirmed", label: "Visit Week Confirmed" },
+  { value: "visit_date_confirmed", label: "Visit Date Confirmed" },
+  { value: "visited", label: "Visited" },
+]
+const BUYING_STATUS_OPTIONS = [
+  { value: "still_searching", label: "Still Searching" },
+  { value: "interested", label: "Interested" },
+  { value: "postponed", label: "Postponed for Now" },
+  { value: "bought", label: "Bought Already" },
+  { value: "not_interested", label: "Not Interested" },
+]
 
 const CLIENT_STATUSES = [
   { value: "hot",   label: "Hot",   icon: Flame,         color: "oklch(0.75 0.18 35)",  bg: "oklch(0.75 0.18 35 / 0.15)"  },
@@ -714,7 +730,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [showAllRecommendations, setShowAllRecommendations] = useState(false)
   const [selectedRecommendation, setSelectedRecommendation] = useState<PropertyRecommendation | null>(null)
   const [preferredLocationOptions, setPreferredLocationOptions] = useState<string[]>([])
-  const [preferredLocationOpen, setPreferredLocationOpen] = useState(false)
 
   useEffect(() => {
     setIsSuperAdmin(getAuthUser()?.role === "super_admin")
@@ -1220,65 +1235,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Preferred Location</Label>
-                    <Popover open={preferredLocationOpen} onOpenChange={setPreferredLocationOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={preferredLocationOpen}
-                          className="h-9 w-full justify-between px-3 text-sm font-normal"
-                        >
-                          <span className="truncate">
-                            {crm.preferred_locations?.[0] ?? "Select preferred location..."}
-                          </span>
-                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search location..." />
-                          <CommandList>
-                            <CommandEmpty>No matching location.</CommandEmpty>
-                            <CommandGroup>
-                              <CommandItem
-                                value="No preference yet"
-                                onSelect={() => {
-                                  setCrm(p => ({ ...p, preferred_locations: null }))
-                                  setPreferredLocationOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    crm.preferred_locations?.[0] ? "opacity-0" : "opacity-100"
-                                  )}
-                                />
-                                No preference yet
-                              </CommandItem>
-                              {preferredLocationSelectOptions.map(location => (
-                                <CommandItem
-                                  key={location}
-                                  value={location}
-                                  onSelect={() => {
-                                    setCrm(p => ({ ...p, preferred_locations: [location] }))
-                                    setPreferredLocationOpen(false)
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      crm.preferred_locations?.[0] === location ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  {location}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                    <SearchableSelect
+                      value={crm.preferred_locations?.[0] ?? "none"}
+                      onValueChange={value => setCrm(p => ({ ...p, preferred_locations: value === "none" ? null : [value] }))}
+                      options={[
+                        { value: "none", label: "No preference yet" },
+                        ...preferredLocationSelectOptions.map(location => ({ value: location, label: location })),
+                      ]}
+                      placeholder="Select preferred location..."
+                      searchPlaceholder="Search location..."
+                      emptyMessage="No matching location."
+                      triggerClassName="h-9 text-sm"
+                    />
                   </div>
                 </div>
 
@@ -1291,32 +1259,31 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
                 <div className="space-y-1.5">
                   <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Call Status</Label>
-                  <Select value={crm.call_status ?? ""} onValueChange={v => setCrm(p => ({
-                    ...p, call_status: v || null,
-                    not_spoken_reason: v === 'not_spoken' ? (p.not_spoken_reason ?? 'did_not_pickup') : null,
-                    site_visit_status: null, visit_date: null, visit_confirmation_date: null
-                  }))}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Select status..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="spoken">Spoken</SelectItem>
-                      <SelectItem value="not_spoken">Not Spoken</SelectItem>
-                      <SelectItem value="call_back_later">Call Back Later</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={crm.call_status ?? ""}
+                    onValueChange={v => setCrm(p => ({
+                      ...p, call_status: v || null,
+                      not_spoken_reason: v === 'not_spoken' ? (p.not_spoken_reason ?? 'did_not_pickup') : null,
+                      site_visit_status: null, visit_date: null, visit_confirmation_date: null
+                    }))}
+                    options={CALL_STATUS_OPTIONS}
+                    placeholder="Select status..."
+                    searchPlaceholder="Search status..."
+                    triggerClassName="h-9 text-sm"
+                  />
                 </div>
 
                 {crm.call_status === 'not_spoken' && (
                   <div className="space-y-1.5">
                     <Label className="text-xs">Reason for Not Spoken</Label>
-                    <Select value={crm.not_spoken_reason ?? 'did_not_pickup'} onValueChange={v => setCrm(p => ({ ...p, not_spoken_reason: v }))}>
-                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="customer_busy">Customer is Busy</SelectItem>
-                        <SelectItem value="wrong_number">Wrong Number</SelectItem>
-                        <SelectItem value="out_of_reach">Number Out of Reach</SelectItem>
-                        <SelectItem value="did_not_pickup">Did Not Pick Up</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={crm.not_spoken_reason ?? 'did_not_pickup'}
+                      onValueChange={v => setCrm(p => ({ ...p, not_spoken_reason: v }))}
+                      options={NOT_SPOKEN_REASON_OPTIONS}
+                      placeholder="Select reason..."
+                      searchPlaceholder="Search reason..."
+                      triggerClassName="h-9 text-sm"
+                    />
                   </div>
                 )}
 
@@ -1324,17 +1291,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Site Visit Status</Label>
-                      <Select value={crm.site_visit_status ?? ""} onValueChange={v => setCrm(p => ({
-                        ...p, site_visit_status: v || null, visit_date: null, visit_confirmation_date: null
-                      }))}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Select visit status..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="yet_to_visit">Yet to Visit</SelectItem>
-                          <SelectItem value="visit_week_confirmed">Visit Week Confirmed</SelectItem>
-                          <SelectItem value="visit_date_confirmed">Visit Date Confirmed</SelectItem>
-                          <SelectItem value="visited">Visited</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={crm.site_visit_status ?? ""}
+                        onValueChange={v => setCrm(p => ({
+                          ...p, site_visit_status: v || null, visit_date: null, visit_confirmation_date: null
+                        }))}
+                        options={SITE_VISIT_STATUS_OPTIONS}
+                        placeholder="Select visit status..."
+                        searchPlaceholder="Search visit status..."
+                        triggerClassName="h-9 text-sm"
+                      />
                     </div>
                     {showVisitDate && (
                       <DateTimeField label="Visit Date & Time" value={crm.visit_date}
@@ -1356,28 +1322,26 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     Buying Status
                     {isBuyingStatusRequired && <span style={{ color: "var(--color-primary)" }}> *</span>}
                   </Label>
-                  <Select value={crm.buying_status ?? ""} onValueChange={v => setCrm(p => ({ ...p, buying_status: v || null }))}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Select buying status..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="still_searching">Still Searching</SelectItem>
-                      <SelectItem value="interested">Interested</SelectItem>
-                      <SelectItem value="postponed">Postponed for Now</SelectItem>
-                      <SelectItem value="bought">Bought Already</SelectItem>
-                      <SelectItem value="not_interested">Not Interested</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={crm.buying_status ?? ""}
+                    onValueChange={v => setCrm(p => ({ ...p, buying_status: v || null }))}
+                    options={BUYING_STATUS_OPTIONS}
+                    placeholder="Select buying status..."
+                    searchPlaceholder="Search buying status..."
+                    triggerClassName="h-9 text-sm"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Budget</Label>
-                  <Select value={crm.budget_range ?? ""} onValueChange={v => setCrm(p => ({ ...p, budget_range: v || null }))}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Select budget..." /></SelectTrigger>
-                    <SelectContent>
-                      {BUDGET_OPTIONS.map(option => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={crm.budget_range ?? ""}
+                    onValueChange={v => setCrm(p => ({ ...p, budget_range: v || null }))}
+                    options={BUDGET_OPTIONS.map(option => ({ value: option, label: option }))}
+                    placeholder="Select budget..."
+                    searchPlaceholder="Search budget..."
+                    triggerClassName="h-9 text-sm"
+                  />
                 </div>
 
                 <div className="space-y-2">

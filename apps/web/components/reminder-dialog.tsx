@@ -34,13 +34,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { reminders as initialReminders, Reminder, leads } from "@/lib/data"
 
 interface ReminderDialogProps {
@@ -469,37 +463,31 @@ export function ReminderDialog({ open, onOpenChange }: ReminderDialogProps) {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Category</Label>
-                      <Select 
+                      <SearchableSelect
                         value={newReminder.category}
-                        onValueChange={(v: Reminder["category"]) => setNewReminder({...newReminder, category: v})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="call">Call</SelectItem>
-                          <SelectItem value="meeting">Meeting</SelectItem>
-                          <SelectItem value="follow_up">Follow Up</SelectItem>
-                          <SelectItem value="task">Task</SelectItem>
-                          <SelectItem value="personal">Personal</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        onValueChange={(v) => setNewReminder({...newReminder, category: v as Reminder["category"]})}
+                        options={[
+                          { value: "call", label: "Call" },
+                          { value: "meeting", label: "Meeting" },
+                          { value: "follow_up", label: "Follow Up" },
+                          { value: "task", label: "Task" },
+                          { value: "personal", label: "Personal" },
+                        ]}
+                        searchPlaceholder="Search category..."
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Priority</Label>
-                      <Select 
+                      <SearchableSelect
                         value={newReminder.priority}
-                        onValueChange={(v: Reminder["priority"]) => setNewReminder({...newReminder, priority: v})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="low">Low</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        onValueChange={(v) => setNewReminder({...newReminder, priority: v as Reminder["priority"]})}
+                        options={[
+                          { value: "high", label: "High" },
+                          { value: "medium", label: "Medium" },
+                          { value: "low", label: "Low" },
+                        ]}
+                        searchPlaceholder="Search priority..."
+                      />
                     </div>
                   </div>
 
@@ -524,20 +512,16 @@ export function ReminderDialog({ open, onOpenChange }: ReminderDialogProps) {
 
                   <div className="space-y-2">
                     <Label>Related Lead (Optional)</Label>
-                    <Select 
+                    <SearchableSelect
                       value={newReminder.relatedLeadId}
                       onValueChange={(v) => setNewReminder({...newReminder, relatedLeadId: v})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a lead" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {leads.slice(0, 10).map(lead => (
-                          <SelectItem key={lead.id} value={lead.id}>{lead.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={[
+                        { value: "none", label: "None" },
+                        ...leads.slice(0, 10).map(lead => ({ value: lead.id, label: lead.name })),
+                      ]}
+                      placeholder="Select a lead"
+                      searchPlaceholder="Search lead..."
+                    />
                   </div>
 
                   <div className="flex justify-end gap-3 pt-4">

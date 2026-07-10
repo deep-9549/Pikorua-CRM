@@ -42,13 +42,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { cn } from "@/lib/utils"
@@ -384,16 +378,13 @@ export default function AiAnalyticsPage() {
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row xl:w-auto">
-          <Select value={rangePreset} onValueChange={setRangePreset}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {RANGE_PRESETS.map(option => (
-                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={rangePreset}
+            onValueChange={setRangePreset}
+            options={RANGE_PRESETS.map(option => ({ value: option.value, label: option.label }))}
+            searchPlaceholder="Search range..."
+            triggerClassName="w-full sm:w-[150px]"
+          />
           <Button onClick={() => void fetchAnalytics()} disabled={loading} className="gap-2 gold-gradient font-semibold">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             Refresh
@@ -410,53 +401,68 @@ export default function AiAnalyticsPage() {
 
       <Card className="shadow-card">
         <CardContent className="grid grid-cols-1 gap-3 p-3 md:grid-cols-2 xl:grid-cols-8">
-          <Select value={metricFamily} onValueChange={(value) => setMetricFamily(value as MetricFamily)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {FAMILY_OPTIONS.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {GROUP_OPTIONS.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={source} onValueChange={setSource}>
-            <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              {sources.map(row => <SelectItem key={row.name} value={row.name}>{row.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={campaignName} onValueChange={setCampaignName}>
-            <SelectTrigger><SelectValue placeholder="Campaign" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All campaigns</SelectItem>
-              {campaigns.map(row => <SelectItem key={row.name} value={row.name}>{row.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {statuses.map(row => <SelectItem key={row.name} value={row.name}>{row.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={employeeId} onValueChange={setEmployeeId}>
-            <SelectTrigger><SelectValue placeholder="Employee" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All employees</SelectItem>
-              {employeeOptions.map(row => <SelectItem key={row.id} value={row.id}>{row.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={propertyId} onValueChange={setPropertyId}>
-            <SelectTrigger><SelectValue placeholder="Property" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All properties</SelectItem>
-              {propertyOptions.map(row => <SelectItem key={row.id} value={row.id}>{row.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={metricFamily}
+            onValueChange={(value) => setMetricFamily(value as MetricFamily)}
+            options={FAMILY_OPTIONS.map(option => ({ value: option.value, label: option.label }))}
+            searchPlaceholder="Search metric..."
+          />
+          <SearchableSelect
+            value={groupBy}
+            onValueChange={(value) => setGroupBy(value as GroupBy)}
+            options={GROUP_OPTIONS.map(option => ({ value: option.value, label: option.label }))}
+            searchPlaceholder="Search group..."
+          />
+          <SearchableSelect
+            value={source}
+            onValueChange={setSource}
+            options={[
+              { value: "all", label: "All sources" },
+              ...sources.map(row => ({ value: row.name, label: row.name })),
+            ]}
+            placeholder="Source"
+            searchPlaceholder="Search source..."
+          />
+          <SearchableSelect
+            value={campaignName}
+            onValueChange={setCampaignName}
+            options={[
+              { value: "all", label: "All campaigns" },
+              ...campaigns.map(row => ({ value: row.name, label: row.name })),
+            ]}
+            placeholder="Campaign"
+            searchPlaceholder="Search campaign..."
+          />
+          <SearchableSelect
+            value={status}
+            onValueChange={setStatus}
+            options={[
+              { value: "all", label: "All statuses" },
+              ...statuses.map(row => ({ value: row.name, label: row.name })),
+            ]}
+            placeholder="Status"
+            searchPlaceholder="Search status..."
+          />
+          <SearchableSelect
+            value={employeeId}
+            onValueChange={setEmployeeId}
+            options={[
+              { value: "all", label: "All employees" },
+              ...employeeOptions.map(row => ({ value: row.id, label: row.name })),
+            ]}
+            placeholder="Employee"
+            searchPlaceholder="Search employee..."
+          />
+          <SearchableSelect
+            value={propertyId}
+            onValueChange={setPropertyId}
+            options={[
+              { value: "all", label: "All properties" },
+              ...propertyOptions.map(row => ({ value: row.id, label: row.name })),
+            ]}
+            placeholder="Property"
+            searchPlaceholder="Search property..."
+          />
           <Button variant="outline" onClick={() => { setSource("all"); setCampaignName("all"); setStatus("all"); setEmployeeId("all"); setPropertyId("all"); setMetricFamily("all") }}>
             Clear
           </Button>

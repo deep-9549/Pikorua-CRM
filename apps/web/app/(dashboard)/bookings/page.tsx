@@ -21,9 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
@@ -81,10 +79,10 @@ export default function BookingsPage() {
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader><DialogTitle>Create New Booking</DialogTitle><DialogDescription>Record a new property booking</DialogDescription></DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid gap-2"><Label>Select Lead</Label><Select><SelectTrigger><SelectValue placeholder="Choose a lead" /></SelectTrigger><SelectContent>{leads.map(lead => (<SelectItem key={lead.id} value={lead.id}>{lead.name} - <ProtectedPhone value={lead.phone}>{lead.phone}</ProtectedPhone></SelectItem>))}</SelectContent></Select></div>
-                <div className="grid gap-2"><Label>Select Property</Label><Select><SelectTrigger><SelectValue placeholder="Choose a property" /></SelectTrigger><SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{p.name} - Ã¢â€šÂ¹{formatPrice(p.price)}</SelectItem>))}</SelectContent></Select></div>
+                <div className="grid gap-2"><Label>Select Lead</Label><SearchableSelect placeholder="Choose a lead" searchPlaceholder="Search lead..." options={leads.map(lead => ({ value: lead.id, searchText: `${lead.name} ${lead.phone}`, label: <>{lead.name} - <ProtectedPhone value={lead.phone}>{lead.phone}</ProtectedPhone></> }))} /></div>
+                <div className="grid gap-2"><Label>Select Property</Label><SearchableSelect placeholder="Choose a property" searchPlaceholder="Search property..." options={properties.map(p => ({ value: p.id, searchText: `${p.name} ${formatPrice(p.price)}`, label: `${p.name} - Rs ${formatPrice(p.price)}` }))} /></div>
                 <div className="grid grid-cols-2 gap-4"><div className="grid gap-2"><Label>Booking Amount</Label><Input type="number" placeholder="Enter amount" /></div><div className="grid gap-2"><Label>Commission %</Label><Input type="number" placeholder="2.5" defaultValue="2.5" /></div></div>
-                <div className="grid gap-2"><Label>Payment Mode</Label><Select><SelectTrigger><SelectValue placeholder="Select payment mode" /></SelectTrigger><SelectContent><SelectItem value="bank">Bank Transfer</SelectItem><SelectItem value="cheque">Cheque</SelectItem><SelectItem value="cash">Cash</SelectItem></SelectContent></Select></div>
+                <div className="grid gap-2"><Label>Payment Mode</Label><SearchableSelect placeholder="Select payment mode" searchPlaceholder="Search payment mode..." options={[{ value: "bank", label: "Bank Transfer" }, { value: "cheque", label: "Cheque" }, { value: "cash", label: "Cash" }]} /></div>
               </div>
               <div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button className="bg-gradient-to-r from-green-600 to-emerald-600 border-0" onClick={() => setDialogOpen(false)}>Create Booking</Button></div>
             </DialogContent>

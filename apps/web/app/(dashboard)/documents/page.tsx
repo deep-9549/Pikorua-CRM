@@ -45,13 +45,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -178,20 +172,19 @@ export default function DocumentsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Category</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="brochure">Brochure</SelectItem>
-                      <SelectItem value="agreement">Agreement</SelectItem>
-                      <SelectItem value="invoice">Invoice</SelectItem>
-                      <SelectItem value="report">Report</SelectItem>
-                      <SelectItem value="presentation">Presentation</SelectItem>
-                      <SelectItem value="legal">Legal</SelectItem>
-                      <SelectItem value="marketing">Marketing</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    placeholder="Select category"
+                    searchPlaceholder="Search category..."
+                    options={[
+                      { value: "brochure", label: "Brochure" },
+                      { value: "agreement", label: "Agreement" },
+                      { value: "invoice", label: "Invoice" },
+                      { value: "report", label: "Report" },
+                      { value: "presentation", label: "Presentation" },
+                      { value: "legal", label: "Legal" },
+                      { value: "marketing", label: "Marketing" },
+                    ]}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label>Tags</Label>

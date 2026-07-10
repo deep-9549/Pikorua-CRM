@@ -21,13 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   AreaChart,
   Area,
@@ -81,17 +75,18 @@ export default function ReportsPage() {
           </div>
         </div>
         <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-full sm:w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1m">Last Month</SelectItem>
-              <SelectItem value="3m">Last 3 Months</SelectItem>
-              <SelectItem value="6m">Last 6 Months</SelectItem>
-              <SelectItem value="1y">Last Year</SelectItem>
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={dateRange}
+            onValueChange={setDateRange}
+            options={[
+              { value: "1m", label: "Last Month" },
+              { value: "3m", label: "Last 3 Months" },
+              { value: "6m", label: "Last 6 Months" },
+              { value: "1y", label: "Last Year" },
+            ]}
+            searchPlaceholder="Search range..."
+            triggerClassName="w-full sm:w-[140px]"
+          />
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />
             Export PDF

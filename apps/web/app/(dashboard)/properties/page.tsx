@@ -36,13 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Slider } from "@/components/ui/slider"
 import {
   Property,
@@ -839,42 +833,44 @@ export default function PropertiesPage() {
           />
         </div>
 
-        <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Location" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Locations</SelectItem>
-            {locationOptions.map((location) => (
-              <SelectItem key={location} value={location}>{location}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={locationFilter}
+          onValueChange={setLocationFilter}
+          options={[
+            { value: "all", label: "All Locations" },
+            ...locationOptions.map((location) => ({ value: location, label: location })),
+          ]}
+          placeholder="Location"
+          searchPlaceholder="Search locations..."
+          triggerClassName="w-full sm:w-44"
+        />
 
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {propertyTypes.map((type) => (
-              <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={typeFilter}
+          onValueChange={setTypeFilter}
+          options={[
+            { value: "all", label: "All Types" },
+            ...propertyTypes.map((type) => ({ value: type.value, label: type.label })),
+          ]}
+          placeholder="Type"
+          searchPlaceholder="Search types..."
+          triggerClassName="w-full sm:w-40"
+        />
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="available">Available</SelectItem>
-            <SelectItem value="reserved">Reserved</SelectItem>
-            <SelectItem value="upcoming">Upcoming</SelectItem>
-            <SelectItem value="sold">Sold</SelectItem>
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          options={[
+            { value: "all", label: "All Status" },
+            { value: "available", label: "Available" },
+            { value: "reserved", label: "Reserved" },
+            { value: "upcoming", label: "Upcoming" },
+            { value: "sold", label: "Sold" },
+          ]}
+          placeholder="Status"
+          searchPlaceholder="Search status..."
+          triggerClassName="w-full sm:w-40"
+        />
 
         <Button
           variant="outline"

@@ -21,9 +21,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ReminderDialog } from "@/components/reminder-dialog"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { employees } from "@/lib/data"
@@ -695,27 +693,30 @@ export function TopNav({
                         {selected.suggestedActions?.some(a => a.action === "assign") && (
                           <div className="space-y-2">
                             <p className="text-[13px] font-semibold">Assign to Employee</p>
-                            <Select value={assignedEmployee} onValueChange={setAssignedEmployee}>
-                              <SelectTrigger className="h-9 text-sm">
-                                <SelectValue placeholder="Select employee..." />
-                              </SelectTrigger>
-                              <SelectContent className="shadow-luxury-lg">
-                                {activeEmployees.map(emp => (
-                                  <SelectItem key={emp.id} value={emp.id}>
-                                    <div className="flex items-center gap-2">
-                                      <Avatar className="h-5 w-5">
-                                        <AvatarImage src={emp.avatar} />
-                                        <AvatarFallback className="text-[8px]">
-                                          {emp.name.split(" ").map(n => n[0]).join("")}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <span className="text-[13px]">{emp.name}</span>
-                                      <span className="text-[10px] text-muted-foreground capitalize">{emp.role.replace('_', ' ')}</span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <SearchableSelect
+                              value={assignedEmployee}
+                              onValueChange={setAssignedEmployee}
+                              options={activeEmployees.map(emp => ({
+                                value: emp.id,
+                                searchText: `${emp.name} ${emp.role}`,
+                                label: (
+                                  <span className="flex min-w-0 items-center gap-2">
+                                    <Avatar className="h-5 w-5">
+                                      <AvatarImage src={emp.avatar} />
+                                      <AvatarFallback className="text-[8px]">
+                                        {emp.name.split(" ").map(n => n[0]).join("")}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="truncate text-[13px]">{emp.name}</span>
+                                    <span className="truncate text-[10px] text-muted-foreground capitalize">{emp.role.replace('_', ' ')}</span>
+                                  </span>
+                                ),
+                              }))}
+                              placeholder="Select employee..."
+                              searchPlaceholder="Search employee..."
+                              triggerClassName="h-9 text-sm"
+                              contentClassName="shadow-luxury-lg"
+                            />
                           </div>
                         )}
 

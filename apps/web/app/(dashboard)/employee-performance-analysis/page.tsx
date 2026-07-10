@@ -36,13 +36,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { getAuthUser } from "@/lib/auth/cookies"
@@ -329,22 +323,19 @@ export default function EmployeePerformanceAnalysisPage() {
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-auto">
-          <Select
+          <SearchableSelect
             value={selectedEmployeeId}
             onValueChange={setSelectedEmployeeId}
             disabled={loading || !hasEmployees}
-          >
-            <SelectTrigger className="w-full sm:w-[280px]">
-              <SelectValue placeholder="Select employee" />
-            </SelectTrigger>
-            <SelectContent>
-              {(data?.employees ?? []).map(employee => (
-                <SelectItem key={employee.id} value={employee.id}>
-                  {employee.full_name ?? employee.email ?? "Unnamed employee"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={(data?.employees ?? []).map(employee => ({
+              value: employee.id,
+              label: employee.full_name ?? employee.email ?? "Unnamed employee",
+              searchText: `${employee.full_name ?? ""} ${employee.email ?? ""}`,
+            }))}
+            placeholder="Select employee"
+            searchPlaceholder="Search employee..."
+            triggerClassName="w-full sm:w-[280px]"
+          />
           <Button
             type="button"
             className="gap-2 gold-gradient font-semibold"

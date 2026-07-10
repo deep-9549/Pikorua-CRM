@@ -39,13 +39,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Separator } from "@/components/ui/separator"
 import {
   Dialog,
@@ -467,32 +461,32 @@ export default function SettingsPage() {
 
                 <div className="space-y-4">
                   <Label>Language</Label>
-                  <Select defaultValue="en">
-                    <SelectTrigger className="w-full md:w-[300px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="hi">Hindi</SelectItem>
-                      <SelectItem value="mr">Marathi</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    defaultValue="en"
+                    options={[
+                      { value: "en", label: "English" },
+                      { value: "hi", label: "Hindi" },
+                      { value: "mr", label: "Marathi" },
+                    ]}
+                    searchPlaceholder="Search language..."
+                    triggerClassName="w-full md:w-[300px]"
+                  />
                 </div>
 
                 <Separator />
 
                 <div className="space-y-4">
                   <Label>Date Format</Label>
-                  <Select defaultValue="dd-mm-yyyy">
-                    <SelectTrigger className="w-full md:w-[300px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dd-mm-yyyy">DD-MM-YYYY</SelectItem>
-                      <SelectItem value="mm-dd-yyyy">MM-DD-YYYY</SelectItem>
-                      <SelectItem value="yyyy-mm-dd">YYYY-MM-DD</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    defaultValue="dd-mm-yyyy"
+                    options={[
+                      { value: "dd-mm-yyyy", label: "DD-MM-YYYY" },
+                      { value: "mm-dd-yyyy", label: "MM-DD-YYYY" },
+                      { value: "yyyy-mm-dd", label: "YYYY-MM-DD" },
+                    ]}
+                    searchPlaceholder="Search date format..."
+                    triggerClassName="w-full md:w-[300px]"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -636,36 +630,32 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Role</Label>
-                <Select 
+                <SearchableSelect
                   value={newEmployee.role}
                   onValueChange={(v) => setNewEmployee({...newEmployee, role: v})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Sales Executive">Sales Executive</SelectItem>
-                    <SelectItem value="Senior Consultant">Senior Consultant</SelectItem>
-                    <SelectItem value="Team Lead">Team Lead</SelectItem>
-                    <SelectItem value="Manager">Manager</SelectItem>
-                  </SelectContent>
-                </Select>
+                  options={[
+                    { value: "Sales Executive", label: "Sales Executive" },
+                    { value: "Senior Consultant", label: "Senior Consultant" },
+                    { value: "Team Lead", label: "Team Lead" },
+                    { value: "Manager", label: "Manager" },
+                  ]}
+                  placeholder="Select role"
+                  searchPlaceholder="Search role..."
+                />
               </div>
               <div className="space-y-2">
                 <Label>Department</Label>
-                <Select
+                <SearchableSelect
                   value={newEmployee.department}
                   onValueChange={(v) => setNewEmployee({...newEmployee, department: v})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Residential Sales">Residential Sales</SelectItem>
-                    <SelectItem value="Commercial Sales">Commercial Sales</SelectItem>
-                    <SelectItem value="Luxury Properties">Luxury Properties</SelectItem>
-                  </SelectContent>
-                </Select>
+                  options={[
+                    { value: "Residential Sales", label: "Residential Sales" },
+                    { value: "Commercial Sales", label: "Commercial Sales" },
+                    { value: "Luxury Properties", label: "Luxury Properties" },
+                  ]}
+                  placeholder="Select department"
+                  searchPlaceholder="Search department..."
+                />
               </div>
             </div>
             <Separator />
@@ -768,53 +758,44 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
-                  <Select 
+                  <SearchableSelect
                     value={selectedEmployee.status}
-                    onValueChange={(v: "active" | "inactive") => setSelectedEmployee({...selectedEmployee, status: v})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onValueChange={(v) => setSelectedEmployee({...selectedEmployee, status: v as "active" | "inactive"})}
+                    options={[
+                      { value: "active", label: "Active" },
+                      { value: "inactive", label: "Inactive" },
+                    ]}
+                    searchPlaceholder="Search status..."
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Role</Label>
-                  <Select 
+                  <SearchableSelect
                     value={selectedEmployee.role}
                     onValueChange={(v) => setSelectedEmployee({...selectedEmployee, role: v})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Sales Executive">Sales Executive</SelectItem>
-                      <SelectItem value="Senior Consultant">Senior Consultant</SelectItem>
-                      <SelectItem value="Team Lead">Team Lead</SelectItem>
-                      <SelectItem value="Manager">Manager</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    options={[
+                      { value: "Sales Executive", label: "Sales Executive" },
+                      { value: "Senior Consultant", label: "Senior Consultant" },
+                      { value: "Team Lead", label: "Team Lead" },
+                      { value: "Manager", label: "Manager" },
+                    ]}
+                    searchPlaceholder="Search role..."
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Department</Label>
-                  <Select
+                  <SearchableSelect
                     value={selectedEmployee.department}
                     onValueChange={(v) => setSelectedEmployee({...selectedEmployee, department: v})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Residential Sales">Residential Sales</SelectItem>
-                      <SelectItem value="Commercial Sales">Commercial Sales</SelectItem>
-                      <SelectItem value="Luxury Properties">Luxury Properties</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    options={[
+                      { value: "Residential Sales", label: "Residential Sales" },
+                      { value: "Commercial Sales", label: "Commercial Sales" },
+                      { value: "Luxury Properties", label: "Luxury Properties" },
+                    ]}
+                    searchPlaceholder="Search department..."
+                  />
                 </div>
               </div>
             </div>

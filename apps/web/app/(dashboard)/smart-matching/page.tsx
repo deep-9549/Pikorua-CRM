@@ -30,13 +30,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Slider } from "@/components/ui/slider"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   Popover,
   PopoverContent,
@@ -268,21 +262,16 @@ export default function SmartMatchingPage() {
                   <IndianRupee className="h-4 w-4 text-primary" />
                   Budget Range
                 </label>
-                <Select onValueChange={(value) => {
-                  const range = budgetRanges.find(r => r.label === value)
-                  if (range) setBudgetRange([range.min, range.max])
-                }}>
-                  <SelectTrigger className="h-11 border-border/50 bg-background/50">
-                    <SelectValue placeholder="Select budget" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {budgetRanges.map((range) => (
-                      <SelectItem key={range.label} value={range.label}>
-                        {range.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  onValueChange={(value) => {
+                    const range = budgetRanges.find(r => r.label === value)
+                    if (range) setBudgetRange([range.min, range.max])
+                  }}
+                  options={budgetRanges.map((range) => ({ value: range.label, label: range.label }))}
+                  placeholder="Select budget"
+                  searchPlaceholder="Search budget..."
+                  triggerClassName="h-11 border-border/50 bg-background/50"
+                />
               </div>
 
               {/* Bedrooms */}
@@ -291,19 +280,21 @@ export default function SmartMatchingPage() {
                   <Bed className="h-4 w-4 text-primary" />
                   Bedrooms
                 </label>
-                <Select value={bedroomFilter} onValueChange={setBedroomFilter}>
-                  <SelectTrigger className="h-11 border-border/50 bg-background/50">
-                    <SelectValue placeholder="Any" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">Any</SelectItem>
-                    <SelectItem value="1">1 BHK</SelectItem>
-                    <SelectItem value="2">2 BHK</SelectItem>
-                    <SelectItem value="3">3 BHK</SelectItem>
-                    <SelectItem value="4">4 BHK</SelectItem>
-                    <SelectItem value="5">5+ BHK</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={bedroomFilter}
+                  onValueChange={setBedroomFilter}
+                  options={[
+                    { value: "any", label: "Any" },
+                    { value: "1", label: "1 BHK" },
+                    { value: "2", label: "2 BHK" },
+                    { value: "3", label: "3 BHK" },
+                    { value: "4", label: "4 BHK" },
+                    { value: "5", label: "5+ BHK" },
+                  ]}
+                  placeholder="Any"
+                  searchPlaceholder="Search bedrooms..."
+                  triggerClassName="h-11 border-border/50 bg-background/50"
+                />
               </div>
             </div>
 
