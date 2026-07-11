@@ -243,6 +243,18 @@ function propertyPriceStatus(property: RecommendationProperty, matchedUnits: Uni
   return { score: 0, reason: null, warning: `Above ${budget.label} budget.` }
 }
 
+function propertyBudgetDistance(property: RecommendationProperty, matchedUnits: UnitConfiguration[], budget: BudgetRange | null) {
+  if (!budget) return Number.POSITIVE_INFINITY
+
+  const prices = [
+    toNumber(property.price),
+    ...matchedUnits.map(unitPrice),
+  ].filter((price): price is number => price !== null && price <= budget.max * 1.2)
+
+  if (prices.length === 0) return Number.POSITIVE_INFINITY
+  return Math.min(...prices.map((price) => Math.abs(price - budget.max)))
+}
+
 function locationScore(property: RecommendationProperty, input: PropertyRecommendationInput): LocationPriority {
   const preferredTerms = (input.preferredLocations ?? []).filter(Boolean)
   const locationText = propertyLocationText(property)
@@ -310,6 +322,7 @@ export function buildPropertyRecommendations(
     .map((property) => {
       const matchedUnits = getMatchedUnits(property, selectedConfigurations, budget)
       const budgetResult = propertyPriceStatus(property, matchedUnits, budget)
+      const budgetDistance = propertyBudgetDistance(property, matchedUnits, budget)
       const configurationMatches = propertyMatchesConfiguration(property, selectedConfigurations, matchedUnits)
       const locationResult = locationScore(property, input)
       const salesPriority = apartmentSalesPriority(property)
@@ -362,11 +375,13 @@ export function buildPropertyRecommendations(
         warnings,
         matched_units: matchedUnits,
         budget_score: scoreParts.budget,
+        budget_distance: budgetDistance,
         location_priority_rank: locationResult.rank,
         sales_priority_rank: salesPriority.rank,
         sales_priority_tier: salesPriority.tier,
       } as PropertyRecommendation & {
         budget_score: number
+        budget_distance: number
         location_priority_rank: number
         sales_priority_rank: number
         sales_priority_tier: ApartmentSalesPriority["tier"]
@@ -379,8 +394,9 @@ export function buildPropertyRecommendations(
         if (b.property.status === "available") return 1
       }
       if (b.location_priority_rank !== a.location_priority_rank) return b.location_priority_rank - a.location_priority_rank
-      if (b.score !== a.score) return b.score - a.score
       if (b.sales_priority_rank !== a.sales_priority_rank) return b.sales_priority_rank - a.sales_priority_rank
+      if (a.budget_distance !== b.budget_distance) return a.budget_distance - b.budget_distance
+      if (b.score !== a.score) return b.score - a.score
       return a.property.name.localeCompare(b.property.name)
     })
 
@@ -391,6 +407,7 @@ export function buildPropertyRecommendations(
     .slice(0, limit)
     .map(({
       budget_score: _budgetScore,
+      budget_distance: _budgetDistance,
       location_priority_rank: _locationPriorityRank,
       sales_priority_rank: _salesPriorityRank,
       sales_priority_tier: _salesPriorityTier,

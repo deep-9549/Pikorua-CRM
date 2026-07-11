@@ -135,6 +135,20 @@ test('top apartment priority can beat exact budget within 20 percent stretch', (
   assert.equal(recommendations[0].warnings.some(warning => warning.includes('stretch')), true)
 })
 
+test('same priority band sorts closest to budget first', () => {
+  const recommendations = buildPropertyRecommendations([
+    property({ id: 'far-below', name: 'Ikebana', location: 'Sindhu Bhavan Road', price: 26000000, unitConfigurations: [{ configuration: '4 BHK', price: '2.6 Cr' }] }),
+    property({ id: 'near-above', name: 'Maruti 360', location: 'Iskon Ambli Road', price: 31000000, unitConfigurations: [{ configuration: '4 BHK', price: '3.1 Cr' }] }),
+    property({ id: 'far-above', name: 'Belagio', location: 'Iskon Ambli Road', price: 35000000, unitConfigurations: [{ configuration: '4 BHK', price: '3.5 Cr' }] }),
+  ], {
+    budgetRange: '3 Cr',
+    configuration: ['4 BHK'],
+    limit: 10,
+  })
+
+  assert.deepEqual(recommendations.map(item => item.property.id), ['near-above', 'far-below', 'far-above'])
+})
+
 test('tertiary apartments are hidden until needed to fill the requested results', () => {
   const enoughRecommendations = buildPropertyRecommendations([
     property({ id: 'tertiary-backup', name: 'Regular Apartment', location: 'Gota', featured: false }),
