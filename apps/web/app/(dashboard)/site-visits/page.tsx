@@ -30,6 +30,7 @@ interface VisitCrm {
   call_status: string | null
   hwc: string | null
   follow_up_date: string | null
+  project_name: string | null
   budget_range: string | null
   configuration: string[] | null
   profession: string | null
@@ -248,9 +249,10 @@ function VisitDetailDialog({ visit, onClose, onUpdateOutcome }: { visit: VisitRo
               </div>
 
               {/* Property preferences */}
-              {(crm.budget_range || crm.configuration?.length) && (
+              {(crm.project_name || crm.budget_range || crm.configuration?.length) && (
                 <div className="space-y-3" style={{ borderTop: "1px solid var(--color-border)", paddingTop: "1rem" }}>
                   <p className="text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--color-muted-foreground)" }}>Preferences</p>
+                  <DetailRow icon={Building2} label="Project Name" value={crm.project_name} />
                   <DetailRow icon={DollarSign} label="Budget" value={crm.budget_range} />
                   {crm.configuration && crm.configuration.length > 0 && (
                     <DetailRow icon={Building2} label="Configuration" value={
