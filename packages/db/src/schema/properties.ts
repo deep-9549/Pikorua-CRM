@@ -2,7 +2,7 @@ import { pgTable, uuid, text, timestamp, numeric, integer, boolean, jsonb, pgEnu
 import { relations, sql } from 'drizzle-orm'
 
 export const propertyStatusEnum = pgEnum('property_status', ['available', 'sold', 'reserved', 'upcoming'])
-export const propertyTypeEnum = pgEnum('property_type', ['apartment', 'penthouse', 'bungalow', 'villa', 'commercial', 'farmhouse', 'duplex', 'studio'])
+export const propertyTypeEnum = pgEnum('property_type', ['apartment', 'penthouse', 'bungalow', 'villa', 'commercial', 'farmhouse', 'duplex', 'studio', 'plot'])
 
 export const properties = pgTable('properties', {
   id: uuid('id').primaryKey().defaultRandom(),

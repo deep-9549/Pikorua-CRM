@@ -118,6 +118,34 @@ test('apartments treat 3, 4 and 5 BHK as flexible configurations', () => {
   assert.equal(recommendations[0].property.id, 'flex-apartment')
   assert.deepEqual(recommendations[0].matched_units.map(unit => unit.configuration), ['3 BHK', '5 BHK'])
   assert.equal(recommendations[0].match_reasons.some(reason => reason.includes('flexible across 3, 4, and 5 BHK')), true)
+  assert.equal(recommendations.some(item => item.property.id === 'villa'), false)
+})
+
+test('bungalow configuration excludes apartments', () => {
+  const recommendations = buildPropertyRecommendations([
+    property({ id: 'apartment', name: 'Maruti 360', type: 'apartment', location: 'Iskon Ambli Road', price: 30000000 }),
+    property({ id: 'bungalow', name: 'Anurita', type: 'bungalow', location: 'Thaltej', price: 30000000 }),
+  ], {
+    budgetRange: '3 Cr',
+    configuration: ['Bungalows'],
+    limit: 10,
+  })
+
+  assert.deepEqual(recommendations.map(item => item.property.id), ['bungalow'])
+})
+
+test('plot configuration excludes apartments and supports workbook plot aliases', () => {
+  const recommendations = buildPropertyRecommendations([
+    property({ id: 'apartment', name: 'Maruti 360', type: 'apartment', location: 'Iskon Ambli Road', price: 30000000 }),
+    property({ id: 'plot-type', name: 'Plot Inventory', type: 'plot', location: 'Nandoli', price: 30000000 }),
+    property({ id: 'workbook-plot', name: 'Kalrav Alpines', type: 'apartment', location: 'Nandoli', price: 32000000 }),
+  ], {
+    budgetRange: '3 Cr',
+    configuration: ['Plot'],
+    limit: 10,
+  })
+
+  assert.deepEqual(recommendations.map(item => item.property.id), ['plot-type', 'workbook-plot'])
 })
 
 test('top apartment priority can beat exact budget within 20 percent stretch', () => {

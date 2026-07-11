@@ -114,6 +114,11 @@ const SECONDARY_APARTMENT_PROJECT_ALIASES = [
   "shaligram luxuria",
 ]
 
+const PLOT_PROPERTY_ALIASES = [
+  "kalrav alpines",
+  "westpark",
+]
+
 export function parseBudgetRange(value: string | null | undefined): BudgetRange | null {
   if (!value) return null
 
@@ -184,6 +189,10 @@ function isApartment(property: RecommendationProperty) {
   return hasWordMatch(property.type, "apartment")
 }
 
+function isPlotProperty(property: RecommendationProperty) {
+  return hasWordMatch(property.type, "plot") || matchesAnyAlias(property.name, PLOT_PROPERTY_ALIASES)
+}
+
 function isApartmentFamilyConfiguration(value: string | null | undefined) {
   const normalized = normalizeText(value)
   return /\b[345]\s*bhk\b/.test(normalized)
@@ -191,6 +200,17 @@ function isApartmentFamilyConfiguration(value: string | null | undefined) {
 
 function hasApartmentFamilyConfiguration(selectedConfigurations: string[]) {
   return selectedConfigurations.some((config) => isApartmentFamilyConfiguration(config))
+}
+
+function configurationMatchesPropertyType(property: RecommendationProperty, configuration: string) {
+  const normalized = normalizeText(configuration)
+  if (!normalized || normalized === "other") return true
+  if (isApartmentFamilyConfiguration(configuration)) return isApartment(property)
+  if (normalized.includes("bungalow")) return hasWordMatch(property.type, "bungalow")
+  if (normalized.includes("plot")) return isPlotProperty(property)
+  if (normalized.includes("penthouse")) return hasWordMatch(property.type, "penthouse")
+  if (normalized.includes("duplex")) return hasWordMatch(property.type, "duplex")
+  return hasWordMatch(property.type, configuration)
 }
 
 function unitPrice(unit: UnitConfiguration) {
@@ -206,7 +226,9 @@ function getMatchedUnits(property: RecommendationProperty, selectedConfiguration
   return units.filter((unit) => {
     const configMatches = selectedConfigurations.length === 0 ||
       (apartmentConfigFlex && isApartmentFamilyConfiguration(unit.configuration)) ||
-      selectedConfigurations.some((config) => hasWordMatch(unit.configuration, config))
+      selectedConfigurations.some((config) => (
+        !isApartmentFamilyConfiguration(config) && hasWordMatch(unit.configuration, config)
+      ))
     const price = unitPrice(unit)
     const budgetMatches = !budget || !price || price <= budget.max * 1.2
     return configMatches && budgetMatches
@@ -218,10 +240,7 @@ function propertyMatchesConfiguration(property: RecommendationProperty, selected
   if (matchedUnits.length > 0) return true
   if (isApartment(property) && hasApartmentFamilyConfiguration(selectedConfigurations)) return true
 
-  return selectedConfigurations.some((config) => (
-    hasWordMatch(property.type, config) ||
-    hasWordMatch(property.name, config)
-  ))
+  return selectedConfigurations.some((config) => configurationMatchesPropertyType(property, config))
 }
 
 function propertyPriceStatus(property: RecommendationProperty, matchedUnits: UnitConfiguration[], budget: BudgetRange | null) {
@@ -376,18 +395,24 @@ export function buildPropertyRecommendations(
         matched_units: matchedUnits,
         budget_score: scoreParts.budget,
         budget_distance: budgetDistance,
+        configuration_matches: configurationMatches,
         location_priority_rank: locationResult.rank,
         sales_priority_rank: salesPriority.rank,
         sales_priority_tier: salesPriority.tier,
       } as PropertyRecommendation & {
         budget_score: number
         budget_distance: number
+        configuration_matches: boolean
         location_priority_rank: number
         sales_priority_rank: number
         sales_priority_tier: ApartmentSalesPriority["tier"]
       }
     })
-    .filter((recommendation) => recommendation.score > 0 && (!budget || recommendation.budget_score > 0))
+    .filter((recommendation) => (
+      recommendation.score > 0 &&
+      (!budget || recommendation.budget_score > 0) &&
+      (selectedConfigurations.length === 0 || recommendation.configuration_matches)
+    ))
     .sort((a, b) => {
       if (a.property.status !== b.property.status) {
         if (a.property.status === "available") return -1
@@ -408,6 +433,7 @@ export function buildPropertyRecommendations(
     .map(({
       budget_score: _budgetScore,
       budget_distance: _budgetDistance,
+      configuration_matches: _configurationMatches,
       location_priority_rank: _locationPriorityRank,
       sales_priority_rank: _salesPriorityRank,
       sales_priority_tier: _salesPriorityTier,

@@ -4,8 +4,8 @@ export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'negotiation' | 'wo
 export type SentimentTrend = 'heating_up' | 'cooling_down' | 'stable' | 'critical'
 export type LeadSource = 'meta_ads' | 'google_ads' | 'referral' | 'website' | 'whatsapp' | 'walk_in'
 export type LeadTag = 'duplicate' | 'cp' | 'broker' | 'fake' | 'vip' | 'hot'
-export type PropertyType = 'apartment' | 'penthouse' | 'bungalow' | 'villa' | 'commercial' | 'farmhouse' | 'duplex' | 'studio'
-export type ProjectCategory = 'apartment' | 'bungalow' | 'commercial' | 'villa' | 'penthouse' | 'farmhouse' | 'general_live'
+export type PropertyType = 'apartment' | 'penthouse' | 'bungalow' | 'villa' | 'commercial' | 'farmhouse' | 'duplex' | 'studio' | 'plot'
+export type ProjectCategory = 'apartment' | 'bungalow' | 'commercial' | 'villa' | 'penthouse' | 'farmhouse' | 'plot' | 'general_live'
 
 export interface WhatsAppMessage {
   id: string

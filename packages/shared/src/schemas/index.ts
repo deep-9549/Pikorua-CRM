@@ -5,8 +5,8 @@ import { z } from 'zod'
 export const leadStatusSchema = z.enum(['new', 'contacted', 'qualified', 'negotiation', 'won', 'lost'])
 export const leadSourceSchema = z.enum(['meta_ads', 'google_ads', 'referral', 'website', 'whatsapp', 'walk_in'])
 export const leadTagSchema = z.enum(['duplicate', 'cp', 'broker', 'fake', 'vip', 'hot'])
-export const propertyTypeSchema = z.enum(['apartment', 'penthouse', 'bungalow', 'villa', 'commercial', 'farmhouse', 'duplex', 'studio'])
-export const projectCategorySchema = z.enum(['apartment', 'bungalow', 'commercial', 'villa', 'penthouse', 'farmhouse', 'general_live'])
+export const propertyTypeSchema = z.enum(['apartment', 'penthouse', 'bungalow', 'villa', 'commercial', 'farmhouse', 'duplex', 'studio', 'plot'])
+export const projectCategorySchema = z.enum(['apartment', 'bungalow', 'commercial', 'villa', 'penthouse', 'farmhouse', 'plot', 'general_live'])
 
 // ── Meta Lead ─────────────────────────────────────────────────────────────────
 

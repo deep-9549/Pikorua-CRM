@@ -5,8 +5,8 @@ export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'negotiation' | 'wo
 export type SentimentTrend = 'heating_up' | 'cooling_down' | 'stable' | 'critical'
 export type LeadSource = 'meta_ads' | 'google_ads' | 'referral' | 'website' | 'whatsapp' | 'walk_in'
 export type LeadTag = 'duplicate' | 'cp' | 'broker' | 'fake' | 'vip' | 'hot'
-export type PropertyType = 'apartment' | 'penthouse' | 'bungalow' | 'villa' | 'commercial' | 'farmhouse' | 'duplex' | 'studio'
-export type ProjectCategory = 'apartment' | 'bungalow' | 'commercial' | 'villa' | 'penthouse' | 'farmhouse' | 'general_live'
+export type PropertyType = 'apartment' | 'penthouse' | 'bungalow' | 'villa' | 'commercial' | 'farmhouse' | 'duplex' | 'studio' | 'plot'
+export type ProjectCategory = 'apartment' | 'bungalow' | 'commercial' | 'villa' | 'penthouse' | 'farmhouse' | 'plot' | 'general_live'
 
 export interface WhatsAppMessage {
   id: string
@@ -459,6 +459,7 @@ export const propertyTypes: { label: string; value: PropertyType }[] = [
   { label: 'Farmhouse', value: 'farmhouse' },
   { label: 'Duplex', value: 'duplex' },
   { label: 'Studio', value: 'studio' },
+  { label: 'Plot', value: 'plot' },
 ]
 
 export function formatCurrency(amount: number): string {
@@ -519,6 +520,7 @@ export function getProjectCategoryColor(category: ProjectCategory): string {
     villa: 'bg-success/10 text-success border-success/20',
     penthouse: 'bg-destructive/10 text-destructive border-destructive/20',
     farmhouse: 'bg-green-500/10 text-green-600 border-green-500/20',
+    plot: 'bg-lime-500/10 text-lime-600 border-lime-500/20',
     general_live: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
   }
   return colors[category]
@@ -532,6 +534,7 @@ export function getProjectCategoryLabel(category: ProjectCategory): string {
     villa: 'Villa',
     penthouse: 'Penthouse',
     farmhouse: 'Farmhouse',
+    plot: 'Plot',
     general_live: 'General Live',
   }
   return labels[category]

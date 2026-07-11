@@ -71,6 +71,7 @@ function parseMinPrice(value) {
 
 function normalizePropertyType(value) {
   const text = (clean(value) ?? 'apartment').toLowerCase()
+  if (text.includes('plot')) return 'plot'
   if (text.includes('villa')) return 'villa'
   if (text.includes('bungalow')) return 'bungalow'
   if (text.includes('commercial')) return 'commercial'
