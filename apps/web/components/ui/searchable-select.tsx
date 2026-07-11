@@ -34,6 +34,8 @@ type SearchableSelectProps = {
   placeholder?: string
   searchPlaceholder?: string
   emptyMessage?: string
+  allowCustomValue?: boolean
+  customOptionLabel?: (value: string) => React.ReactNode
   className?: string
   triggerClassName?: string
   contentClassName?: string
@@ -49,6 +51,8 @@ export function SearchableSelect({
   placeholder = "Select option...",
   searchPlaceholder = "Search options...",
   emptyMessage = "No option found.",
+  allowCustomValue = false,
+  customOptionLabel,
   className,
   triggerClassName,
   contentClassName,
@@ -56,13 +60,23 @@ export function SearchableSelect({
   align = "start",
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false)
+  const [searchValue, setSearchValue] = React.useState("")
   const [internalValue, setInternalValue] = React.useState(defaultValue ?? "")
   const selectedValue = value ?? internalValue
   const selectedOption = options.find(option => option.value === selectedValue)
+  const customValue = searchValue.trim()
+  const hasExactOption = options.some(option => {
+    const haystack = [option.value, option.searchText]
+      .filter(Boolean)
+      .map(text => String(text).toLowerCase())
+    return haystack.includes(customValue.toLowerCase())
+  })
+  const showCustomOption = allowCustomValue && customValue.length > 0 && !hasExactOption
 
   function handleSelect(nextValue: string) {
     if (value === undefined) setInternalValue(nextValue)
     onValueChange?.(nextValue)
+    setSearchValue("")
     setOpen(false)
   }
 
@@ -77,15 +91,19 @@ export function SearchableSelect({
           disabled={disabled}
           className={cn("w-full justify-between px-3 font-normal", triggerClassName, className)}
         >
-          <span className={cn("truncate", !selectedOption && "text-muted-foreground")}>
-            {selectedOption?.label ?? placeholder}
+          <span className={cn("truncate", !selectedOption && !selectedValue && "text-muted-foreground")}>
+            {selectedOption?.label ?? (selectedValue || placeholder)}
           </span>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className={cn("w-[--radix-popover-trigger-width] p-0", contentClassName)} align={align}>
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={searchValue}
+            onValueChange={setSearchValue}
+          />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
@@ -106,6 +124,18 @@ export function SearchableSelect({
                   <span className="truncate">{option.label}</span>
                 </CommandItem>
               ))}
+              {showCustomOption && (
+                <CommandItem
+                  key={`custom-${customValue}`}
+                  value={customValue}
+                  onSelect={() => handleSelect(customValue)}
+                >
+                  <Check className="mr-2 h-4 w-4 opacity-0" />
+                  <span className="truncate">
+                    {customOptionLabel?.(customValue) ?? `Use "${customValue}"`}
+                  </span>
+                </CommandItem>
+              )}
             </CommandGroup>
           </CommandList>
         </Command>

@@ -1256,7 +1256,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       ]}
                       placeholder="Select preferred location..."
                       searchPlaceholder="Search location..."
-                      emptyMessage="No matching location."
+                      emptyMessage="No matching saved location. Type to add another area."
+                      allowCustomValue
+                      customOptionLabel={value => `Other location: ${value}`}
                       triggerClassName="h-9 text-sm"
                     />
                   </div>
