@@ -130,6 +130,7 @@ function normalizeRows(filePath) {
       if (!name) return null
 
       const unitConfigurations = [
+        ['3 BHK', 3],
         ['4 BHK', 4],
         ['5 BHK', 5],
         ['Penthouse', null],

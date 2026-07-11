@@ -75,6 +75,93 @@ test('preferred locations drive location match reasons', () => {
   assert.equal(recommendations[0].match_reasons.some(reason => reason.includes('Preferred location matches Science City')), true)
 })
 
+test('selected location ranks ahead of default priority areas', () => {
+  const recommendations = buildPropertyRecommendations([
+    property({ id: 'selected', name: 'Local Apartment', location: 'Thaltej', area: 'Ahmedabad', featured: false }),
+    property({ id: 'default-top', name: 'Maruti 360', location: 'Iskon Ambli', area: 'Ahmedabad' }),
+  ], {
+    budgetRange: '3 Cr',
+    configuration: ['4 BHK'],
+    preferredLocations: ['Thaltej'],
+    limit: 10,
+  })
+
+  assert.deepEqual(recommendations.map(item => item.property.id), ['selected', 'default-top'])
+  assert.equal(recommendations[0].match_reasons.some(reason => reason.includes('Preferred location matches Thaltej')), true)
+})
+
+test('apartments treat 3, 4 and 5 BHK as flexible configurations', () => {
+  const recommendations = buildPropertyRecommendations([
+    property({
+      id: 'flex-apartment',
+      name: 'Maruti 360',
+      price: 28000000,
+      unitConfigurations: [
+        { configuration: '3 BHK', price: '2.80 Cr' },
+        { configuration: '5 BHK', price: '3.40 Cr' },
+      ],
+    }),
+    property({
+      id: 'villa',
+      type: 'villa',
+      price: 28000000,
+      unitConfigurations: [
+        { configuration: '3 BHK', price: '2.80 Cr' },
+      ],
+    }),
+  ], {
+    budgetRange: '3 Cr',
+    configuration: ['4 BHK'],
+    limit: 10,
+  })
+
+  assert.equal(recommendations[0].property.id, 'flex-apartment')
+  assert.deepEqual(recommendations[0].matched_units.map(unit => unit.configuration), ['3 BHK', '5 BHK'])
+  assert.equal(recommendations[0].match_reasons.some(reason => reason.includes('flexible across 3, 4, and 5 BHK')), true)
+})
+
+test('top apartment priority can beat exact budget within 20 percent stretch', () => {
+  const recommendations = buildPropertyRecommendations([
+    property({ id: 'exact-tertiary', name: 'Regular Apartment', price: 30000000, unitConfigurations: [{ configuration: '4 BHK', price: '3 Cr' }] }),
+    property({ id: 'priority-stretch', name: 'GODREJ ALTUS', price: 35000000, unitConfigurations: [{ configuration: '4 BHK', price: '3.5 Cr' }] }),
+    property({ id: 'too-high', name: 'Bellagio', price: 37000000, unitConfigurations: [{ configuration: '4 BHK', price: '3.7 Cr' }] }),
+  ], {
+    budgetRange: '3 Cr',
+    configuration: ['4 BHK'],
+    limit: 10,
+  })
+
+  assert.deepEqual(recommendations.map(item => item.property.id), ['priority-stretch', 'exact-tertiary'])
+  assert.equal(recommendations[0].warnings.some(warning => warning.includes('stretch')), true)
+})
+
+test('tertiary apartments are hidden until needed to fill the requested results', () => {
+  const enoughRecommendations = buildPropertyRecommendations([
+    property({ id: 'tertiary-backup', name: 'Regular Apartment', location: 'Gota', featured: false }),
+    property({ id: 'top-project', name: 'Venus Universe', location: 'Vastrapur' }),
+    property({ id: 'secondary-project', name: 'Satyamev Luxor', location: 'Vastrapur' }),
+  ], {
+    budgetRange: '3 Cr',
+    configuration: ['4 BHK'],
+    preferredLocations: ['Science City'],
+    limit: 2,
+  })
+
+  assert.deepEqual(enoughRecommendations.map(item => item.property.id), ['top-project', 'secondary-project'])
+
+  const needsFillerRecommendations = buildPropertyRecommendations([
+    property({ id: 'tertiary-backup', name: 'Regular Apartment', location: 'Gota', featured: false }),
+    property({ id: 'top-project', name: 'Venus Universe', location: 'Vastrapur' }),
+  ], {
+    budgetRange: '3 Cr',
+    configuration: ['4 BHK'],
+    preferredLocations: ['Science City'],
+    limit: 2,
+  })
+
+  assert.deepEqual(needsFillerRecommendations.map(item => item.property.id), ['top-project', 'tertiary-backup'])
+})
+
 test('recommendation endpoint preserves assigned-lead access boundary', async () => {
   const controller = new MetaLeadsController({
     propertyRecommendations: async () => ({
