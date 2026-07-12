@@ -66,7 +66,7 @@ const navGroups: NavGroup[] = [
     adminOnly: true,
     items: [
       { title: "Employees", href: "/employees", icon: UserCog },
-      { title: "HNI Clients", href: "/hni-clients", icon: Crown, comingSoon: true },
+      { title: "HNI Clients", href: "/hni-clients", icon: Crown },
     ]
   },
   {

@@ -1,290 +1,213 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { 
-  Crown, Search, Filter, Phone, Mail, MapPin, Building2,
-  Calendar, DollarSign, Star, Heart, MessageSquare, ChevronRight,
-  TrendingUp, Target, Award, Gem, History, User, FileText, Clock,
-  CheckCircle2
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { useEffect, useMemo, useState } from "react"
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog"
-import { hniClients } from "@/lib/data"
+  BriefcaseBusiness, Building2, CalendarClock, ChevronRight, Crown, Diamond,
+  Filter, Mail, MapPin, MessageCircle, MoreHorizontal, Phone, Plus, Search,
+  ShieldCheck, Sparkles, Star, Trophy, UserRound, UsersRound, X,
+} from "lucide-react"
+import { toast } from "sonner"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 
-const tierConfig = {
-  platinum: { color: "text-slate-300", bgColor: "bg-gradient-to-r from-slate-400 to-slate-600", icon: Gem },
-  gold: { color: "text-primary", bgColor: "bg-gradient-to-r from-orange-400 to-orange-700", icon: Crown },
-  silver: { color: "text-slate-400", bgColor: "bg-gradient-to-r from-slate-300 to-slate-500", icon: Star },
+type Activity = { id: string; activityType: string; title: string; notes?: string; occurredAt: string; actor?: { fullName?: string } }
+type HniProfile = {
+  id: string; fullName: string; category: string; designation?: string; organisation?: string; city?: string; country?: string
+  phone?: string; email?: string; assistantName?: string; assistantPhone?: string; tier: string; relationshipStage: string
+  relationshipOwnerId?: string; owner?: { fullName?: string }; estimatedPortfolioValue?: string; estimatedBudgetMin?: string
+  estimatedBudgetMax?: string; propertiesOwned: number; preferences: string[]; interests: string[]; communicationPreferences?: string
+  relationshipNotes?: string; source?: string; lastContactAt?: string; nextActionAt?: string; nextAction?: string; isSensitive: boolean
+  activities?: Activity[]; updatedAt: string
+}
+type Employee = { id: string; full_name?: string; user_profiles?: { full_name?: string } }
+
+const categories = ["all", "business", "celebrity", "sports", "politics", "royalty", "professional", "other"]
+const categoryLabel: Record<string, string> = { all: "All profiles", business: "Business", celebrity: "Celebrities", sports: "Sports", politics: "Public figures", royalty: "Royalty", professional: "Professionals", other: "Other" }
+const categoryIcon: Record<string, typeof Crown> = { business: BriefcaseBusiness, celebrity: Star, sports: Trophy, politics: UsersRound, royalty: Crown, professional: UserRound, other: Sparkles }
+const stageStyles: Record<string, string> = {
+  prospect: "bg-slate-100 text-slate-700", introduced: "bg-blue-50 text-blue-700", engaged: "bg-violet-50 text-violet-700",
+  active: "bg-amber-50 text-amber-700", client: "bg-emerald-50 text-emerald-700", dormant: "bg-rose-50 text-rose-700",
 }
 
-function getClientTimeline(_client: typeof hniClients[0]) {
-  return [] as {
-    id: number
-    label: string
-    date: string
-    icon: typeof User
-    color: string
-    detail: string
-  }[]
+const emptyForm = {
+  full_name: "", category: "business", designation: "", organisation: "", city: "", country: "India", phone: "", email: "",
+  assistant_name: "", assistant_phone: "", tier: "platinum", relationship_stage: "prospect", relationship_owner_id: "",
+  estimated_portfolio_value: "", estimated_budget_min: "", estimated_budget_max: "", properties_owned: "0", preferences: "",
+  interests: "", communication_preferences: "", relationship_notes: "", source: "", next_action_at: "", next_action: "", is_sensitive: true,
 }
 
-export default function HNIClientsPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [detailClient, setDetailClient] = useState<typeof hniClients[0] | null>(null)
+const money = (value?: string | number) => {
+  const n = Number(value || 0)
+  if (!n) return "—"
+  if (n >= 10_000_000) return `₹${(n / 10_000_000).toFixed(n % 10_000_000 ? 1 : 0)} Cr`
+  if (n >= 100_000) return `₹${(n / 100_000).toFixed(n % 100_000 ? 1 : 0)} L`
+  return `₹${n.toLocaleString("en-IN")}`
+}
+const initials = (name: string) => name.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase()
+const dateText = (value?: string) => value ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : "—"
+const dueText = (value?: string) => {
+  if (!value) return "No action scheduled"
+  const days = Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000)
+  if (days < 0) return `${Math.abs(days)}d overdue`
+  if (days === 0) return "Due today"
+  return `Due in ${days}d`
+}
 
-  const filteredClients = hniClients.filter(client =>
-    client.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+export default function HniClientsPage() {
+  const [profiles, setProfiles] = useState<HniProfile[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState("")
+  const [category, setCategory] = useState("all")
+  const [stage, setStage] = useState("all")
+  const [selected, setSelected] = useState<HniProfile | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [interactionOpen, setInteractionOpen] = useState(false)
+  const [form, setForm] = useState(emptyForm)
+  const [saving, setSaving] = useState(false)
+  const [interaction, setInteraction] = useState({ activity_type: "call", title: "", notes: "" })
 
-  const formatValue = (value: number) => {
-    if (value >= 10000000) return `â‚¹${(value / 10000000).toFixed(1)} Cr`
-    if (value >= 100000) return `â‚¹${(value / 100000).toFixed(0)} L`
-    return `â‚¹${value.toLocaleString()}`
+  async function load() {
+    setLoading(true)
+    try {
+      const [hniRes, employeeRes] = await Promise.all([fetch("/api/hni"), fetch("/api/employees")])
+      if (!hniRes.ok) throw new Error("Unable to load VIP profiles")
+      const hniJson = await hniRes.json()
+      const employeeJson = employeeRes.ok ? await employeeRes.json() : []
+      setProfiles(hniJson.profiles || [])
+      setEmployees(Array.isArray(employeeJson) ? employeeJson : employeeJson.employees || [])
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Unable to load profiles") }
+    finally { setLoading(false) }
+  }
+  useEffect(() => { load() }, [])
+
+  const filtered = useMemo(() => profiles.filter((profile) => {
+    const haystack = [profile.fullName, profile.organisation, profile.designation, profile.city, profile.owner?.fullName].join(" ").toLowerCase()
+    return haystack.includes(query.toLowerCase()) && (category === "all" || profile.category === category) && (stage === "all" || profile.relationshipStage === stage)
+  }), [profiles, query, category, stage])
+  const upcoming = profiles.filter((p) => p.nextActionAt && new Date(p.nextActionAt).getTime() <= Date.now() + 7 * 86_400_000).length
+  const active = profiles.filter((p) => ["engaged", "active", "client"].includes(p.relationshipStage)).length
+  const portfolio = profiles.reduce((sum, p) => sum + Number(p.estimatedPortfolioValue || 0), 0)
+
+  function openCreate() { setSelected(null); setForm(emptyForm); setEditorOpen(true) }
+  function openEdit(profile: HniProfile) {
+    setSelected(profile)
+    setForm({
+      full_name: profile.fullName, category: profile.category, designation: profile.designation || "", organisation: profile.organisation || "",
+      city: profile.city || "", country: profile.country || "India", phone: profile.phone || "", email: profile.email || "",
+      assistant_name: profile.assistantName || "", assistant_phone: profile.assistantPhone || "", tier: profile.tier,
+      relationship_stage: profile.relationshipStage, relationship_owner_id: profile.relationshipOwnerId || "",
+      estimated_portfolio_value: profile.estimatedPortfolioValue || "", estimated_budget_min: profile.estimatedBudgetMin || "",
+      estimated_budget_max: profile.estimatedBudgetMax || "", properties_owned: String(profile.propertiesOwned || 0),
+      preferences: (profile.preferences || []).join(", "), interests: (profile.interests || []).join(", "),
+      communication_preferences: profile.communicationPreferences || "", relationship_notes: profile.relationshipNotes || "", source: profile.source || "",
+      next_action_at: profile.nextActionAt ? new Date(profile.nextActionAt).toISOString().slice(0, 16) : "", next_action: profile.nextAction || "", is_sensitive: profile.isSensitive,
+    })
+    setEditorOpen(true)
+  }
+  async function saveProfile() {
+    if (!form.full_name.trim()) return toast.error("Full name is required")
+    setSaving(true)
+    const list = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean)
+    const number = (value: string) => value ? Number(value) : undefined
+    const payload = { ...form, relationship_owner_id: form.relationship_owner_id || undefined, preferences: list(form.preferences), interests: list(form.interests),
+      properties_owned: Number(form.properties_owned || 0), estimated_portfolio_value: number(form.estimated_portfolio_value),
+      estimated_budget_min: number(form.estimated_budget_min), estimated_budget_max: number(form.estimated_budget_max),
+      next_action_at: form.next_action_at ? new Date(form.next_action_at).toISOString() : undefined }
+    try {
+      const response = await fetch(selected ? `/api/hni/${selected.id}` : "/api/hni", { method: selected ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+      if (!response.ok) throw new Error((await response.json()).message || "Could not save profile")
+      toast.success(selected ? "VIP profile updated" : "VIP profile added")
+      setEditorOpen(false); await load()
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not save profile") }
+    finally { setSaving(false) }
+  }
+  async function addInteraction() {
+    if (!selected || !interaction.title.trim()) return toast.error("Interaction title is required")
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/hni/${selected.id}/activities`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(interaction) })
+      if (!response.ok) throw new Error("Could not log interaction")
+      const detail = await fetch(`/api/hni/${selected.id}`).then((r) => r.json())
+      setSelected(detail.profile); setInteraction({ activity_type: "call", title: "", notes: "" }); setInteractionOpen(false)
+      toast.success("Interaction logged"); await load()
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not log interaction") }
+    finally { setSaving(false) }
   }
 
-  const totalPortfolioValue = hniClients.reduce((acc, c) => acc + c.portfolioValue, 0)
-  const platinumClients = hniClients.filter(c => c.tier === "platinum").length
-  const goldClients = hniClients.filter(c => c.tier === "gold").length
+  return <div className="space-y-6 pb-10">
+    <section className="relative overflow-hidden rounded-3xl border border-amber-200/60 bg-[radial-gradient(circle_at_top_right,rgba(217,119,6,.16),transparent_38%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--card)))] p-6 md:p-8">
+      <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full border border-amber-400/20" />
+      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl"><div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.22em] text-amber-700"><ShieldCheck className="h-4 w-4" /> Restricted relationship intelligence</div>
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">HNI & VIP Relationships</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground md:text-base">A private command centre for the people who matter most—business leaders, celebrities, athletes, public figures and trusted circles.</p></div>
+        <Button size="lg" onClick={openCreate} className="gap-2 bg-amber-700 text-white hover:bg-amber-800"><Plus className="h-4 w-4" />Add VIP profile</Button>
+      </div>
+    </section>
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-orange-200/20">
-            <Crown className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">HNI Clients</h1>
-            <p className="text-muted-foreground">High Net Worth Individual profiles and preferences</p>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Stats */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Total HNI Clients", value: hniClients.length, icon: Crown, color: "text-primary" },
-          { label: "Platinum Tier", value: platinumClients, icon: Gem, color: "text-slate-300" },
-          { label: "Gold Tier", value: goldClients, icon: Star, color: "text-primary" },
-          { label: "Portfolio Value", value: formatValue(totalPortfolioValue), icon: DollarSign, color: "text-green-600" },
-        ].map((stat) => (
-          <Card key={stat.label} className="border-border/50 bg-card/50 backdrop-blur-sm shadow-card border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div><p className="text-sm text-muted-foreground">{stat.label}</p><p className="text-2xl font-bold text-foreground">{stat.value}</p></div>
-                <stat.icon className={`h-8 w-8 ${stat.color} opacity-80`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </motion.div>
-
-      {/* Search */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-card border-0">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search HNI clients..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
-              </div>
-              <Button variant="outline"><Filter className="h-4 w-4 mr-2" />Filters</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Client Cards */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredClients.map((client, index) => {
-          const TierIcon = tierConfig[client.tier]?.icon || Star
-          return (
-            <motion.div key={client.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 + index * 0.05 }}>
-              <Card className="border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 overflow-hidden shadow-card border-0">
-                <div className={`h-1.5 ${tierConfig[client.tier]?.bgColor}`} />
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="h-16 w-16 border-2 border-primary/30">
-                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-orange-200/20 text-primary text-lg font-semibold">
-                        {client.name.split(" ").map(n => n[0]).join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between">
-                        <div><h3 className="text-lg font-semibold text-foreground">{client.name}</h3><p className="text-sm text-muted-foreground">{client.occupation}</p></div>
-                        <Badge className={`${tierConfig[client.tier]?.bgColor} text-white border-0`}><TierIcon className="h-3 w-3 mr-1" />{client.tier.charAt(0).toUpperCase() + client.tier.slice(1)}</Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 mt-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="h-4 w-4" />{client.phone}</div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Mail className="h-4 w-4" />{client.email}</div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" />{client.location}</div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Portfolio Value</span><span className="font-semibold text-green-600">{formatValue(client.portfolioValue)}</span></div>
-                          <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Properties Owned</span><span className="font-medium">{client.propertiesOwned}</span></div>
-                          <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Relationship Since</span><span className="font-medium">{client.since}</span></div>
-                        </div>
-                      </div>
-                      <div className="mt-4 pt-4 border-t border-border/50">
-                        <p className="text-sm text-muted-foreground mb-2">Preferences</p>
-                        <div className="flex flex-wrap gap-2">{client.preferences.map((pref, i) => (<Badge key={i} variant="secondary" className="bg-muted/50">{pref}</Badge>))}</div>
-                      </div>
-                      <div className="flex items-center gap-2 mt-4">
-                        <Button variant="outline" size="sm" className="flex-1"><Phone className="h-4 w-4 mr-2" />Call</Button>
-                        <Button variant="outline" size="sm" className="flex-1"><MessageSquare className="h-4 w-4 mr-2" />Message</Button>
-                        <Button size="sm" className="flex-1 bg-gradient-to-r from-primary to-orange-700 border-0" onClick={() => setDetailClient(client)}>
-                          View Profile<ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )
-        })}
-      </motion.div>
-
-      {/* HNI Client Detail Dialog */}
-      <Dialog open={!!detailClient} onOpenChange={() => setDetailClient(null)}>
-        <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-hidden p-0">
-          {detailClient && (() => {
-            const TierIcon = tierConfig[detailClient.tier]?.icon || Star
-            const timeline = getClientTimeline(detailClient)
-            return (
-              <div className="flex flex-col max-h-[90vh]">
-                {/* Header */}
-                <div className="p-6 border-b bg-gradient-to-r from-primary/5 via-orange-200/5 to-orange-600/5">
-                  <DialogHeader>
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-16 w-16 border-3 border-primary/30">
-                        <AvatarFallback className="bg-gradient-to-br from-primary/20 to-orange-200/20 text-primary text-xl font-bold">
-                          {detailClient.name.split(" ").map(n => n[0]).join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <DialogTitle className="text-xl flex items-center gap-2">
-                          {detailClient.name}
-                          <Badge className={`${tierConfig[detailClient.tier]?.bgColor} text-white border-0 ml-2`}><TierIcon className="h-3 w-3 mr-1" />{detailClient.tier.charAt(0).toUpperCase() + detailClient.tier.slice(1)}</Badge>
-                        </DialogTitle>
-                        <DialogDescription className="flex items-center gap-3 mt-1">
-                          <span>{detailClient.occupation}</span>
-                          <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{detailClient.location}</span>
-                        </DialogDescription>
-                      </div>
-                    </div>
-                  </DialogHeader>
-                </div>
-
-                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-luxury p-6 space-y-6">
-                  {/* Quick Stats */}
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="p-4 rounded-xl bg-green-500/5 border border-green-500/20 text-center">
-                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-medium">Portfolio</p>
-                      <p className="text-xl font-bold text-green-600">{formatValue(detailClient.portfolioValue)}</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center">
-                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-medium">Properties</p>
-                      <p className="text-xl font-bold text-primary">{detailClient.propertiesOwned}</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 text-center">
-                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-medium">Since</p>
-                      <p className="text-xl font-bold text-blue-600">{detailClient.since}</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center">
-                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-medium">Avg. Value</p>
-                      <p className="text-xl font-bold text-primary">{formatValue(detailClient.portfolioValue / detailClient.propertiesOwned)}</p>
-                    </div>
-                  </div>
-
-                  {/* Contact & Preferences */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <Card className="border-border/50 shadow-card border-0">
-                      <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><User className="w-5 h-5 text-primary" />Contact Information</CardTitle></CardHeader>
-                      <CardContent className="space-y-3">
-                        <ProtectedPhone value={detailClient.phone} className="flex items-center gap-2 text-sm"><Phone className="w-4 h-4 text-muted-foreground" />{detailClient.phone}</ProtectedPhone>
-                        <div className="flex items-center gap-2 text-sm"><Mail className="w-4 h-4 text-muted-foreground" />{detailClient.email}</div>
-                        <div className="flex items-center gap-2 text-sm"><MapPin className="w-4 h-4 text-muted-foreground" />{detailClient.location}</div>
-                        <div className="flex items-center gap-2 text-sm"><Building2 className="w-4 h-4 text-muted-foreground" />{detailClient.occupation}</div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-border/50 shadow-card border-0">
-                      <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Heart className="w-5 h-5 text-rose-500" />Preferences</CardTitle></CardHeader>
-                      <CardContent>
-                        <div className="flex flex-wrap gap-2">
-                          {detailClient.preferences.map((pref, i) => (
-                            <Badge key={i} variant="outline" className="bg-primary/5 border-primary/20 text-sm">{pref}</Badge>
-                          ))}
-                        </div>
-                        <Separator className="my-4" />
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Investment Style</span>
-                          <Badge className="bg-green-500/10 text-green-600 border-0">Active Investor</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Relationship Timeline */}
-                  <Card className="border-border/50 shadow-card border-0">
-                    <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><History className="w-5 h-5 text-primary" />Relationship Timeline</CardTitle></CardHeader>
-                    <CardContent>
-                      <div className="relative">
-                        <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-border" />
-                        <div className="space-y-4">
-                          {timeline.map((event, idx) => {
-                            const Icon = event.icon
-                            const isLast = idx === timeline.length - 1
-                            return (
-                              <div key={event.id} className="relative flex gap-4 pl-2">
-                                <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${event.color} ${isLast ? 'ring-2 ring-primary/30' : ''}`}>
-                                  <Icon className="w-4 h-4" />
-                                </div>
-                                <div className="flex-1 pb-2">
-                                  <div className="flex items-center justify-between">
-                                    <p className={`font-medium text-sm ${isLast ? 'text-primary' : ''}`}>{event.label}</p>
-                                    <span className="text-xs text-muted-foreground">{event.date}</span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-0.5">{event.detail}</p>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="p-4 border-t bg-muted/30 flex items-center justify-between">
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="gap-2"><Phone className="w-4 h-4" />Call</Button>
-                    <Button variant="outline" size="sm" className="gap-2"><MessageSquare className="w-4 h-4" />WhatsApp</Button>
-                  </div>
-                  <Button className="gap-2 bg-gradient-to-r from-primary to-orange-700 border-0 shadow-gold-sm"><FileText className="w-4 h-4" />Generate Report</Button>
-                </div>
-              </div>
-            )
-          })()}
-        </DialogContent>
-      </Dialog>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {[
+        { label: "Elite profiles", value: profiles.length, Icon: Crown, note: "Total protected records" },
+        { label: "Active relationships", value: active, Icon: Sparkles, note: "Engaged and current clients" },
+        { label: "Actions due", value: upcoming, Icon: CalendarClock, note: "Due in the next 7 days" },
+        { label: "Known portfolio", value: money(portfolio), Icon: Diamond, note: "Recorded relationship value" },
+      ].map(({ label, value, Icon, note }) => <Card key={label} className="border-border/60 shadow-none"><CardContent className="flex items-start justify-between p-5"><div><p className="text-sm text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p><p className="mt-1 text-xs text-muted-foreground">{note}</p></div><div className="rounded-xl bg-amber-50 p-2.5 text-amber-700"><Icon className="h-5 w-5" /></div></CardContent></Card>)}
     </div>
-  )
+
+    <Card className="border-border/60 shadow-none"><CardContent className="p-4"><div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+      <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Search by name, organisation, city or relationship owner…" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+      <div className="flex flex-wrap gap-2"><Select value={category} onValueChange={setCategory}><SelectTrigger className="w-[165px]"><Filter className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger><SelectContent>{categories.map((item) => <SelectItem key={item} value={item}>{categoryLabel[item]}</SelectItem>)}</SelectContent></Select>
+      <Select value={stage} onValueChange={setStage}><SelectTrigger className="w-[155px]"><SelectValue placeholder="Relationship" /></SelectTrigger><SelectContent><SelectItem value="all">All stages</SelectItem>{["prospect", "introduced", "engaged", "active", "client", "dormant"].map((item) => <SelectItem key={item} value={item} className="capitalize">{item}</SelectItem>)}</SelectContent></Select></div>
+    </div></CardContent></Card>
+
+    <Card className="overflow-hidden border-border/60 shadow-none">
+      {loading ? <div className="space-y-3 p-6">{[1,2,3,4].map((n) => <Skeleton key={n} className="h-16 w-full" />)}</div> : filtered.length === 0 ? <div className="flex min-h-[310px] flex-col items-center justify-center px-6 text-center"><div className="rounded-2xl bg-amber-50 p-4 text-amber-700"><Crown className="h-7 w-7" /></div><h3 className="mt-4 font-semibold">{profiles.length ? "No profiles match these filters" : "Your private network starts here"}</h3><p className="mt-1 max-w-md text-sm text-muted-foreground">{profiles.length ? "Try broadening your search or clearing a filter." : "Add the first VIP profile to begin building relationship history and actionable intelligence."}</p>{!profiles.length && <Button onClick={openCreate} className="mt-5 gap-2"><Plus className="h-4 w-4" />Add first profile</Button>}</div> : <Table>
+        <TableHeader><TableRow className="bg-muted/35"><TableHead className="pl-6">Profile</TableHead><TableHead>Relationship</TableHead><TableHead>Investment view</TableHead><TableHead>Owner</TableHead><TableHead>Next action</TableHead><TableHead className="w-12" /></TableRow></TableHeader>
+        <TableBody>{filtered.map((profile) => { const Icon = categoryIcon[profile.category] || Sparkles; return <TableRow key={profile.id} className="group cursor-pointer" onClick={() => setSelected(profile)}>
+          <TableCell className="pl-6"><div className="flex items-center gap-3"><Avatar className="h-11 w-11 border border-amber-200"><AvatarFallback className="bg-amber-50 text-sm font-semibold text-amber-800">{initials(profile.fullName)}</AvatarFallback></Avatar><div><div className="flex items-center gap-2"><p className="font-medium">{profile.fullName}</p>{profile.isSensitive && <ShieldCheck className="h-3.5 w-3.5 text-amber-700" />}</div><p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="h-3 w-3" />{[profile.designation, profile.organisation].filter(Boolean).join(" · ") || categoryLabel[profile.category]}</p></div></div></TableCell>
+          <TableCell><Badge variant="secondary" className={`${stageStyles[profile.relationshipStage]} border-0 capitalize`}>{profile.relationshipStage}</Badge><p className="mt-1 text-xs text-muted-foreground">{profile.tier} tier</p></TableCell>
+          <TableCell><p className="font-medium">{money(profile.estimatedBudgetMax || profile.estimatedPortfolioValue)}</p><p className="mt-0.5 text-xs text-muted-foreground">{profile.preferences?.slice(0,2).join(" · ") || "Preferences not added"}</p></TableCell>
+          <TableCell><p className="text-sm">{profile.owner?.fullName || "Unassigned"}</p><p className="mt-0.5 text-xs text-muted-foreground">{profile.city || profile.country || "Location unknown"}</p></TableCell>
+          <TableCell><p className="text-sm font-medium">{profile.nextAction || "No action"}</p><p className={`mt-0.5 text-xs ${profile.nextActionAt && new Date(profile.nextActionAt) < new Date() ? "text-rose-600" : "text-muted-foreground"}`}>{dueText(profile.nextActionAt)}</p></TableCell>
+          <TableCell><Button variant="ghost" size="icon"><ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" /></Button></TableCell>
+        </TableRow>})}</TableBody>
+      </Table>}
+    </Card>
+
+    <Sheet open={!!selected && !editorOpen} onOpenChange={(open) => !open && setSelected(null)}><SheetContent className="w-full overflow-y-auto p-0 sm:max-w-2xl">
+      {selected && <><SheetHeader className="border-b bg-gradient-to-br from-amber-50 to-background p-6 text-left"><div className="flex items-start gap-4"><Avatar className="h-16 w-16 border-2 border-amber-200"><AvatarFallback className="bg-white text-xl font-semibold text-amber-800">{initials(selected.fullName)}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><div className="mb-2 flex flex-wrap gap-2"><Badge className="bg-zinc-900 text-white capitalize">{selected.tier}</Badge><Badge variant="secondary" className={`${stageStyles[selected.relationshipStage]} border-0 capitalize`}>{selected.relationshipStage}</Badge></div><SheetTitle className="text-2xl">{selected.fullName}</SheetTitle><p className="mt-1 text-sm text-muted-foreground">{[selected.designation, selected.organisation].filter(Boolean).join(" at ") || categoryLabel[selected.category]}</p></div><Button variant="outline" size="sm" onClick={() => openEdit(selected)}>Edit profile</Button></div></SheetHeader>
+      <div className="p-6"><div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["Portfolio", money(selected.estimatedPortfolioValue)], ["Buying range", money(selected.estimatedBudgetMax)], ["Properties", selected.propertiesOwned], ["Last contact", dateText(selected.lastContactAt)]].map(([a,b]) => <div key={String(a)} className="rounded-xl border bg-muted/20 p-3"><p className="text-xs text-muted-foreground">{a}</p><p className="mt-1 font-semibold">{b}</p></div>)}</div>
+      <Tabs defaultValue="intelligence"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="intelligence">Intelligence</TabsTrigger><TabsTrigger value="contact">Access</TabsTrigger><TabsTrigger value="timeline">Timeline</TabsTrigger></TabsList>
+        <TabsContent value="intelligence" className="mt-5 space-y-5"><section><Label className="text-xs uppercase tracking-wider text-muted-foreground">Investment preferences</Label><div className="mt-2 flex flex-wrap gap-2">{selected.preferences?.length ? selected.preferences.map((item) => <Badge key={item} variant="outline">{item}</Badge>) : <p className="text-sm text-muted-foreground">No preferences recorded.</p>}</div></section><Separator /><section><Label className="text-xs uppercase tracking-wider text-muted-foreground">Personal interests</Label><div className="mt-2 flex flex-wrap gap-2">{selected.interests?.length ? selected.interests.map((item) => <Badge key={item} variant="secondary">{item}</Badge>) : <p className="text-sm text-muted-foreground">No interests recorded.</p>}</div></section><Separator /><section><Label className="text-xs uppercase tracking-wider text-muted-foreground">Relationship intelligence</Label><p className="mt-2 whitespace-pre-wrap text-sm leading-6">{selected.relationshipNotes || "No private relationship notes yet."}</p></section><div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-amber-800">Next best action</p><p className="mt-1 font-medium">{selected.nextAction || "No follow-up planned"}</p><p className="mt-1 text-xs text-amber-800/70">{selected.nextActionAt ? `${dateText(selected.nextActionAt)} · ${dueText(selected.nextActionAt)}` : "Add a date to keep this relationship warm."}</p></div></TabsContent>
+        <TabsContent value="contact" className="mt-5 space-y-4"><Contact icon={Phone} label="Direct phone"><ProtectedPhone value={selected.phone || ""}>{selected.phone || "Not recorded"}</ProtectedPhone></Contact><Contact icon={Mail} label="Private email">{selected.email || "Not recorded"}</Contact><Contact icon={MapPin} label="Location">{[selected.city, selected.country].filter(Boolean).join(", ") || "Not recorded"}</Contact><Contact icon={UserRound} label="Relationship owner">{selected.owner?.fullName || "Unassigned"}</Contact><Separator /><h4 className="text-sm font-semibold">Gatekeeper / assistant</h4><Contact icon={UsersRound} label={selected.assistantName || "Assistant"}><ProtectedPhone value={selected.assistantPhone || ""}>{selected.assistantPhone || "Not recorded"}</ProtectedPhone></Contact><p className="rounded-lg bg-muted/50 p-3 text-xs leading-5 text-muted-foreground"><ShieldCheck className="mr-1 inline h-3.5 w-3.5" />Contact data is restricted to super admins and protected against casual copying.</p></TabsContent>
+        <TabsContent value="timeline" className="mt-5"><div className="mb-4 flex items-center justify-between"><div><h4 className="font-semibold">Relationship history</h4><p className="text-xs text-muted-foreground">Every meaningful touchpoint in one place</p></div><Button size="sm" onClick={() => setInteractionOpen(true)}><Plus className="mr-1 h-4 w-4" />Log interaction</Button></div><div className="space-y-1">{selected.activities?.length ? selected.activities.map((event) => <div key={event.id} className="relative flex gap-3 border-l-2 border-amber-200 py-3 pl-4"><div className="absolute -left-[5px] top-5 h-2 w-2 rounded-full bg-amber-600" /><div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-medium">{event.title}</p><Badge variant="outline" className="text-[10px] capitalize">{event.activityType.replace("_", " ")}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{dateText(event.occurredAt)}{event.actor?.fullName ? ` · ${event.actor.fullName}` : ""}</p>{event.notes && <p className="mt-2 text-sm leading-5">{event.notes}</p>}</div></div>) : <p className="py-8 text-center text-sm text-muted-foreground">No interactions logged yet.</p>}</div></TabsContent>
+      </Tabs></div></>}
+    </SheetContent></Sheet>
+
+    <Dialog open={editorOpen} onOpenChange={setEditorOpen}><DialogContent className="max-h-[92vh] max-w-4xl overflow-hidden p-0"><DialogHeader className="border-b px-6 py-5"><DialogTitle>{selected ? "Edit VIP profile" : "Add VIP profile"}</DialogTitle></DialogHeader><ScrollArea className="max-h-[calc(92vh-145px)]"><div className="space-y-7 p-6"><FormSection title="Identity" description="Who they are and how your team knows them"><div className="grid gap-4 md:grid-cols-2"><Field label="Full name *"><Input value={form.full_name} onChange={(e) => setForm({...form, full_name:e.target.value})} /></Field><Field label="Category"><Select value={form.category} onValueChange={(value) => setForm({...form, category:value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{categories.slice(1).map((item) => <SelectItem key={item} value={item}>{categoryLabel[item]}</SelectItem>)}</SelectContent></Select></Field><Field label="Designation"><Input value={form.designation} onChange={(e) => setForm({...form, designation:e.target.value})} /></Field><Field label="Organisation"><Input value={form.organisation} onChange={(e) => setForm({...form, organisation:e.target.value})} /></Field><Field label="City"><Input value={form.city} onChange={(e) => setForm({...form, city:e.target.value})} /></Field><Field label="Source / introduction"><Input placeholder="Who introduced this relationship?" value={form.source} onChange={(e) => setForm({...form, source:e.target.value})} /></Field></div></FormSection>
+      <FormSection title="Relationship management" description="Ownership, access level and the next move"><div className="grid gap-4 md:grid-cols-3"><Field label="Tier"><Select value={form.tier} onValueChange={(value) => setForm({...form,tier:value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["platinum","diamond","black"].map((item)=><SelectItem key={item} value={item} className="capitalize">{item}</SelectItem>)}</SelectContent></Select></Field><Field label="Stage"><Select value={form.relationship_stage} onValueChange={(value) => setForm({...form,relationship_stage:value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["prospect","introduced","engaged","active","client","dormant"].map((item)=><SelectItem key={item} value={item} className="capitalize">{item}</SelectItem>)}</SelectContent></Select></Field><Field label="Relationship owner"><Select value={form.relationship_owner_id || "unassigned"} onValueChange={(value) => setForm({...form,relationship_owner_id:value === "unassigned" ? "" : value})}><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger><SelectContent><SelectItem value="unassigned">Unassigned</SelectItem>{employees.map((employee)=><SelectItem key={employee.id} value={employee.id}>{employee.full_name || employee.user_profiles?.full_name || "Team member"}</SelectItem>)}</SelectContent></Select></Field><Field label="Next action"><Input placeholder="Private viewing, introduction…" value={form.next_action} onChange={(e)=>setForm({...form,next_action:e.target.value})} /></Field><Field label="Action date"><Input type="datetime-local" value={form.next_action_at} onChange={(e)=>setForm({...form,next_action_at:e.target.value})} /></Field><Field label="Preferred communication"><Input placeholder="Via assistant, WhatsApp only…" value={form.communication_preferences} onChange={(e)=>setForm({...form,communication_preferences:e.target.value})} /></Field></div></FormSection>
+      <FormSection title="Contact & gatekeeper" description="Sensitive direct and assistant contact details"><div className="grid gap-4 md:grid-cols-2"><Field label="Direct phone"><Input value={form.phone} onChange={(e)=>setForm({...form,phone:e.target.value})} /></Field><Field label="Private email"><Input type="email" value={form.email} onChange={(e)=>setForm({...form,email:e.target.value})} /></Field><Field label="Assistant / gatekeeper"><Input value={form.assistant_name} onChange={(e)=>setForm({...form,assistant_name:e.target.value})} /></Field><Field label="Assistant phone"><Input value={form.assistant_phone} onChange={(e)=>setForm({...form,assistant_phone:e.target.value})} /></Field></div></FormSection>
+      <FormSection title="Investment intelligence" description="Useful context for precise, high-touch matching"><div className="grid gap-4 md:grid-cols-2"><Field label="Estimated portfolio value"><Input type="number" value={form.estimated_portfolio_value} onChange={(e)=>setForm({...form,estimated_portfolio_value:e.target.value})} /></Field><Field label="Properties owned"><Input type="number" min="0" value={form.properties_owned} onChange={(e)=>setForm({...form,properties_owned:e.target.value})} /></Field><Field label="Buying range — minimum"><Input type="number" value={form.estimated_budget_min} onChange={(e)=>setForm({...form,estimated_budget_min:e.target.value})} /></Field><Field label="Buying range — maximum"><Input type="number" value={form.estimated_budget_max} onChange={(e)=>setForm({...form,estimated_budget_max:e.target.value})} /></Field><Field label="Property preferences"><Input placeholder="Sea-facing, penthouse, discreet entry (comma separated)" value={form.preferences} onChange={(e)=>setForm({...form,preferences:e.target.value})} /></Field><Field label="Personal interests"><Input placeholder="Golf, art, philanthropy (comma separated)" value={form.interests} onChange={(e)=>setForm({...form,interests:e.target.value})} /></Field><div className="md:col-span-2"><Field label="Private relationship notes"><Textarea rows={5} placeholder="Relationship context, family office, decision style, sensitivities and do-not-contact windows…" value={form.relationship_notes} onChange={(e)=>setForm({...form,relationship_notes:e.target.value})} /></Field></div></div></FormSection></div></ScrollArea><div className="flex items-center justify-end gap-2 border-t bg-background px-6 py-4"><Button variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button><Button disabled={saving} onClick={saveProfile} className="bg-amber-700 text-white hover:bg-amber-800">{saving ? "Saving…" : selected ? "Save changes" : "Create VIP profile"}</Button></div></DialogContent></Dialog>
+
+    <Dialog open={interactionOpen} onOpenChange={setInteractionOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Log interaction</DialogTitle></DialogHeader><div className="space-y-4 py-2"><Field label="Type"><Select value={interaction.activity_type} onValueChange={(value)=>setInteraction({...interaction,activity_type:value})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["call","meeting","message","note","introduction","site_visit","deal"].map((item)=><SelectItem key={item} value={item} className="capitalize">{item.replace("_"," ")}</SelectItem>)}</SelectContent></Select></Field><Field label="Summary"><Input placeholder="Discussed private viewing" value={interaction.title} onChange={(e)=>setInteraction({...interaction,title:e.target.value})} /></Field><Field label="Notes"><Textarea rows={4} value={interaction.notes} onChange={(e)=>setInteraction({...interaction,notes:e.target.value})} /></Field><Button className="w-full" disabled={saving} onClick={addInteraction}>{saving ? "Saving…" : "Add to timeline"}</Button></div></DialogContent></Dialog>
+  </div>
 }
 
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div> }
+function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) { return <section><div className="mb-4"><h3 className="font-semibold">{title}</h3><p className="text-sm text-muted-foreground">{description}</p></div>{children}</section> }
+function Contact({ icon: Icon, label, children }: { icon: typeof Phone; label: string; children: React.ReactNode }) { return <div className="flex items-center gap-3 rounded-xl border p-3"><div className="rounded-lg bg-muted p-2"><Icon className="h-4 w-4 text-muted-foreground" /></div><div><p className="text-xs text-muted-foreground">{label}</p><div className="text-sm font-medium">{children}</div></div></div> }

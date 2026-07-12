@@ -23,6 +23,7 @@ import { MicrositeLeadSyncModule } from './modules/microsite-lead-sync/microsite
 import { MetaLeadSyncModule } from './modules/meta-lead-sync/meta-lead-sync.module'
 import { VoiceIntegrationModule } from './modules/voice-integration/voice-integration.module'
 import { validateEnv } from './common/config/env.validation'
+import { HniModule } from './modules/hni/hni.module'
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { validateEnv } from './common/config/env.validation'
     MicrositeLeadSyncModule,
     MetaLeadSyncModule,
     VoiceIntegrationModule,
+    HniModule,
   ],
   controllers: [AppController],
   providers: [
