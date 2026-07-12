@@ -492,7 +492,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <Card className="flex h-[430px] flex-col overflow-hidden shadow-card">
+          <Card className="flex min-h-[360px] flex-col overflow-hidden shadow-card sm:h-[430px]">
             <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
               <div>
                 <CardTitle className="text-base">Recent Leads</CardTitle>
@@ -536,7 +536,7 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <Card className="flex h-[430px] flex-col overflow-hidden shadow-card">
+          <Card className="flex min-h-[360px] flex-col overflow-hidden shadow-card sm:h-[430px]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Team Focus</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">Workload and call activity</p>
@@ -582,7 +582,7 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-          <Card className="flex h-[430px] flex-col overflow-hidden shadow-card">
+          <Card className="flex min-h-[360px] flex-col overflow-hidden shadow-card sm:h-[430px]">
             <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
               <div>
                 <CardTitle className="text-base">Upcoming Visits</CardTitle>

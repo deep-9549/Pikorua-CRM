@@ -120,7 +120,7 @@ export function ImportLeadsDialog({
 
         <div className="space-y-4 mt-1">
           {/* Template download */}
-          <div className="flex items-center justify-between px-3 py-2.5 rounded-lg"
+          <div className="flex flex-col gap-3 rounded-lg px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
             style={{ background: "rgb(194 65 12 / 0.06)", border: "1px solid rgb(194 65 12 / 0.18)" }}>
             <div>
               <p className="text-xs font-medium" style={{ color: "var(--color-foreground)" }}>Need a template?</p>
@@ -128,7 +128,7 @@ export function ImportLeadsDialog({
                 Download the pre-formatted Excel template with sample data
               </p>
             </div>
-            <Button variant="outline" size="sm" className="shrink-0 gap-1.5 h-8 text-xs ml-3" onClick={handleDownloadTemplate}>
+            <Button variant="outline" size="sm" className="w-full shrink-0 gap-1.5 text-xs sm:ml-3 sm:h-8 sm:w-auto" onClick={handleDownloadTemplate}>
               <Download className="w-3.5 h-3.5" />
               Template
             </Button>
@@ -137,7 +137,7 @@ export function ImportLeadsDialog({
           {/* Drop zone */}
           {!result && (
             <div
-              className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-xl cursor-pointer transition-colors"
+              className="relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl px-4 py-8 text-center transition-colors sm:py-10"
               style={{
                 border: `2px dashed ${dragging ? "var(--color-primary)" : "var(--color-border)"}`,
                 background: dragging ? "rgb(194 65 12 / 0.04)" : "transparent",
@@ -187,7 +187,7 @@ export function ImportLeadsDialog({
           {/* Result */}
           {result && (
             <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {[
                   { label: "Imported", value: result.inserted, good: true },
                   { label: "Skipped", value: result.skipped, good: false },

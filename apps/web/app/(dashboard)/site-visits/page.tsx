@@ -708,19 +708,19 @@ export default function SiteVisitsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {[
           { label: tab === "upcoming" ? "Upcoming" : "Past",  value: counts.total,   icon: Calendar,     color: "var(--color-primary)" },
           { label: "Today",   value: counts.today,   icon: Clock,        color: "var(--color-warning)" },
           { label: "Overdue", value: counts.overdue, icon: AlertCircle,  color: "var(--color-destructive)" },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="shadow-card">
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs font-medium" style={{ color: "var(--color-muted-foreground)" }}>{label}</p>
                 <Icon className="w-4 h-4" style={{ color }} />
               </div>
-              <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+              <p className="text-xl font-bold sm:text-2xl" style={{ color }}>{value}</p>
             </CardContent>
           </Card>
         ))}

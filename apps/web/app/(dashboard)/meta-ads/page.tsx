@@ -152,8 +152,8 @@ function AddLeadDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-1">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1.5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
                 Full Name <span style={{ color: "var(--color-primary)" }}>*</span>
               </Label>
@@ -190,7 +190,7 @@ function AddLeadDialog({
               />
             </div>
 
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Email</Label>
               <Input
                 type="email"
@@ -201,7 +201,7 @@ function AddLeadDialog({
               />
             </div>
 
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
                 Source / Campaign
               </Label>
@@ -213,7 +213,7 @@ function AddLeadDialog({
               />
             </div>
 
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Notes</Label>
               <Textarea
                 placeholder="Any additional info about this lead..."
@@ -232,7 +232,7 @@ function AddLeadDialog({
             </div>
           )}
 
-          <div className="flex gap-3 pt-1">
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:gap-3">
             <Button type="button" variant="outline" className="flex-1 h-9" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
@@ -800,12 +800,12 @@ export default function MetaAdsPage() {
 
             {/* Bulk assign bar — shown on selectable tabs when rows are checked */}
             {selectable && selected.size > 0 && (
-              <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl mb-4"
+              <div className="mb-4 flex flex-col gap-2 rounded-xl px-3 py-3 sm:flex-row sm:items-center sm:gap-3 sm:px-4 sm:py-2.5"
                 style={{ background: "rgb(194 65 12 / 0.08)", border: "1px solid var(--color-primary)" }}>
                 <span className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
                   {selected.size} selected
                 </span>
-                <div className="flex-1" />
+                <div className="hidden flex-1 sm:block" />
                 <select
                   value={bulkExec}
                   onChange={e => setBulkExec(e.target.value)}

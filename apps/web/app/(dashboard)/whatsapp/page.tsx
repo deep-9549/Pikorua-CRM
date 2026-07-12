@@ -76,8 +76,8 @@ export default function WhatsAppHubPage() {
   return (
     <TooltipProvider>
       {/* Full-bleed, fixed height chat layout */}
-      <div className="flex rounded-2xl overflow-hidden shadow-luxury-lg border border-border/60"
-        style={{ height: "calc(100vh - 96px)", minHeight: 0 }}>
+      <div className="flex overflow-hidden rounded-xl border border-border/60 shadow-luxury-lg sm:rounded-2xl"
+        style={{ height: "calc(100dvh - 88px)", minHeight: 0 }}>
 
         {/* ── Column 1: Conversation List ──────────────────── */}
         <div className={cn(
@@ -195,7 +195,7 @@ export default function WhatsAppHubPage() {
                 background: "var(--color-card)",
                 borderBottom: "1px solid var(--color-border)"
               }}>
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <Button variant="ghost" size="icon" className="h-8 w-8 md:hidden" onClick={() => setSelectedLeadId(null)}>
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
@@ -205,15 +205,15 @@ export default function WhatsAppHubPage() {
                     {selectedLead.name.split(" ").map(n => n[0]).join("")}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="text-[14px] font-semibold leading-tight">{selectedLead.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-semibold leading-tight">{selectedLead.name}</p>
                   <p className="text-[11px] text-muted-foreground">
                     {selectedLead.whatsappStatus === "active" ? "online now" : "last seen recently"}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
                 {/* AI Sentiment Pill */}
                 {(() => {
                   const sm = sentimentMeta(selectedConvo.aiSentiment.current)
@@ -228,7 +228,7 @@ export default function WhatsAppHubPage() {
                           sm.bg
                         )}>
                           <SIcon className={cn("w-3.5 h-3.5", sm.text)} />
-                          <span className={cn("text-[11px] font-semibold", sm.text)}>{sm.label}</span>
+                          <span className={cn("hidden text-[11px] font-semibold sm:inline", sm.text)}>{sm.label}</span>
                           <TIcon className={cn("w-3 h-3", tm.color)} />
                         </div>
                       </TooltipTrigger>
@@ -242,7 +242,7 @@ export default function WhatsAppHubPage() {
                   )
                 })()}
 
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="hidden h-8 w-8 sm:inline-flex">
                   <Phone className="w-4 h-4 text-muted-foreground" />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8">

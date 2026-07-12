@@ -140,7 +140,7 @@ export default function CallingScriptsPage() {
                 ))}
               </div>
 
-              <ScrollArea className="h-[500px] pr-4">
+              <ScrollArea className="h-[55dvh] pr-2 sm:h-[500px] sm:pr-4">
                 <div className="space-y-3">
                   {filteredScripts.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
@@ -282,7 +282,7 @@ export default function CallingScriptsPage() {
                 animate={{ opacity: 1 }}
               >
                 <Card className="border-border/50 bg-card/50 backdrop-blur-sm h-full">
-                  <CardContent className="flex flex-col items-center justify-center h-[600px]">
+                  <CardContent className="flex min-h-[50dvh] flex-col items-center justify-center sm:h-[600px]">
                     <div className="p-4 rounded-full bg-muted/50 mb-4">
                       <FileText className="h-12 w-12 text-muted-foreground/50" />
                     </div>

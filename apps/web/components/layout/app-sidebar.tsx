@@ -154,7 +154,7 @@ export function AppSidebar({
         animate={{ width: sidebarWidth }}
         transition={{ duration: 0.28, ease: "easeOut" }}
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen flex flex-col overflow-hidden transition-transform duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+          "fixed left-0 top-0 z-40 flex h-[100dvh] max-w-[calc(100vw-3rem)] flex-col overflow-hidden transition-transform duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
         style={{ background: "var(--color-sidebar)" }}

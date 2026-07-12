@@ -32,7 +32,7 @@ export default function DashboardLayout({
             onMobileOpenChange={setMobileSidebarOpen}
           />
           <div
-            className="min-h-screen transition-all duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] md:ml-[var(--sidebar-offset)]"
+            className="min-h-screen min-w-0 transition-all duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] md:ml-[var(--sidebar-offset)]"
           >
             <TopNav
               onCommandPaletteOpen={() => setCommandPaletteOpen(true)}
@@ -41,8 +41,10 @@ export default function DashboardLayout({
                 setMobileSidebarOpen(true)
               }}
             />
-            <main className="p-4 sm:p-5 lg:p-6 page-enter overflow-x-hidden">
-              {children}
+            <main className="page-enter min-w-0 overflow-x-clip px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:p-5 lg:p-6">
+              <div className="mx-auto min-w-0 max-w-[1600px]">
+                {children}
+              </div>
             </main>
           </div>
           <CommandPalette

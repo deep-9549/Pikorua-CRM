@@ -181,7 +181,7 @@ export function ReminderDialog({ open, onOpenChange }: ReminderDialogProps) {
             </DialogHeader>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-3 mt-4">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               <div className="p-3 rounded-xl bg-muted/30 text-center">
                 <p className="text-2xl font-bold">{pendingReminders.length}</p>
                 <p className="text-xs text-muted-foreground">Pending</p>
@@ -203,7 +203,7 @@ export function ReminderDialog({ open, onOpenChange }: ReminderDialogProps) {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0 flex flex-col">
-            <TabsList className="shrink-0 mx-6 mt-4 grid w-auto grid-cols-3 bg-muted/50">
+            <TabsList className="mx-3 mt-4 grid w-auto shrink-0 grid-cols-3 bg-muted/50 sm:mx-6">
               <TabsTrigger value="pending" className="gap-2">
                 <Clock className="w-4 h-4" />
                 Pending

@@ -98,8 +98,8 @@ export function AddLeadDialog<TLead = AddedLead>({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-1">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1.5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
                 Full Name <span style={{ color: "var(--color-primary)" }}>*</span>
               </Label>
@@ -136,7 +136,7 @@ export function AddLeadDialog<TLead = AddedLead>({
               />
             </div>
 
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Email</Label>
               <Input
                 type="email"
@@ -147,7 +147,7 @@ export function AddLeadDialog<TLead = AddedLead>({
               />
             </div>
 
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
                 Source / Campaign
               </Label>
@@ -159,7 +159,7 @@ export function AddLeadDialog<TLead = AddedLead>({
               />
             </div>
 
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Notes</Label>
               <Textarea
                 placeholder="Any additional info about this lead..."
@@ -178,7 +178,7 @@ export function AddLeadDialog<TLead = AddedLead>({
             </div>
           )}
 
-          <div className="flex gap-3 pt-1">
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:gap-3">
             <Button type="button" variant="outline" className="flex-1 h-9" onClick={onClose} disabled={loading}>
               Cancel
             </Button>

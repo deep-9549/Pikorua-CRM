@@ -1084,11 +1084,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 pb-12">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.push(openedFromTrash ? "/trash" : "/leads")}>
           <ArrowLeft className="w-4 h-4" /> {openedFromTrash ? "Back to Trash" : "Back to Leads"}
         </Button>
-        <div className="flex items-center gap-1">
+        <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
           {!openedFromTrash && (
             <>
           <Button variant="outline" size="sm" disabled={!previousLeadId || saving} onClick={() => navigateToLead(previousLeadId)} aria-label="Previous lead">
@@ -1106,7 +1106,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             className="gap-2 text-red-500 hover:text-red-600 hover:bg-red-500/10"
             onClick={() => setConfirmDelete(true)}
           >
-            <Trash2 className="w-4 h-4" /> Delete Lead
+            <Trash2 className="w-4 h-4" /> <span className="hidden sm:inline">Delete Lead</span>
           </Button>
         )}
         </div>
@@ -1264,7 +1264,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <DateField label="First Call Date" value={crm.first_call_date ?? ""}
                     onChange={v => setCrm(p => ({ ...p, first_call_date: v || null }))} />
                   <DateField label="Last Call Date" value={crm.last_call_date ?? ""}

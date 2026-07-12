@@ -401,7 +401,7 @@ function PropertyDetailModal({
     <Dialog open={!!property} onOpenChange={() => onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="flex h-[min(90vh,780px)] w-[min(1040px,calc(100vw-2rem))] max-w-none flex-col overflow-hidden p-0 sm:max-w-none"
+        className="flex h-[calc(100dvh-0.75rem)] w-full max-w-none flex-col overflow-hidden p-0 sm:h-[min(90vh,780px)] sm:w-[min(1040px,calc(100vw-2rem))] sm:max-w-none"
       >
         <DialogHeader className="sr-only">
           <DialogTitle>{property.name} sales brief</DialogTitle>
@@ -795,14 +795,14 @@ export default function PropertiesPage() {
     >
       <motion.div variants={item} className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Properties</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Properties</h1>
           <p className="mt-1 text-muted-foreground">
             Internal property inventory for matching leads, preparing calls, and booking site visits.
           </p>
         </div>
         <Button
           variant="outline"
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
           onClick={() => setShowRecommendations(true)}
         >
           <Sparkles className="h-4 w-4" />

@@ -335,16 +335,16 @@ export default function LeadsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {[
           { label: "Total", value: leads.length, color: "var(--color-primary)" },
           { label: "Follow-up Today", value: dueToday.length, color: "var(--color-warning)" },
           { label: "Overdue", value: overdue.length, color: "var(--color-destructive)" },
         ].map(({ label, value, color }) => (
           <Card key={label} className="shadow-card">
-            <CardContent className="p-4">
-              <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>{label}</p>
-              <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+            <CardContent className="p-3 sm:p-4">
+              <p className="mb-1 text-[11px] font-medium leading-tight sm:text-xs" style={{ color: "var(--color-muted-foreground)" }}>{label}</p>
+              <p className="text-xl font-bold sm:text-2xl" style={{ color }}>{value}</p>
             </CardContent>
           </Card>
         ))}
@@ -428,12 +428,12 @@ export default function LeadsPage() {
       )}
 
       {/* Search + filter toggle */}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--color-muted-foreground)" }} />
           <Input placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
         </div>
-        <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={() => setShowFilters(p => !p)}>
+        <Button variant="outline" size="sm" className="w-full gap-2 sm:w-auto sm:shrink-0" onClick={() => setShowFilters(p => !p)}>
           <Filter className="w-4 h-4" /> Filters
           {activeFilterCount > 0 && (
             <span className="text-[10px] font-bold px-1.5 rounded-full"
@@ -448,7 +448,7 @@ export default function LeadsPage() {
       <AnimatePresence>
         {showFilters && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-            <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl"
+            <div className="grid grid-cols-1 gap-2 rounded-xl p-3 sm:flex sm:flex-wrap sm:items-center"
               style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
               <FilterSelect value={filters.clientStatus} onChange={v => setFilter("clientStatus", v)}>
                 <option value="">All Client Status</option>
@@ -477,7 +477,7 @@ export default function LeadsPage() {
                   {execs.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </FilterSelect>
               )}
-              <div className="flex items-center gap-1.5">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:flex">
                 <span className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>Received</span>
                 <input type="date" value={filters.dateFrom} onChange={e => setFilter("dateFrom", e.target.value)}
                   className="h-9 rounded-lg px-2 text-xs bg-transparent" style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />

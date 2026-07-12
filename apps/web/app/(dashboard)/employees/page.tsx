@@ -226,7 +226,7 @@ function AddUserDialog({
             </div>
           )}
 
-          <div className="flex gap-3 pt-1">
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:gap-3">
             <Button type="button" variant="outline" className="flex-1 h-9" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
@@ -301,7 +301,7 @@ function UserCard({
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
             {user.email && (
-              <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
+              <span className="flex min-w-0 items-center gap-1 break-all text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
                 <Mail className="w-3 h-3" />{user.email}
               </span>
             )}

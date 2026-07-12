@@ -102,12 +102,12 @@ export default function TrashPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-5">
         {Object.entries(TRASH_STATUS_META).map(([key, meta]) => {
           const Icon = meta.icon
           return (
             <Card key={key} className="shadow-card">
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium" style={{ color: "var(--color-muted-foreground)" }}>{meta.label}</p>
                   <Icon className="w-4 h-4" style={{ color: meta.color }} />
@@ -134,7 +134,7 @@ export default function TrashPage() {
         <select
           value={status}
           onChange={e => setStatus(e.target.value)}
-          className="h-9 rounded-lg px-2.5 text-xs bg-transparent cursor-pointer"
+          className="h-10 w-full rounded-lg bg-transparent px-2.5 text-base sm:h-9 sm:w-auto sm:text-xs cursor-pointer"
           style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
         >
           <option value="">All Trash</option>
