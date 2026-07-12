@@ -340,9 +340,9 @@ export function TopNav({
         transition={{ duration: 0.25, ease: "easeOut" }}
         className="sticky top-0 z-30 h-[60px] flex items-center justify-between gap-3 px-3 sm:px-4 lg:px-6"
         style={{
-          background: "rgb(254 249 242 / 0.88)",
+          background: "color-mix(in srgb, var(--color-background) 88%, transparent)",
           backdropFilter: "blur(20px) saturate(180%)",
-          borderBottom: "1px solid rgb(222 217 211 / 0.7)",
+          borderBottom: "1px solid color-mix(in srgb, var(--color-border) 70%, transparent)",
         }}
       >
         {/* Breadcrumbs */}
