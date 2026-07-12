@@ -25,3 +25,10 @@ export function clearAuthCookies() {
   document.cookie = `${TOKEN_KEY}=${base}`
   document.cookie = `${USER_KEY}=${base}`
 }
+
+export function updateAuthUser(user: AuthUser) {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  const maxAge = 60 * 60 * 24 * 7
+  document.cookie = `${USER_KEY}=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`
+  window.dispatchEvent(new CustomEvent('pikorua:user-updated', { detail: user }))
+}

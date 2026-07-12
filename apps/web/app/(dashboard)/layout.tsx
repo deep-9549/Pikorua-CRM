@@ -6,6 +6,7 @@ import { TopNav } from "@/components/layout/top-nav"
 import { CommandPalette } from "@/components/layout/command-palette"
 import { PrivacyGuard } from "@/components/security/privacy-guard"
 import { QueryProvider } from "@/components/providers/query-provider"
+import { AppPreferencesProvider } from "@/components/providers/app-preferences-provider"
 
 export default function DashboardLayout({
   children,
@@ -18,38 +19,39 @@ export default function DashboardLayout({
   const sidebarOffset = sidebarCollapsed ? 68 : 256
 
   return (
-    <QueryProvider>
-    <div
-      className="min-h-screen bg-background"
-      style={{ "--sidebar-offset": `${sidebarOffset}px` } as React.CSSProperties}
-    >
-      <AppSidebar
-        collapsed={sidebarCollapsed}
-        mobileOpen={mobileSidebarOpen}
-        onCollapsedChange={setSidebarCollapsed}
-        onMobileOpenChange={setMobileSidebarOpen}
-      />
-      <div
-        className="min-h-screen transition-all duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] md:ml-[var(--sidebar-offset)]"
-      >
-        <TopNav
-          onCommandPaletteOpen={() => setCommandPaletteOpen(true)}
-          onMenuClick={() => {
-            setSidebarCollapsed(false)
-            setMobileSidebarOpen(true)
-          }}
-        />
-        <main className="p-4 sm:p-5 lg:p-6 page-enter overflow-x-hidden">
-          {children}
-        </main>
-      </div>
-      <CommandPalette
-        open={commandPaletteOpen}
-        onOpenChange={setCommandPaletteOpen}
-      />
-      <PrivacyGuard />
-    </div>
-    </QueryProvider>
+    <AppPreferencesProvider className="min-h-screen bg-background text-foreground">
+      <QueryProvider>
+        <div
+          className="min-h-screen bg-background"
+          style={{ "--sidebar-offset": `${sidebarOffset}px` } as React.CSSProperties}
+        >
+          <AppSidebar
+            collapsed={sidebarCollapsed}
+            mobileOpen={mobileSidebarOpen}
+            onCollapsedChange={setSidebarCollapsed}
+            onMobileOpenChange={setMobileSidebarOpen}
+          />
+          <div
+            className="min-h-screen transition-all duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] md:ml-[var(--sidebar-offset)]"
+          >
+            <TopNav
+              onCommandPaletteOpen={() => setCommandPaletteOpen(true)}
+              onMenuClick={() => {
+                setSidebarCollapsed(false)
+                setMobileSidebarOpen(true)
+              }}
+            />
+            <main className="p-4 sm:p-5 lg:p-6 page-enter overflow-x-hidden">
+              {children}
+            </main>
+          </div>
+          <CommandPalette
+            open={commandPaletteOpen}
+            onOpenChange={setCommandPaletteOpen}
+          />
+          <PrivacyGuard />
+        </div>
+      </QueryProvider>
+    </AppPreferencesProvider>
   )
 }
-

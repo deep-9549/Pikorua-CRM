@@ -108,8 +108,13 @@ export function AppSidebar({
   const router = useRouter()
 
   React.useEffect(() => {
-    const user = getAuthUser()
-    if (user) setProfile({ full_name: user.name ?? "", role: user.role as UserProfile["role"] })
+    const syncProfile = () => {
+      const user = getAuthUser()
+      if (user) setProfile({ full_name: user.name ?? "", role: user.role as UserProfile["role"] })
+    }
+    syncProfile()
+    window.addEventListener("pikorua:user-updated", syncProfile)
+    return () => window.removeEventListener("pikorua:user-updated", syncProfile)
   }, [])
 
   async function handleLogout() {
