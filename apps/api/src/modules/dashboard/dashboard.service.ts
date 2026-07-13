@@ -786,9 +786,12 @@ export class DashboardService {
     return { byMonth, recentBookings }
   }
 
-  async getEmployeePerformance(employeeId?: string, startDate?: string, endDate?: string) {
+  async getEmployeePerformance(employeeId?: string, startDate?: string, endDate?: string, listOnly = false) {
     if ((startDate && !endDate) || (!startDate && endDate)) {
       throw new BadRequestException('Both startDate and endDate are required for a custom report.')
+    }
+    if (startDate && endDate && !employeeId) {
+      throw new BadRequestException('employeeId is required for a custom report.')
     }
     const employees = await this.db.query.userProfiles.findMany({
       where: and(
@@ -798,7 +801,25 @@ export class DashboardService {
       orderBy: [desc(userProfiles.createdAt)],
     })
 
-    const selectedEmployee = employees.find((employee) => employee.id === employeeId) ?? employees[0] ?? null
+    if (listOnly) {
+      return {
+        employees: employees.map(serializeEmployee),
+        selectedEmployee: null,
+        periods: {},
+        trend: [],
+        recentLeads: [],
+        customReport: null,
+        generatedAt: new Date().toISOString(),
+      }
+    }
+
+    const requestedEmployee = employeeId
+      ? employees.find((employee) => employee.id === employeeId) ?? null
+      : null
+    if (employeeId && !requestedEmployee) {
+      throw new BadRequestException('Selected employee was not found.')
+    }
+    const selectedEmployee = requestedEmployee ?? employees[0] ?? null
 
     if (!selectedEmployee) {
       return {

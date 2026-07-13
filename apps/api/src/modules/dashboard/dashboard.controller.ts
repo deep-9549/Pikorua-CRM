@@ -37,7 +37,8 @@ export class DashboardController {
     @Query('employeeId') employeeId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('listOnly') listOnly?: string,
   ): Promise<unknown> {
-    return this.dashboardService.getEmployeePerformance(employeeId, startDate, endDate)
+    return this.dashboardService.getEmployeePerformance(employeeId, startDate, endDate, listOnly === 'true')
   }
 }

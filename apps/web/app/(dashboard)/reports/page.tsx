@@ -76,13 +76,6 @@ function localDate(date: Date) {
   return `${year}-${month}-${day}`
 }
 
-function initialRange() {
-  const end = new Date()
-  const start = new Date(end)
-  start.setDate(start.getDate() - 29)
-  return { start: localDate(start), end: localDate(end) }
-}
-
 function change(current: number, previous: number, points = false) {
   if (points) {
     const value = current - previous
@@ -134,11 +127,10 @@ function EmptyState({ message }: { message: string }) {
 
 export default function ReportsPage() {
   const router = useRouter()
-  const [defaults] = React.useState(() => initialRange())
   const [authorized, setAuthorized] = React.useState<boolean | null>(null)
   const [employeeId, setEmployeeId] = React.useState("")
-  const [startDate, setStartDate] = React.useState(defaults.start)
-  const [endDate, setEndDate] = React.useState(defaults.end)
+  const [startDate, setStartDate] = React.useState("")
+  const [endDate, setEndDate] = React.useState("")
   const [data, setData] = React.useState<ReportResponse | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [exporting, setExporting] = React.useState(false)
@@ -154,16 +146,16 @@ export default function ReportsPage() {
     setAuthorized(user.role === "super_admin")
   }, [router])
 
-  const generate = React.useCallback(async (targetEmployeeId = employeeId) => {
-    if (!startDate || !endDate || endDate < startDate) {
-      setError("Choose a valid date range.")
+  const generate = React.useCallback(async () => {
+    if (!employeeId || !startDate || !endDate || endDate < startDate) {
+      setError("Select an employee and a valid date range.")
       return
     }
     setLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams({ startDate, endDate })
-      if (targetEmployeeId) params.set("employeeId", targetEmployeeId)
+      params.set("employeeId", employeeId)
       const response = await fetch(`/api/dashboard/employee-performance?${params.toString()}`, { cache: "no-store" })
       const payload = await response.json().catch(() => null)
       if (!response.ok) throw new Error(payload?.message || payload?.error || "Unable to generate report")
@@ -179,8 +171,26 @@ export default function ReportsPage() {
   }, [employeeId, endDate, startDate])
 
   React.useEffect(() => {
-    if (authorized === true) void generate("")
-  }, [authorized]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (authorized !== true) return
+
+    let cancelled = false
+    const loadEmployees = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const response = await fetch("/api/dashboard/employee-performance?listOnly=true", { cache: "no-store" })
+        const payload = await response.json().catch(() => null)
+        if (!response.ok) throw new Error(payload?.message || payload?.error || "Unable to load employees")
+        if (!cancelled) setData(payload as ReportResponse)
+      } catch (requestError) {
+        if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Unable to load employees")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void loadEmployees()
+    return () => { cancelled = true }
+  }, [authorized])
 
   const exportPdf = () => {
     if (!data?.selectedEmployee || !data.customReport || dirty) return
@@ -266,13 +276,13 @@ export default function ReportsPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="report-start">From</Label>
-            <Input id="report-start" type="date" value={startDate} max={endDate} onChange={(event) => { setStartDate(event.target.value); setDirty(true) }} />
+            <Input id="report-start" type="date" value={startDate} max={endDate || localDate(new Date())} onChange={(event) => { setStartDate(event.target.value); setDirty(true) }} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="report-end">To</Label>
             <Input id="report-end" type="date" value={endDate} min={startDate} max={localDate(new Date())} onChange={(event) => { setEndDate(event.target.value); setDirty(true) }} />
           </div>
-          <Button onClick={() => void generate()} disabled={loading || !employeeId} className="w-full lg:w-auto">
+          <Button onClick={() => void generate()} disabled={loading || !employeeId || !startDate || !endDate} className="w-full lg:w-auto">
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Analyze
           </Button>
