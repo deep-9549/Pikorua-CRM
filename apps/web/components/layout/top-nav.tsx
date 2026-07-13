@@ -37,7 +37,6 @@ const pageNames: Record<string, string> = {
   "/smart-matching": "Smart Property Matching",
   "/site-visits": "Site Visit Management",
   "/meta-ads": "Meta Ads Analytics",
-  "/ai-analytics": "AI Analytics",
   "/ai-control": "AI Control Center",
   "/bookings": "Bookings & Revenue",
   "/employees": "Employee Management",

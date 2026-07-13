@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable } from '@nestjs/common'
 import { eq, count, sum, desc, asc, and, isNull, inArray, or } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, bookings, siteVisits, userProfiles, leadActivityEvents } from '@pikorua/db'
+import { EmployeeReportInsightsService } from './employee-report-insights.service'
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
 
@@ -516,9 +517,143 @@ function buildTrendRows(
   }))
 }
 
+function summarizeRange(
+  range: PeriodRange,
+  leads: any[],
+  visits: any[],
+  ownershipWindows: OwnershipWindow[],
+  employeeId: string,
+  callActivities: CallActivity[],
+) {
+  const summary = emptySummary()
+
+  for (const lead of leads) {
+    const assignedInPeriod = ownershipStartedDuringPeriod(ownershipWindows, lead.id, employeeId, range)
+    const ownedInPeriod = ownedDuringPeriod(ownershipWindows, lead.id, employeeId, range)
+    const convertedInPeriod = lead.status === 'converted'
+      && inRange(lead.updatedAt, range)
+      && ownedAt(ownershipWindows, lead.id, employeeId, lead.updatedAt)
+
+    if (assignedInPeriod) summary.totalLeads += 1
+
+    if (ownedInPeriod) {
+      if (lead.assignedTo === employeeId && lead.status === 'assigned') summary.activeLeads += 1
+      if (lead.status === 'rejected') summary.rejectedLeads += 1
+      if (lead.status === 'cold_pool') summary.coldPoolLeads += 1
+      if (lead.crmDetails?.hwc === 'hot') summary.hotLeads += 1
+      if (lead.crmDetails?.hwc === 'warm') summary.warmLeads += 1
+      if (lead.crmDetails?.hwc === 'cold') summary.coldLeads += 1
+    }
+
+    if (convertedInPeriod) summary.convertedLeads += 1
+
+    if (
+      lead.crmDetails?.followUpDate &&
+      inRange(lead.crmDetails.followUpDate, range) &&
+      ownedAt(ownershipWindows, lead.id, employeeId, lead.crmDetails.followUpDate)
+    ) {
+      summary.followUpsDue += 1
+    }
+  }
+
+  const periodCalls = periodCallActivities(leads, callActivities, ownershipWindows, employeeId, range)
+  summary.callsLogged = periodCalls.length
+  summary.spokenCalls = periodCalls.filter((activity) => activity.callStatus === 'spoken').length
+  summary.notSpokenCalls = periodCalls.filter((activity) => activity.callStatus === 'not_spoken').length
+  summary.callbackCalls = periodCalls.filter((activity) => activity.callStatus === 'call_back_later').length
+
+  for (const visit of visits) {
+    if (!range.start || !range.end || inRange(visit.scheduledDate, range)) {
+      summary.siteVisitsScheduled += 1
+      if (visit.status === 'completed') summary.siteVisitsCompleted += 1
+    }
+  }
+
+  summary.conversionRate = summary.totalLeads > 0
+    ? Math.round((summary.convertedLeads / summary.totalLeads) * 1000) / 10
+    : 0
+
+  return summary
+}
+
+function parseIstDate(value: string, field: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) throw new BadRequestException(`${field} must use YYYY-MM-DD.`)
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const shifted = new Date(Date.UTC(year, month - 1, day))
+  if (
+    shifted.getUTCFullYear() !== year ||
+    shifted.getUTCMonth() !== month - 1 ||
+    shifted.getUTCDate() !== day
+  ) {
+    throw new BadRequestException(`${field} is not a valid date.`)
+  }
+  return new Date(shifted.getTime() - IST_OFFSET_MS)
+}
+
+function customTrendRows(
+  range: PeriodRange,
+  leads: any[],
+  visits: any[],
+  windows: OwnershipWindow[],
+  employeeId: string,
+  activities: CallActivity[],
+) {
+  if (!range.start || !range.end) return []
+  const totalDays = Math.ceil((range.end.getTime() - range.start.getTime()) / (24 * 60 * 60 * 1000))
+  const bucketDays = totalDays <= 45 ? 1 : totalDays <= 210 ? 7 : totalDays <= 1095 ? 30 : 90
+  const bucketCount = Math.ceil(totalDays / bucketDays)
+
+  return Array.from({ length: bucketCount }, (_, index) => {
+    const start = addDays(range.start!, index * bucketDays)
+    const end = new Date(Math.min(addDays(start, bucketDays).getTime(), range.end!.getTime()))
+    const bucket: PeriodRange = {
+      key: 'monthly',
+      label: dayLabel(start),
+      start,
+      end,
+    }
+    return {
+      label: bucket.label,
+      month: bucket.label,
+      leads: leads.filter((lead) => ownershipStartedDuringPeriod(windows, lead.id, employeeId, bucket)).length,
+      calls: periodCallActivities(leads, activities, windows, employeeId, bucket).length,
+      visits: visits.filter((visit) => inRange(visit.scheduledDate, bucket)).length,
+      conversions: leads.filter((lead) =>
+        lead.status === 'converted' &&
+        inRange(lead.updatedAt, bucket) &&
+        ownedAt(windows, lead.id, employeeId, lead.updatedAt)
+      ).length,
+    }
+  })
+}
+
+function reportRatios(summary: PerformanceSummary) {
+  const percent = (numerator: number, denominator: number) => denominator > 0
+    ? Math.round((numerator / denominator) * 1000) / 10
+    : 0
+  const decimal = (numerator: number, denominator: number) => denominator > 0
+    ? Math.round((numerator / denominator) * 100) / 100
+    : 0
+
+  return {
+    callbackRate: percent(summary.callbackCalls, summary.callsLogged),
+    contactRate: percent(summary.spokenCalls, summary.callsLogged),
+    visitCompletionRate: percent(summary.siteVisitsCompleted, summary.siteVisitsScheduled),
+    conversionRate: summary.conversionRate,
+    callsPerLead: decimal(summary.callsLogged, summary.totalLeads),
+    callsPerConversion: decimal(summary.callsLogged, summary.convertedLeads),
+  }
+}
+
 @Injectable()
 export class DashboardService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly employeeReportInsights: EmployeeReportInsightsService,
+  ) {}
 
   private get db() { return this.database.db }
 
@@ -591,7 +726,10 @@ export class DashboardService {
     return { byMonth, recentBookings }
   }
 
-  async getEmployeePerformance(employeeId?: string) {
+  async getEmployeePerformance(employeeId?: string, startDate?: string, endDate?: string) {
+    if ((startDate && !endDate) || (!startDate && endDate)) {
+      throw new BadRequestException('Both startDate and endDate are required for a custom report.')
+    }
     const employees = await this.db.query.userProfiles.findMany({
       where: and(
         eq(userProfiles.role, 'sales_executive'),
@@ -674,57 +812,14 @@ export class DashboardService {
     const now = new Date()
     const periods = buildPeriodRanges(now)
     const summaries = periods.reduce<Record<PeriodKey, PerformanceSummary>>((acc, period) => {
-      const summary = emptySummary()
-
-      for (const lead of leads) {
-        const assignedInPeriod = ownershipStartedDuringPeriod(ownershipWindows, lead.id, selectedEmployee.id, period)
-        const ownedInPeriod = ownedDuringPeriod(ownershipWindows, lead.id, selectedEmployee.id, period)
-        const convertedInPeriod = lead.status === 'converted'
-          && inRange(lead.updatedAt, period)
-          && ownedAt(ownershipWindows, lead.id, selectedEmployee.id, lead.updatedAt)
-
-        if (assignedInPeriod) {
-          summary.totalLeads += 1
-        }
-
-        if (ownedInPeriod) {
-          if (lead.assignedTo === selectedEmployee.id && lead.status === 'assigned') summary.activeLeads += 1
-          if (lead.status === 'rejected') summary.rejectedLeads += 1
-          if (lead.status === 'cold_pool') summary.coldPoolLeads += 1
-          if (lead.crmDetails?.hwc === 'hot') summary.hotLeads += 1
-          if (lead.crmDetails?.hwc === 'warm') summary.warmLeads += 1
-          if (lead.crmDetails?.hwc === 'cold') summary.coldLeads += 1
-        }
-
-        if (convertedInPeriod) summary.convertedLeads += 1
-
-        if (
-          lead.crmDetails?.followUpDate &&
-          inRange(lead.crmDetails.followUpDate, period) &&
-          ownedAt(ownershipWindows, lead.id, selectedEmployee.id, lead.crmDetails.followUpDate)
-        ) {
-          summary.followUpsDue += 1
-        }
-      }
-
-      const periodCalls = periodCallActivities(leads, callActivities, ownershipWindows, selectedEmployee.id, period)
-      summary.callsLogged = periodCalls.length
-      summary.spokenCalls = periodCalls.filter((activity) => activity.callStatus === 'spoken').length
-      summary.notSpokenCalls = periodCalls.filter((activity) => activity.callStatus === 'not_spoken').length
-      summary.callbackCalls = periodCalls.filter((activity) => activity.callStatus === 'call_back_later').length
-
-      for (const visit of visits) {
-        if (period.key === 'lifetime' || inRange(visit.scheduledDate, period)) {
-          summary.siteVisitsScheduled += 1
-          if (visit.status === 'completed') summary.siteVisitsCompleted += 1
-        }
-      }
-
-      summary.conversionRate = summary.totalLeads > 0
-        ? Math.round((summary.convertedLeads / summary.totalLeads) * 1000) / 10
-        : 0
-
-      acc[period.key] = summary
+      acc[period.key] = summarizeRange(
+        period,
+        leads,
+        visits,
+        ownershipWindows,
+        selectedEmployee.id,
+        callActivities,
+      )
       return acc
     }, {} as Record<PeriodKey, PerformanceSummary>)
 
@@ -781,12 +876,61 @@ export class DashboardService {
         }
       })
 
+    let customReport = null
+    if (startDate && endDate) {
+      const customStart = parseIstDate(startDate, 'startDate')
+      const customEndStart = parseIstDate(endDate, 'endDate')
+      const customEnd = addDays(customEndStart, 1)
+      if (customEnd <= customStart) {
+        throw new BadRequestException('endDate must be on or after startDate.')
+      }
+      const rangeDays = Math.ceil((customEnd.getTime() - customStart.getTime()) / (24 * 60 * 60 * 1000))
+      if (rangeDays > 1827) {
+        throw new BadRequestException('Custom reports are limited to five years.')
+      }
+
+      const customRange: PeriodRange = {
+        key: 'monthly',
+        label: 'Custom range',
+        start: customStart,
+        end: customEnd,
+      }
+      const previousRange: PeriodRange = {
+        key: 'monthly',
+        label: 'Previous range',
+        start: addDays(customStart, -rangeDays),
+        end: customStart,
+      }
+      const summary = summarizeRange(customRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities)
+      const previousSummary = summarizeRange(previousRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities)
+      const ratios = reportRatios(summary)
+      const previousRatios = reportRatios(previousSummary)
+      const insights = await this.employeeReportInsights.analyze({
+        employee: selectedEmployee.fullName ?? selectedEmployee.email ?? 'Employee',
+        range: { startDate, endDate },
+        summary: { ...summary },
+        previousSummary: { ...previousSummary },
+        ratios: { ...ratios },
+      })
+
+      customReport = {
+        range: { startDate, endDate, days: rangeDays },
+        summary,
+        previousSummary,
+        ratios,
+        previousRatios,
+        trend: customTrendRows(customRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities),
+        insights,
+      }
+    }
+
     return {
       employees: employees.map(serializeEmployee),
       selectedEmployee: serializeEmployee(selectedEmployee),
       periods: summaries,
       trend,
       trendByPeriod,
+      customReport,
       recentLeads,
       transferSafe: true,
       generatedAt: now.toISOString(),

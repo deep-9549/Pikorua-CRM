@@ -48,7 +48,6 @@ const pages: CommandItem[] = [
   { id: "matching", title: "Smart Property Matching", subtitle: "AI-powered matching", icon: Sparkles, type: "page", href: "/smart-matching" },
   { id: "site-visits", title: "Site Visits", subtitle: "Schedule & manage visits", icon: CalendarCheck, type: "page", href: "/site-visits" },
   { id: "meta-ads", title: "Meta Ads Analytics", subtitle: "Campaign performance", icon: BarChart3, type: "page", href: "/meta-ads" },
-  { id: "ai-analytics", title: "AI Analytics", subtitle: "Deep CRM comparisons", icon: Sparkles, type: "page", href: "/ai-analytics" },
   { id: "ai", title: "AI Control Center", subtitle: "Configure AI settings", icon: Bot, type: "page", href: "/ai-control" },
   { id: "bookings", title: "Bookings & Revenue", subtitle: "Track deals & revenue", icon: CreditCard, type: "page", href: "/bookings" },
   { id: "employees", title: "Employee Management", subtitle: "Team & performance", icon: UserCog, type: "page", href: "/employees" },

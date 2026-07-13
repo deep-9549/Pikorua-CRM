@@ -1,311 +1,420 @@
 "use client"
 
-import { useState } from "react"
+import * as React from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { 
-  BarChart3,
-  TrendingUp,
-  Download,
-  Calendar,
-  Filter,
-  FileText,
-  Users,
-  Building2,
-  DollarSign,
-  Target,
-  PieChart,
-  ArrowUpRight,
-  ArrowDownRight
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
-  AreaChart,
-  Area,
-  BarChart,
+  Activity,
+  AlertCircle,
+  BarChart3,
+  CalendarRange,
+  CheckCircle2,
+  Download,
+  FileChartColumn,
+  Loader2,
+  PhoneCall,
+  RefreshCw,
+  Sparkles,
+  Target,
+  Users,
+} from "lucide-react"
+import {
   Bar,
-  LineChart,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
   Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart as RechartsPie,
-  Pie,
-  Cell,
-  Legend
 } from "recharts"
+import { toast } from "sonner"
 
-const monthlyData: { month: string; leads: number; conversions: number; revenue: number }[] = []
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { SearchableSelect } from "@/components/ui/searchable-select"
+import { getAuthUser } from "@/lib/auth/cookies"
+import {
+  CustomEmployeeReport,
+  downloadEmployeePerformancePdf,
+} from "@/lib/reports/employee-performance-pdf"
+import { cn } from "@/lib/utils"
 
-const sourceData: { name: string; value: number; color: string }[] = []
+interface Employee {
+  id: string
+  full_name: string | null
+  email: string | null
+  status: string | null
+}
 
-const employeePerformance: { name: string; leads: number; conversions: number }[] = []
+interface ReportResponse {
+  employees: Employee[]
+  selectedEmployee: Employee | null
+  customReport: CustomEmployeeReport | null
+  generatedAt: string
+}
 
-const propertyTypeData: { type: string; count: number; value: number }[] = []
+const CHART_COLORS = {
+  calls: "#ee732d",
+  leads: "#3670c6",
+  visits: "#805aba",
+  conversions: "#28a470",
+}
+
+function localDate(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function initialRange() {
+  const end = new Date()
+  const start = new Date(end)
+  start.setDate(start.getDate() - 29)
+  return { start: localDate(start), end: localDate(end) }
+}
+
+function change(current: number, previous: number, points = false) {
+  if (points) {
+    const value = current - previous
+    return `${value >= 0 ? "+" : ""}${value.toFixed(1)} pt`
+  }
+  if (previous === 0) return current === 0 ? "0%" : "New"
+  const value = ((current - previous) / previous) * 100
+  return `${value >= 0 ? "+" : ""}${value.toFixed(0)}%`
+}
+
+function StatCard({
+  label,
+  value,
+  delta,
+  icon: Icon,
+  tone,
+}: {
+  label: string
+  value: string
+  delta: string
+  icon: React.ElementType
+  tone: string
+}) {
+  return (
+    <Card className="overflow-hidden border-border/60 shadow-card">
+      <CardContent className="relative p-4 sm:p-5">
+        <div className={cn("absolute inset-x-0 top-0 h-1", tone)} />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{value}</p>
+          </div>
+          <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+        </div>
+        <Badge variant="secondary" className="mt-3 font-semibold">{delta} vs prior</Badge>
+      </CardContent>
+    </Card>
+  )
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
+      <FileChartColumn className="mb-3 h-8 w-8 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">{message}</p>
+    </div>
+  )
+}
 
 export default function ReportsPage() {
-  const [dateRange, setDateRange] = useState("6m")
+  const router = useRouter()
+  const [defaults] = React.useState(() => initialRange())
+  const [authorized, setAuthorized] = React.useState<boolean | null>(null)
+  const [employeeId, setEmployeeId] = React.useState("")
+  const [startDate, setStartDate] = React.useState(defaults.start)
+  const [endDate, setEndDate] = React.useState(defaults.end)
+  const [data, setData] = React.useState<ReportResponse | null>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [exporting, setExporting] = React.useState(false)
+  const [dirty, setDirty] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
-  const formatValue = (value: number) => {
-    if (value >= 10000000) return `Rs ${(value / 10000000).toFixed(1)} Cr`
-    if (value >= 100000) return `Rs ${(value / 100000).toFixed(0)} L`
-    return `Rs ${value.toLocaleString()}`
+  React.useEffect(() => {
+    const user = getAuthUser()
+    if (!user) {
+      router.replace("/login")
+      return
+    }
+    setAuthorized(user.role === "super_admin")
+  }, [router])
+
+  const generate = React.useCallback(async (targetEmployeeId = employeeId) => {
+    if (!startDate || !endDate || endDate < startDate) {
+      setError("Choose a valid date range.")
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams({ startDate, endDate })
+      if (targetEmployeeId) params.set("employeeId", targetEmployeeId)
+      const response = await fetch(`/api/dashboard/employee-performance?${params.toString()}`, { cache: "no-store" })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(payload?.message || payload?.error || "Unable to generate report")
+      const next = payload as ReportResponse
+      setData(next)
+      if (next.selectedEmployee?.id) setEmployeeId(next.selectedEmployee.id)
+      setDirty(false)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to generate report")
+    } finally {
+      setLoading(false)
+    }
+  }, [employeeId, endDate, startDate])
+
+  React.useEffect(() => {
+    if (authorized === true) void generate("")
+  }, [authorized]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const exportPdf = () => {
+    if (!data?.selectedEmployee || !data.customReport || dirty) return
+    setExporting(true)
+    try {
+      downloadEmployeePerformancePdf({
+        employee: data.selectedEmployee,
+        report: data.customReport,
+        generatedAt: data.generatedAt,
+      })
+      toast.success("Employee performance PDF exported")
+    } catch {
+      toast.error("Could not create the PDF")
+    } finally {
+      setExporting(false)
+    }
   }
 
+  if (authorized === null) {
+    return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+  }
+
+  if (!authorized) {
+    return (
+      <Card className="mx-auto mt-16 max-w-lg border-destructive/30">
+        <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+          <AlertCircle className="h-9 w-9 text-destructive" />
+          <h1 className="text-xl font-semibold">Super admin access only</h1>
+          <p className="text-sm text-muted-foreground">Employee reports include protected performance analytics.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const report = data?.customReport
+  const summary = report?.summary
+  const previous = report?.previousSummary
+  const comparisonData = report ? [
+    { name: "Leads", current: report.summary.totalLeads, previous: report.previousSummary.totalLeads },
+    { name: "Calls", current: report.summary.callsLogged, previous: report.previousSummary.callsLogged },
+    { name: "Visits", current: report.summary.siteVisitsCompleted, previous: report.previousSummary.siteVisitsCompleted },
+    { name: "Converted", current: report.summary.convertedLeads, previous: report.previousSummary.convertedLeads },
+  ] : []
+  const callMix = report ? [
+    { name: "Spoken", value: report.summary.spokenCalls, color: "#28a470" },
+    { name: "Not spoken", value: report.summary.notSpokenCalls, color: "#d24848" },
+    { name: "Callback", value: report.summary.callbackCalls, color: "#ee732d" },
+  ].filter(item => item.value > 0) : []
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-      >
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-orange-600/20">
-            <BarChart3 className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">Reports & Analytics</h1>
-            <p className="text-muted-foreground">Comprehensive business insights and performance metrics</p>
+    <div className="space-y-6 pb-10">
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="overflow-hidden rounded-2xl border bg-card shadow-card">
+        <div className="relative overflow-hidden bg-slate-950 px-5 py-6 text-white sm:px-7">
+          <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-primary/20 blur-3xl" />
+          <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">
+                <FileChartColumn className="h-4 w-4" /> Report studio
+              </div>
+              <h1 className="text-2xl font-semibold sm:text-3xl">Employee Performance Reports</h1>
+              <p className="mt-2 max-w-2xl text-sm text-slate-300">Custom range. Transfer-safe attribution. Visual-first PDF.</p>
+            </div>
+            <Button size="lg" onClick={exportPdf} disabled={!report || dirty || loading || exporting} className="w-full bg-orange-500 text-white hover:bg-orange-600 lg:w-auto">
+              {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              Export PDF
+            </Button>
           </div>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-          <SearchableSelect
-            value={dateRange}
-            onValueChange={setDateRange}
-            options={[
-              { value: "1m", label: "Last Month" },
-              { value: "3m", label: "Last 3 Months" },
-              { value: "6m", label: "Last 6 Months" },
-              { value: "1y", label: "Last Year" },
-            ]}
-            searchPlaceholder="Search range..."
-            triggerClassName="w-full sm:w-[140px]"
-          />
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export PDF
+
+        <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.4fr)_minmax(160px,1fr)_minmax(160px,1fr)_auto] lg:items-end lg:p-6">
+          <div className="space-y-2">
+            <Label>Employee</Label>
+            <SearchableSelect
+              value={employeeId}
+              onValueChange={(value) => { setEmployeeId(value); setDirty(true) }}
+              options={(data?.employees ?? []).map(employee => ({
+                value: employee.id,
+                label: employee.full_name || employee.email || "Unnamed employee",
+              }))}
+              searchPlaceholder="Search employees..."
+              triggerClassName="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="report-start">From</Label>
+            <Input id="report-start" type="date" value={startDate} max={endDate} onChange={(event) => { setStartDate(event.target.value); setDirty(true) }} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="report-end">To</Label>
+            <Input id="report-end" type="date" value={endDate} min={startDate} max={localDate(new Date())} onChange={(event) => { setEndDate(event.target.value); setDirty(true) }} />
+          </div>
+          <Button onClick={() => void generate()} disabled={loading || !employeeId} className="w-full lg:w-auto">
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Analyze
           </Button>
         </div>
       </motion.div>
 
-      {/* KPI Cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-      >
-        {[
-          { label: "Total Revenue", value: "Rs 0", change: "0%", trend: "up", icon: DollarSign, color: "text-green-600" },
-          { label: "Total Leads", value: "0", change: "0%", trend: "up", icon: Users, color: "text-blue-600" },
-          { label: "Conversions", value: "0", change: "0%", trend: "up", icon: Target, color: "text-primary" },
-          { label: "Conversion Rate", value: "0%", change: "0%", trend: "up", icon: TrendingUp, color: "text-primary" },
-        ].map((kpi) => (
-          <Card key={kpi.label} className="border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
-                <Badge 
-                  variant="secondary" 
-                  className={kpi.trend === "up" 
-                    ? "bg-green-500/10 text-green-600" 
-                    : "bg-red-500/10 text-red-600"
-                  }
-                >
-                  {kpi.trend === "up" ? (
-                    <ArrowUpRight className="h-3 w-3 mr-1" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3 mr-1" />
-                  )}
-                  {kpi.change}
-                </Badge>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
-              <p className="text-sm text-muted-foreground">{kpi.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </motion.div>
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" /> {error}
+        </div>
+      )}
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Trend */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Revenue Trend
-              </CardTitle>
+      {loading && !report ? (
+        <div className="flex min-h-80 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : !report || !summary || !previous ? (
+        <EmptyState message="Select an employee and date range to build the report." />
+      ) : (
+        <>
+          {dirty && (
+            <div className="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning-foreground">
+              <CalendarRange className="h-4 w-4" /> Filters changed. Analyze again before exporting.
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            <StatCard label="Assigned leads" value={summary.totalLeads.toLocaleString("en-IN")} delta={change(summary.totalLeads, previous.totalLeads)} icon={Users} tone="bg-blue-500" />
+            <StatCard label="Calls logged" value={summary.callsLogged.toLocaleString("en-IN")} delta={change(summary.callsLogged, previous.callsLogged)} icon={PhoneCall} tone="bg-orange-500" />
+            <StatCard label="Conversions" value={summary.convertedLeads.toLocaleString("en-IN")} delta={change(summary.convertedLeads, previous.convertedLeads)} icon={Target} tone="bg-emerald-500" />
+            <StatCard label="Conversion rate" value={`${summary.conversionRate.toFixed(1)}%`} delta={change(summary.conversionRate, previous.conversionRate, true)} icon={Activity} tone="bg-violet-500" />
+          </div>
+
+          <Card className="border-border/60 shadow-card">
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle className="text-base">Activity trend</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">{report.range.days} days across calls, leads, visits and conversions</p>
+              </div>
+              <Badge variant="outline">Transfer-safe</Badge>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
+              <div className="h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyData}>
-                    <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis 
-                      stroke="hsl(var(--muted-foreground))" 
-                      fontSize={12}
-                      tickFormatter={(value) => `ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${(value / 10000000).toFixed(1)}Cr`}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--card))", 
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px"
-                      }}
-                      formatter={(value: number) => [formatValue(value), "Revenue"]}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="revenue" 
-                      stroke="hsl(var(--primary))" 
-                      fill="url(#colorRevenue)" 
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Lead Sources */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PieChart className="h-5 w-5 text-primary" />
-                Lead Sources
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPie>
-                    <Pie
-                      data={sourceData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}%`}
-                      labelLine={false}
-                    >
-                      {sourceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </RechartsPie>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Second Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Employee Performance */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" />
-                Employee Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={employeePerformance} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--card))", 
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px"
-                      }}
-                    />
+                  <LineChart data={report.trend} margin={{ top: 10, right: 12, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={24} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ borderRadius: 10, borderColor: "hsl(var(--border))" }} />
                     <Legend />
-                    <Line type="monotone" dataKey="leads" stroke="hsl(var(--primary))" strokeWidth={3} activeDot={{ r: 8 }} name="Leads Generated" />
-                    <Line type="monotone" dataKey="conversions" stroke="#22c55e" strokeWidth={3} name="Conversions Closed" />
+                    <Line type="monotone" dataKey="calls" stroke={CHART_COLORS.calls} strokeWidth={3} dot={false} name="Calls" />
+                    <Line type="monotone" dataKey="leads" stroke={CHART_COLORS.leads} strokeWidth={2} dot={false} name="Leads" />
+                    <Line type="monotone" dataKey="visits" stroke={CHART_COLORS.visits} strokeWidth={2} dot={false} name="Visits" />
+                    <Line type="monotone" dataKey="conversions" stroke={CHART_COLORS.conversions} strokeWidth={2} dot={false} name="Conversions" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
-        </motion.div>
 
-        {/* Property Type Distribution */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                Property Type Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {propertyTypeData.map((item, index) => (
-                  <motion.div
-                    key={item.type}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50"
-                  >
-                    <div>
-                      <p className="font-medium text-foreground">{item.type}</p>
-                      <p className="text-sm text-muted-foreground">{item.count} units sold</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-primary">{formatValue(item.value)}</p>
-                      <p className="text-xs text-muted-foreground">Total value</p>
-                    </div>
-                  </motion.div>
+          <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+            <Card className="border-border/60 shadow-card">
+              <CardHeader><CardTitle className="text-base">Current vs previous period</CardTitle></CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={comparisonData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <Tooltip contentStyle={{ borderRadius: 10, borderColor: "hsl(var(--border))" }} />
+                      <Legend />
+                      <Bar dataKey="current" name="Current" fill="#ee732d" radius={[5, 5, 0, 0]} />
+                      <Bar dataKey="previous" name="Previous" fill="#b8c2d1" radius={[5, 5, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/60 shadow-card">
+              <CardHeader><CardTitle className="text-base">Call outcomes</CardTitle></CardHeader>
+              <CardContent>
+                {callMix?.length ? (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={callMix} dataKey="value" nameKey="name" innerRadius={62} outerRadius={95} paddingAngle={3}>
+                          {callMix.map(item => <Cell key={item.name} fill={item.color} />)}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : <EmptyState message="No call outcomes in this range." />}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="border-border/60 shadow-card">
+              <CardHeader><CardTitle className="text-base">Efficiency relations</CardTitle></CardHeader>
+              <CardContent className="space-y-5">
+                {[
+                  ["Callback share", report.ratios.callbackRate, "bg-blue-500"],
+                  ["Contact rate", report.ratios.contactRate, "bg-orange-500"],
+                  ["Visit completion", report.ratios.visitCompletionRate, "bg-violet-500"],
+                  ["Conversion", report.ratios.conversionRate, "bg-emerald-500"],
+                ].map(([label, value, color]) => (
+                  <div key={String(label)}>
+                    <div className="mb-2 flex justify-between text-sm"><span className="text-muted-foreground">{label}</span><strong>{Number(value).toFixed(1)}%</strong></div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full", color)} style={{ width: `${Math.min(100, Number(value))}%` }} /></div>
+                  </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="rounded-xl bg-muted/60 p-3"><p className="text-xs text-muted-foreground">Calls / lead</p><p className="mt-1 text-xl font-bold">{report.ratios.callsPerLead.toFixed(2)}</p></div>
+                  <div className="rounded-xl bg-muted/60 p-3"><p className="text-xs text-muted-foreground">Calls / conversion</p><p className="mt-1 text-xl font-bold">{report.ratios.callsPerConversion.toFixed(2)}</p></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/60 shadow-card">
+              <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" /> Key signals</CardTitle>
+                <Badge variant="secondary">{report.insights.source === "openrouter" ? "AI" : "Calculated"}</Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {report.insights.items.map((item, index) => (
+                  <div key={item} className="flex items-start gap-3 rounded-xl border bg-muted/20 p-4">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</div>
+                    <p className="pt-1 text-sm font-medium">{item}</p>
+                  </div>
+                ))}
+                <div className="grid grid-cols-3 gap-3 pt-2 text-center">
+                  <div className="rounded-xl bg-orange-500/10 p-3"><PhoneCall className="mx-auto h-4 w-4 text-orange-600" /><p className="mt-2 text-lg font-bold">{summary.followUpsDue}</p><p className="text-[11px] text-muted-foreground">Follow-ups</p></div>
+                  <div className="rounded-xl bg-emerald-500/10 p-3"><CheckCircle2 className="mx-auto h-4 w-4 text-emerald-600" /><p className="mt-2 text-lg font-bold">{summary.siteVisitsCompleted}</p><p className="text-[11px] text-muted-foreground">Visits done</p></div>
+                  <div className="rounded-xl bg-blue-500/10 p-3"><BarChart3 className="mx-auto h-4 w-4 text-blue-600" /><p className="mt-2 text-lg font-bold">{summary.hotLeads}</p><p className="text-[11px] text-muted-foreground">Hot leads</p></div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   )
 }
-
