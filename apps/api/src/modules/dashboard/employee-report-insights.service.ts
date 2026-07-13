@@ -11,6 +11,7 @@ export interface EmployeeReportInsightInput {
 export interface EmployeeReportInsights {
   source: 'openrouter' | 'calculated'
   items: string[]
+  actions: string[]
 }
 
 function calculatedInsights(input: EmployeeReportInsightInput): EmployeeReportInsights {
@@ -24,7 +25,18 @@ function calculatedInsights(input: EmployeeReportInsightInput): EmployeeReportIn
       ? `Conversion improved ${conversionDelta.toFixed(1)} percentage points.`
       : `Conversion needs attention: down ${Math.abs(conversionDelta).toFixed(1)} points.`,
   ]
-  return { source: 'calculated', items }
+  const actions = [
+    Number(ratios.contactRate) < 60
+      ? 'Review unspoken calls daily and retry the strongest leads first.'
+      : 'Maintain contact quality with focused follow-ups on spoken leads.',
+    Number(ratios.visitCompletionRate) < 70
+      ? 'Confirm site visits one day before and again two hours prior.'
+      : 'Convert completed visits faster with same-day proposal follow-ups.',
+    Number(ratios.callsPerLead) < 1.5
+      ? 'Increase call consistency until every assigned lead receives follow-up.'
+      : 'Prioritize high-intent leads to improve calls-to-conversion efficiency.',
+  ]
+  return { source: 'calculated', items, actions }
 }
 
 function extractJson(content: string) {
@@ -32,9 +44,9 @@ function extractJson(content: string) {
   return JSON.parse(fenced ?? content)
 }
 
-function cleanItems(value: unknown) {
+function cleanList(value: unknown, key: 'items' | 'actions') {
   if (!value || typeof value !== 'object') return []
-  const items = (value as { items?: unknown }).items
+  const items = (value as Record<string, unknown>)[key]
   if (!Array.isArray(items)) return []
   return items
     .filter((item): item is string => typeof item === 'string')
@@ -66,7 +78,7 @@ export class EmployeeReportInsightsService {
           messages: [
             {
               role: 'system',
-              content: 'You analyze sales employee metrics. Return strict JSON: {"items":["...","...","..."]}. Exactly 3 evidence-based insights, maximum 12 words each. No headings, praise, filler, or invented facts.',
+              content: 'You analyze sales employee metrics. Return strict JSON: {"items":["...","...","..."],"actions":["...","...","..."]}. Give exactly 3 evidence-based insights and exactly 3 practical improvement actions. Maximum 12 words each. Actions must start with a verb. No headings, praise, filler, or invented facts.',
             },
             {
               role: 'user',
@@ -83,8 +95,12 @@ export class EmployeeReportInsightsService {
       }
       const content = payload.choices?.[0]?.message?.content
       if (!content) return fallback
-      const items = cleanItems(extractJson(content))
-      return items.length === 3 ? { source: 'openrouter', items } : fallback
+      const parsed = extractJson(content)
+      const items = cleanList(parsed, 'items')
+      const actions = cleanList(parsed, 'actions')
+      return items.length === 3 && actions.length === 3
+        ? { source: 'openrouter', items, actions }
+        : fallback
     } catch {
       return fallback
     }

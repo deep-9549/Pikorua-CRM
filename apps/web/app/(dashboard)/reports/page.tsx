@@ -405,6 +405,15 @@ export default function ReportsPage() {
                     <p className="pt-1 text-sm font-medium">{item}</p>
                   </div>
                 ))}
+                <div className="flex items-center gap-2 pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Target className="h-4 w-4 text-primary" /> Recommended actions
+                </div>
+                {report.insights.actions.map((action, index) => (
+                  <div key={action} className="flex items-start gap-3 rounded-xl bg-primary/5 p-4">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{index + 1}</div>
+                    <p className="pt-1 text-sm font-medium">{action}</p>
+                  </div>
+                ))}
                 <div className="grid grid-cols-3 gap-3 pt-2 text-center">
                   <div className="rounded-xl bg-orange-500/10 p-3"><PhoneCall className="mx-auto h-4 w-4 text-orange-600" /><p className="mt-2 text-lg font-bold">{summary.followUpsDue}</p><p className="text-[11px] text-muted-foreground">Follow-ups</p></div>
                   <div className="rounded-xl bg-emerald-500/10 p-3"><CheckCircle2 className="mx-auto h-4 w-4 text-emerald-600" /><p className="mt-2 text-lg font-bold">{summary.siteVisitsCompleted}</p><p className="text-[11px] text-muted-foreground">Visits done</p></div>

@@ -41,7 +41,7 @@ export interface CustomEmployeeReport {
   ratios: ReportRatios
   previousRatios: ReportRatios
   trend: ReportTrendRow[]
-  insights: { source: "openrouter" | "calculated"; items: string[] }
+  insights: { source: "openrouter" | "calculated"; items: string[]; actions: string[] }
 }
 
 export interface EmployeePerformanceReportInput {
@@ -279,19 +279,14 @@ function buildPages(input: EmployeePerformanceReportInput) {
   })
 
   second.rect(428, 73, 382, 207, WHITE, GRID)
-  second.text("WORKLOAD RELATIONS", 446, 254, 10, INK, true)
-  const relations = [
-    ["Calls per assigned lead", report.ratios.callsPerLead.toFixed(2)],
-    ["Calls per conversion", report.ratios.callsPerConversion.toFixed(2)],
-    ["Follow-ups due", String(report.summary.followUpsDue)],
-    ["Completed site visits", String(report.summary.siteVisitsCompleted)],
-    ["Hot / warm / cold", `${report.summary.hotLeads} / ${report.summary.warmLeads} / ${report.summary.coldLeads}`],
-  ]
-  relations.forEach(([label, value], index) => {
-    const rowY = 221 - index * 31
-    second.text(label, 446, rowY, 9, MUTED)
-    second.text(value, 745, rowY, 10, INK, true)
-    if (index < relations.length - 1) second.line(446, rowY - 10, 786, rowY - 10, GRID, 0.5)
+  second.text("RECOMMENDED ACTIONS", 446, 254, 10, INK, true)
+  report.insights.actions.slice(0, 3).forEach((action, index) => {
+    const rowY = 211 - index * 52
+    const lines = wrapWords(action, 49).slice(0, 2)
+    second.circle(453, rowY + 5, 5, [index === 0 ? 54 : index === 1 ? 238 : 40, index === 0 ? 112 : index === 1 ? 115 : 164, index === 0 ? 198 : index === 1 ? 45 : 112])
+    second.text(lines[0] ?? "", 468, rowY + 8, 8, INK, true)
+    if (lines[1]) second.text(lines[1], 468, rowY - 6, 8, MUTED)
+    if (index < 2) second.line(446, rowY - 22, 786, rowY - 22, GRID, 0.5)
   })
   second.text("Transfer-safe attribution - activities remain with the employee who owned the lead at that time.", 32, 42, 8, MUTED)
   second.text(`Generated ${new Date(input.generatedAt).toLocaleString("en-IN")}`, 596, 42, 8, MUTED)
