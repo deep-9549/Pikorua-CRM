@@ -113,6 +113,7 @@ type AiProjectStrategy = {
 
 type AiSmartInsights = {
   source: "openrouter" | "calculated"
+  fallback_reason?: string
   executive_summary: string
   special_insights: Array<{ title: string; insight: string; evidence: string }>
   project_strategy: AiProjectStrategy[]
@@ -476,7 +477,7 @@ export default function SmartMatchingPage() {
             <CardHeader className="border-b border-violet-500/15">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-violet-500" /> AI Sales Copilot</CardTitle><p className="mt-1 text-xs text-muted-foreground">Personalized reasoning layered on top of the CRM’s verified project ranking.</p></div>
-                {aiInsights && <Badge variant={aiInsights.source === "openrouter" ? "default" : "secondary"}>{aiInsights.source === "openrouter" ? "Live AI analysis" : "Calculated fallback"}</Badge>}
+                {aiInsights && <div className="flex flex-col items-start gap-1 sm:items-end"><Badge variant={aiInsights.source === "openrouter" ? "default" : "secondary"}>{aiInsights.source === "openrouter" ? "Live AI analysis" : "Calculated fallback"}</Badge>{aiInsights.fallback_reason && <p className="max-w-md text-left text-[11px] leading-4 text-amber-600 dark:text-amber-400 sm:text-right">{aiInsights.fallback_reason}</p>}</div>}
               </div>
             </CardHeader>
             <CardContent className="p-5 sm:p-6">

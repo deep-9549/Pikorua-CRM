@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 
 type SmartInsightInput = {
   client?: Record<string, unknown>
@@ -23,6 +23,7 @@ type ObjectionResponse = {
 
 export type ClientSmartInsights = {
   source: 'openrouter' | 'calculated'
+  fallback_reason?: string
   executive_summary: string
   special_insights: Array<{ title: string; insight: string; evidence: string }>
   project_strategy: ProjectStrategy[]
@@ -166,24 +167,48 @@ function cleanAiResult(value: unknown, fallback: ClientSmartInsights): ClientSma
       }).filter(item => item.objection && item.response)
     : []
 
-  const result: ClientSmartInsights = {
-    source: 'openrouter',
-    executive_summary: text(raw.executive_summary),
-    special_insights: specialInsights,
-    project_strategy: projectStrategy.length > 0 ? projectStrategy : fallback.project_strategy,
-    pitch_plan: {
-      opening: text(rawPitch.opening),
-      discovery_questions: stringList(rawPitch.discovery_questions, 4),
-      talking_points: stringList(rawPitch.talking_points, 5),
-      objection_responses: objections,
-      close: text(rawPitch.close),
-    },
-    next_action: text(raw.next_action),
-  }
+  const mergedInsights = [
+    ...specialInsights,
+    ...fallback.special_insights.filter(item => !specialInsights.some(aiItem => aiItem.title === item.title)),
+  ].slice(0, 3)
+  const strategyById = new Map(projectStrategy.map(item => [item.property_id, item]))
+  const mergedStrategies = fallback.project_strategy.map(item => strategyById.get(item.property_id) ?? item)
 
-  return result.executive_summary && result.special_insights.length === 3 && result.pitch_plan.opening && result.pitch_plan.close && result.next_action
-    ? result
+  return {
+    source: 'openrouter',
+    executive_summary: text(raw.executive_summary) || fallback.executive_summary,
+    special_insights: mergedInsights,
+    project_strategy: mergedStrategies,
+    pitch_plan: {
+      opening: text(rawPitch.opening) || fallback.pitch_plan.opening,
+      discovery_questions: stringList(rawPitch.discovery_questions, 4).length > 0
+        ? stringList(rawPitch.discovery_questions, 4)
+        : fallback.pitch_plan.discovery_questions,
+      talking_points: stringList(rawPitch.talking_points, 5).length > 0
+        ? stringList(rawPitch.talking_points, 5)
+        : fallback.pitch_plan.talking_points,
+      objection_responses: objections.length > 0 ? objections : fallback.pitch_plan.objection_responses,
+      close: text(rawPitch.close) || fallback.pitch_plan.close,
+    },
+    next_action: text(raw.next_action) || fallback.next_action,
+  }
+}
+
+function fallbackWithReason(fallback: ClientSmartInsights, reason: string): ClientSmartInsights {
+  return { ...fallback, fallback_reason: reason }
+}
+
+function providerErrorMessage(payload: unknown) {
+  if (!payload || typeof payload !== 'object') return null
+  const raw = payload as Record<string, unknown>
+  const topError = raw.error && typeof raw.error === 'object' ? raw.error as Record<string, unknown> : null
+  const choice = Array.isArray(raw.choices) && raw.choices[0] && typeof raw.choices[0] === 'object'
+    ? raw.choices[0] as Record<string, unknown>
     : null
+  const choiceError = choice?.error && typeof choice.error === 'object'
+    ? choice.error as Record<string, unknown>
+    : null
+  return text(topError?.message ?? choiceError?.message, '', 180) || null
 }
 
 function safeInput(input: SmartInsightInput) {
@@ -246,10 +271,12 @@ function safeInput(input: SmartInsightInput) {
 
 @Injectable()
 export class ClientSmartInsightsService {
+  private readonly logger = new Logger(ClientSmartInsightsService.name)
+
   async analyze(input: SmartInsightInput): Promise<ClientSmartInsights> {
     const fallback = calculatedFallback(input)
     const apiKey = process.env.OPENROUTER_API_KEY?.trim()
-    if (!apiKey) return fallback
+    if (!apiKey) return fallbackWithReason(fallback, 'The API server does not have OPENROUTER_API_KEY available. Restart or redeploy the API after setting it.')
 
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -276,13 +303,51 @@ export class ClientSmartInsightsService {
         signal: AbortSignal.timeout(15_000),
       })
 
-      if (!response.ok) return fallback
-      const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> }
+      const payload = await response.json().catch(() => null) as {
+        error?: { message?: string }
+        choices?: Array<{ message?: { content?: string }; error?: { message?: string } }>
+      } | null
+      const providerError = providerErrorMessage(payload)
+
+      if (!response.ok) {
+        this.logger.warn(`OpenRouter Smart Matching request failed (${response.status}): ${providerError ?? 'No error message'}`)
+        const guidance = response.status === 401 || response.status === 403
+          ? 'OpenRouter rejected the API credentials. Verify the key is set on the API deployment, then redeploy it.'
+          : response.status === 402
+            ? 'OpenRouter reports insufficient credits for this key.'
+            : response.status === 429
+              ? 'OpenRouter rate-limited the request. Try again shortly or review the key limits.'
+              : `OpenRouter returned HTTP ${response.status}. Check the API deployment logs for the provider message.`
+        return fallbackWithReason(fallback, guidance)
+      }
+
+      if (providerError) {
+        this.logger.warn(`OpenRouter Smart Matching provider error: ${providerError}`)
+        return fallbackWithReason(fallback, 'OpenRouter accepted the request but its model provider failed. Try again or select another OPENROUTER_MODEL.')
+      }
+
       const content = payload.choices?.[0]?.message?.content
-      if (!content) return fallback
-      return cleanAiResult(extractJson(content), fallback) ?? fallback
-    } catch {
-      return fallback
+      if (!content) {
+        this.logger.warn('OpenRouter Smart Matching response contained no message content')
+        return fallbackWithReason(fallback, 'OpenRouter returned an empty response. Try again or review the configured model.')
+      }
+
+      try {
+        return cleanAiResult(extractJson(content), fallback) ?? fallbackWithReason(fallback, 'OpenRouter returned an unreadable AI response.')
+      } catch (error) {
+        this.logger.warn(`OpenRouter Smart Matching JSON parsing failed: ${error instanceof Error ? error.message : String(error)}`)
+        return fallbackWithReason(fallback, 'OpenRouter answered, but its response was not valid JSON. Try again.')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.logger.warn(`OpenRouter Smart Matching request error: ${message}`)
+      const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
+      return fallbackWithReason(
+        fallback,
+        timedOut
+          ? 'The OpenRouter request timed out. Try again or use a faster model.'
+          : 'The API server could not reach OpenRouter. Check outbound network access and deployment logs.',
+      )
     }
   }
 }
