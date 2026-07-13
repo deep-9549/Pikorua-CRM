@@ -47,7 +47,7 @@ const navGroups: NavGroup[] = [
       { title: "AI Voice", href: "/ai-voice", icon: Bot, adminOnly: true },
       { title: "WhatsApp Hub", href: "/whatsapp", icon: MessageSquare, comingSoon: true },
       { title: "Properties", href: "/properties", icon: Building2 },
-      { title: "Smart Matching", href: "/smart-matching", icon: Sparkles, comingSoon: true },
+      { title: "Smart Matching", href: "/smart-matching", icon: Sparkles },
       { title: "Site Visits", href: "/site-visits", icon: CalendarCheck },
     ]
   },

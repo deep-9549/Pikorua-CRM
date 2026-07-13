@@ -8,6 +8,7 @@ import { RolesGuard } from '../../common/guards/roles.guard'
 import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { isMetaLeadPoolStatus } from '../leads/lead-pools'
+import { ClientSmartInsightsService } from './client-smart-insights.service'
 
 function toStringArray(value: string | string[] | undefined) {
   if (!value) return undefined
@@ -31,7 +32,10 @@ function toBoolean(value: string | undefined) {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('meta-leads')
 export class MetaLeadsController {
-  constructor(private readonly metaLeadsService: MetaLeadsService) {}
+  constructor(
+    private readonly metaLeadsService: MetaLeadsService,
+    private readonly clientSmartInsightsService: ClientSmartInsightsService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List meta leads (optionally filter by status)' })
@@ -88,6 +92,20 @@ export class MetaLeadsController {
     }
 
     return { recommendations: result.recommendations }
+  }
+
+  @Post(':id/ai-smart-insights')
+  @ApiOperation({ summary: 'Generate AI sales insights from an authorized client and ranked projects' })
+  async aiSmartInsights(
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string; role: string },
+    @Body() input: Record<string, unknown>,
+  ) {
+    const result = await this.metaLeadsService.findOne(id)
+    if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id && !isMetaLeadPoolStatus(result.lead?.status)) {
+      throw new ForbiddenException('You can only analyze leads assigned to you')
+    }
+    return this.clientSmartInsightsService.analyze(input)
   }
 
   @Get(':id')

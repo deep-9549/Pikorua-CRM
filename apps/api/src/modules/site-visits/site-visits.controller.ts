@@ -24,8 +24,8 @@ export class SiteVisitsController {
 
   @Post()
   @ApiOperation({ summary: 'Schedule a site visit' })
-  create(@Body() dto: CreateSiteVisitDto, @CurrentUser() user: { id: string }) {
-    return this.siteVisitsService.create(dto, user.id)
+  create(@Body() dto: CreateSiteVisitDto, @CurrentUser() user: { id: string; role: string }) {
+    return this.siteVisitsService.create(dto, user)
   }
 
   @Patch(':id')

@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Calendar, Clock, Phone, Plus, CheckCircle2,
   AlertCircle, Loader2, RefreshCw, MapPin, User, Search,
   Mail, Briefcase, Building2, DollarSign, MessageSquare, Flame,
-  Thermometer, Snowflake,
+  Thermometer, Snowflake, ExternalLink,
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -135,6 +136,14 @@ function isToday(iso: string | null) {
     && d.getDate() === now.getDate()
 }
 
+function toDateTimeLocal(iso: string | null) {
+  if (!iso) return ""
+  const date = new Date(iso)
+  if (isNaN(date.getTime())) return ""
+  const offsetMs = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
+}
+
 // ─── Visit Detail Dialog ──────────────────────────────────────────────────────
 
 function DetailRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
@@ -159,6 +168,7 @@ function VisitDetailDialog({ visit, onClose, onUpdateOutcome }: { visit: VisitRo
   const crm = lead.crm
   const meta = STATUS_META[visit.site_visit_status]
   const overdue = isOverdue(visit)
+  const canUpdateOutcome = overdue || visit.status !== "scheduled" || visit.outcome !== null
   const when = visit.visit_date ?? visit.visit_confirmation_date
   const hwcMeta = crm?.hwc ? HWC_META[crm.hwc] : null
   const HwcIcon = hwcMeta?.icon
@@ -306,8 +316,15 @@ function VisitDetailDialog({ visit, onClose, onUpdateOutcome }: { visit: VisitRo
         </div>
 
         <div className="pt-2">
-          {overdue && visit.status === 'scheduled' && (
-            <Button className="w-full mb-2 gold-gradient" onClick={() => onUpdateOutcome(visit)}>Update Visit Outcome</Button>
+          <Button variant="outline" className="w-full mb-2" asChild>
+            <Link href={`/leads/${lead.id}`}>
+              <ExternalLink className="w-4 h-4 mr-2" />Open Lead
+            </Link>
+          </Button>
+          {canUpdateOutcome && (
+            <Button className="w-full mb-2 gold-gradient" onClick={() => onUpdateOutcome(visit)}>
+              {visit.outcome ? "Edit Visit Outcome" : "Update Visit Outcome"}
+            </Button>
           )}
           <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
         </div>
@@ -327,7 +344,14 @@ function VisitOutcomeDialog({ visit, onClose, onSaved }: { visit: VisitRow | nul
 
   useEffect(() => {
     if (!visit) return
-    setOutcome("visit_done"); setRemarks(""); setRescheduledDate(""); setCancellationReason(""); setFollowUpDate(""); setError(null)
+    const savedOutcome = visit.outcome
+      ?? (visit.status === "cancelled" ? "visit_cancelled" : "visit_done")
+    setOutcome(savedOutcome)
+    setRemarks(visit.feedback ?? "")
+    setRescheduledDate(savedOutcome === "visit_rescheduled" ? toDateTimeLocal(visit.visit_confirmation_date) : "")
+    setCancellationReason(visit.cancellation_reason ?? "")
+    setFollowUpDate(toDateTimeLocal(visit.follow_up_date))
+    setError(null)
   }, [visit])
 
   async function saveOutcome() {
@@ -352,7 +376,7 @@ function VisitOutcomeDialog({ visit, onClose, onSaved }: { visit: VisitRow | nul
   return (
     <Dialog open={!!visit} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Update Site Visit Outcome</DialogTitle><DialogDescription>{visit?.lead.full_name ?? 'Lead'} · record what happened after the visit time passed.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{visit?.outcome ? "Edit Site Visit Outcome" : "Update Site Visit Outcome"}</DialogTitle><DialogDescription>{visit?.lead.full_name ?? 'Lead'} · save an outcome or overwrite the existing one to correct a mistake.</DialogDescription></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5"><Label>Outcome</Label>
             <SearchableSelect
@@ -369,9 +393,9 @@ function VisitOutcomeDialog({ visit, onClose, onSaved }: { visit: VisitRow | nul
           {outcome === 'visit_done' && <div className="space-y-1.5"><Label>Visit Remarks</Label><Textarea value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Customer response, project feedback..." /></div>}
           {outcome === 'visit_rescheduled' && <div className="space-y-1.5"><Label>Rescheduled Date & Time</Label><Input type="datetime-local" value={rescheduledDate} onChange={e => setRescheduledDate(e.target.value)} /></div>}
           {outcome === 'visit_cancelled' && <div className="space-y-1.5"><Label>Cancellation Reason</Label><Textarea value={cancellationReason} onChange={e => setCancellationReason(e.target.value)} /></div>}
-          <div className="space-y-1.5"><Label>Follow-up Date</Label><Input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Follow-up Date</Label><Input type="datetime-local" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} /></div>
           {error && <p className="text-xs text-red-500">{error}</p>}
-          <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button><Button className="flex-1 gold-gradient" disabled={saving} onClick={saveOutcome}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Outcome'}</Button></div>
+          <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button><Button className="flex-1 gold-gradient" disabled={saving} onClick={saveOutcome}>{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : visit?.outcome ? 'Overwrite Outcome' : 'Save Outcome'}</Button></div>
         </div>
       </DialogContent>
     </Dialog>

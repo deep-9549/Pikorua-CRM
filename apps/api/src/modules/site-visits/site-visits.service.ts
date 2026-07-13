@@ -97,18 +97,21 @@ export class SiteVisitsService {
     return { visits: filtered.map(serializeVisit) }
   }
 
-  async create(dto: CreateSiteVisitDto, currentUserId: string) {
+  async create(dto: CreateSiteVisitDto, user: { id: string; role: string }) {
     const scheduledDate =
       dto.scheduled_date ??
       dto.visit_date ??
       dto.visit_confirmation_date ??
       new Date().toISOString()
     const visitStatus = dto.site_visit_status === 'visited' ? 'completed' : 'scheduled'
+    const employeeId = user.role === 'super_admin' && dto.employee_id
+      ? dto.employee_id
+      : user.id
 
     const [visit] = await this.db.insert(siteVisits).values({
       tenantId: DEFAULT_TENANT_ID,
       leadId: dto.lead_id,
-      employeeId: dto.employee_id ?? currentUserId,
+      employeeId,
       propertyId: dto.property_id ?? null,
       scheduledDate: new Date(scheduledDate),
       notes: dto.notes ?? null,
@@ -116,7 +119,7 @@ export class SiteVisitsService {
     }).returning()
     await this.leadActivityService.record({
       leadId: dto.lead_id,
-      actorUserId: currentUserId,
+      actorUserId: user.id,
       eventType: 'site_visit_updated',
       source: 'site_visit',
       title: visitStatus === 'completed' ? 'Site visit completed' : 'Site visit scheduled',
@@ -153,6 +156,9 @@ export class SiteVisitsService {
         ...(outcomeStatus !== undefined && { status: outcomeStatus as never }),
         ...(dto.outcome !== undefined && { outcome: dto.outcome as never }),
         ...(dto.rescheduled_date !== undefined && { scheduledDate: new Date(dto.rescheduled_date) }),
+        ...(dto.outcome === 'visit_done' && { cancellationReason: null }),
+        ...(dto.outcome === 'visit_rescheduled' && { cancellationReason: null, feedback: null }),
+        ...(dto.outcome === 'visit_cancelled' && { feedback: null }),
         ...(dto.cancellation_reason !== undefined && { cancellationReason: dto.cancellation_reason }),
         ...(dto.follow_up_date !== undefined && { followUpDate: new Date(dto.follow_up_date) }),
         ...(dto.feedback !== undefined && { feedback: dto.feedback }),
@@ -164,12 +170,21 @@ export class SiteVisitsService {
         const existingCrm = await tx.query.leadCrmDetails.findFirst({ where: eq(leadCrmDetails.leadId, visit.leadId) })
         const crmUpdate = {
           ...(dto.follow_up_date !== undefined && { followUpDate: new Date(dto.follow_up_date), followUpDone: false }),
-          ...(dto.outcome === 'visit_done' && { siteVisitStatus: 'completed' as const, visitDate: visit.scheduledDate }),
+          ...(dto.outcome === 'visit_done' && {
+            siteVisitStatus: 'completed' as const,
+            visitDate: savedVisit.scheduledDate,
+            visitConfirmationDate: null,
+          }),
           ...(dto.outcome === 'visit_rescheduled' && {
             siteVisitStatus: 'scheduled' as const,
-            visitConfirmationDate: dto.rescheduled_date ? new Date(dto.rescheduled_date) : visit.scheduledDate,
+            visitDate: null,
+            visitConfirmationDate: savedVisit.scheduledDate,
           }),
-          ...(dto.outcome === 'visit_cancelled' && { siteVisitStatus: 'not_scheduled' as const }),
+          ...(dto.outcome === 'visit_cancelled' && {
+            siteVisitStatus: 'not_scheduled' as const,
+            visitDate: null,
+            visitConfirmationDate: null,
+          }),
         }
         if (existingCrm) {
           await tx.update(leadCrmDetails).set(crmUpdate).where(eq(leadCrmDetails.leadId, visit.leadId))
