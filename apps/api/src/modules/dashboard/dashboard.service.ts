@@ -49,6 +49,13 @@ interface CallActivity {
   createdAt: Date
 }
 
+interface LeadQualityMark {
+  leadId: string
+  subjectId: string
+  status: string | null
+  createdAt: Date
+}
+
 interface OwnershipWindow {
   leadId: string
   employeeId: string
@@ -320,6 +327,55 @@ function metadataValue(event: typeof leadActivityEvents.$inferSelect, key: strin
     : null
 }
 
+function changedValue(event: typeof leadActivityEvents.$inferSelect, key: string) {
+  const changes = event.changes
+  if (!changes || typeof changes !== 'object' || Array.isArray(changes)) return undefined
+  const change = (changes as Record<string, unknown>)[key]
+  if (!change || typeof change !== 'object' || Array.isArray(change) || !('to' in change)) return undefined
+  const value = (change as { to: unknown }).to
+  return typeof value === 'string' ? value : null
+}
+
+function buildLeadQualityMarks(
+  events: Array<typeof leadActivityEvents.$inferSelect>,
+  employeeId: string,
+): LeadQualityMark[] {
+  return events.flatMap((event) => {
+    // Authorship is the durable attribution source for quality marks. Do not
+    // require a reconstructed ownership window here: older transferred leads
+    // can have valid status activity even when their assignment history began
+    // before activity logging was introduced.
+    if (event.actorUserId !== employeeId) return []
+
+    const status = event.eventType === 'client_status_updated'
+      ? changedValue(event, 'status')
+      : event.eventType === 'crm_updated'
+        ? changedValue(event, 'hwc')
+        : undefined
+    if (status === undefined) return []
+
+    const clientId = metadataValue(event, 'client_id')
+    return [{
+      leadId: event.leadId,
+      // Client-status saves are logged once per linked inquiry. Group them by
+      // client so a repeat customer is counted once for the employee's mark.
+      subjectId: typeof clientId === 'string' ? `client:${clientId}` : `lead:${event.leadId}`,
+      status,
+      createdAt: event.createdAt,
+    }]
+  })
+}
+
+function latestQualityMarksInRange(marks: LeadQualityMark[], range: PeriodRange) {
+  const latest = new Map<string, LeadQualityMark>()
+  for (const mark of marks) {
+    if (!inRange(mark.createdAt, range)) continue
+    const current = latest.get(mark.subjectId)
+    if (!current || mark.createdAt >= current.createdAt) latest.set(mark.subjectId, mark)
+  }
+  return [...latest.values()]
+}
+
 function buildCallActivities(events: Array<typeof leadActivityEvents.$inferSelect>, windows: OwnershipWindow[], employeeId: string): CallActivity[] {
   return events
     .map((event) => {
@@ -524,6 +580,7 @@ function summarizeRange(
   ownershipWindows: OwnershipWindow[],
   employeeId: string,
   callActivities: CallActivity[],
+  qualityMarks: LeadQualityMark[],
 ) {
   const summary = emptySummary()
 
@@ -540,9 +597,6 @@ function summarizeRange(
       if (lead.assignedTo === employeeId && lead.status === 'assigned') summary.activeLeads += 1
       if (lead.status === 'rejected') summary.rejectedLeads += 1
       if (lead.status === 'cold_pool') summary.coldPoolLeads += 1
-      if (lead.crmDetails?.hwc === 'hot') summary.hotLeads += 1
-      if (lead.crmDetails?.hwc === 'warm') summary.warmLeads += 1
-      if (lead.crmDetails?.hwc === 'cold') summary.coldLeads += 1
     }
 
     if (convertedInPeriod) summary.convertedLeads += 1
@@ -554,6 +608,12 @@ function summarizeRange(
     ) {
       summary.followUpsDue += 1
     }
+  }
+
+  for (const mark of latestQualityMarksInRange(qualityMarks, range)) {
+    if (mark.status === 'hot') summary.hotLeads += 1
+    if (mark.status === 'warm') summary.warmLeads += 1
+    if (mark.status === 'cold') summary.coldLeads += 1
   }
 
   const periodCalls = periodCallActivities(leads, callActivities, ownershipWindows, employeeId, range)
@@ -756,6 +816,7 @@ export class DashboardService {
         where: or(
           eq(leadActivityEvents.toUserId, selectedEmployee.id),
           eq(leadActivityEvents.fromUserId, selectedEmployee.id),
+          eq(leadActivityEvents.actorUserId, selectedEmployee.id),
         ),
         orderBy: [asc(leadActivityEvents.createdAt)],
       }),
@@ -808,6 +869,7 @@ export class DashboardService {
 
     const ownershipWindows = buildOwnershipWindows(leads, assignmentEvents)
     const callActivities = buildCallActivities(assignmentEvents, ownershipWindows, selectedEmployee.id)
+    const qualityMarks = buildLeadQualityMarks(assignmentEvents, selectedEmployee.id)
 
     const now = new Date()
     const periods = buildPeriodRanges(now)
@@ -819,6 +881,7 @@ export class DashboardService {
         ownershipWindows,
         selectedEmployee.id,
         callActivities,
+        qualityMarks,
       )
       return acc
     }, {} as Record<PeriodKey, PerformanceSummary>)
@@ -851,6 +914,9 @@ export class DashboardService {
         .map((window) => window.assignedAt.getTime())
       return starts.length > 0 ? Math.max(...starts) : null
     }
+    const mostRecentLeadQuality = (leadId: string) => qualityMarks
+      .filter((mark) => mark.leadId === leadId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.status ?? null
 
     const recentLeads = [...leads]
       .sort((a, b) => (mostRecentOwnershipStart(b.id) ?? 0) - (mostRecentOwnershipStart(a.id) ?? 0))
@@ -870,7 +936,7 @@ export class DashboardService {
           ownership_status: lead.assignedTo === selectedEmployee.id ? 'current' : 'previous',
           call_status: lead.crmDetails?.callStatus ?? null,
           follow_up_date: lead.crmDetails?.followUpDate ?? null,
-          hwc: lead.crmDetails?.hwc ?? null,
+          hwc: mostRecentLeadQuality(lead.id),
           buying_status: lead.crmDetails?.buyingStatus ?? null,
           site_visit_status: lead.crmDetails?.siteVisitStatus ?? null,
         }
@@ -901,8 +967,8 @@ export class DashboardService {
         start: addDays(customStart, -rangeDays),
         end: customStart,
       }
-      const summary = summarizeRange(customRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities)
-      const previousSummary = summarizeRange(previousRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities)
+      const summary = summarizeRange(customRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities, qualityMarks)
+      const previousSummary = summarizeRange(previousRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities, qualityMarks)
       const ratios = reportRatios(summary)
       const previousRatios = reportRatios(previousSummary)
       const insights = await this.employeeReportInsights.analyze({

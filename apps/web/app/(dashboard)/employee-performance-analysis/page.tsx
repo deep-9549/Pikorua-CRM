@@ -501,7 +501,7 @@ export default function EmployeePerformanceAnalysisPage() {
                         Follow-up Load
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-3 gap-2 text-center">
+                    <CardContent className="grid grid-cols-2 gap-2 text-center">
                       <div className="rounded-lg bg-primary/10 px-3 py-3 text-primary">
                         <p className="text-xl font-bold">{summary.followUpsDue}</p>
                         <p className="text-[11px]">Due</p>
@@ -509,10 +509,6 @@ export default function EmployeePerformanceAnalysisPage() {
                       <div className="rounded-lg bg-muted px-3 py-3 text-muted-foreground">
                         <p className="text-xl font-bold">{summary.rejectedLeads}</p>
                         <p className="text-[11px]">Rejected</p>
-                      </div>
-                      <div className="rounded-lg bg-muted px-3 py-3 text-muted-foreground">
-                        <p className="text-xl font-bold">{summary.coldPoolLeads}</p>
-                        <p className="text-[11px]">Cold pool</p>
                       </div>
                     </CardContent>
                   </Card>
