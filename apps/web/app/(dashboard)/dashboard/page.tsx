@@ -16,6 +16,7 @@ import {
   Phone,
   RefreshCw,
   Target,
+  Thermometer,
   UserCheck,
   Users,
 } from "lucide-react"
@@ -198,7 +199,7 @@ export default function DashboardPage() {
     setVisitsLoading(true)
     setVisitsError(null)
     try {
-      const res = await fetch("/api/site-visits?status=upcoming", { cache: "no-store" })
+      const res = await fetch("/api/site-visits", { cache: "no-store" })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.message ?? json.error ?? "Failed to load site visits")
       setVisits(json.visits ?? [])
@@ -236,6 +237,7 @@ export default function DashboardPage() {
     let spoken = 0
     let callback = 0
     let hot = 0
+    let warm = 0
     let previousMonthLeads = 0
     let currentMonthLeads = 0
     const currentMonth = monthKey(now)
@@ -255,6 +257,7 @@ export default function DashboardPage() {
 
       const heat = lead.client_status ?? lead.crm?.hwc
       if (heat === "hot") hot += 1
+      if (heat === "warm") warm += 1
 
       const received = parseDate(lead.received_at)
       if (received) {
@@ -297,6 +300,7 @@ export default function DashboardPage() {
       .slice(0, 5)
 
     const conversionRate = leads.length ? (spoken / leads.length) * 100 : 0
+    const warmRate = leads.length ? (warm / leads.length) * 100 : 0
     const leadGrowth = previousMonthLeads
       ? ((currentMonthLeads - previousMonthLeads) / previousMonthLeads) * 100
       : currentMonthLeads > 0 ? 100 : 0
@@ -309,6 +313,8 @@ export default function DashboardPage() {
       spoken,
       callback,
       hot,
+      warm,
+      warmRate,
       conversionRate,
       leadGrowth,
       chartData: buckets,
@@ -317,15 +323,22 @@ export default function DashboardPage() {
     }
   }, [leads, now])
 
+  const upcomingVisitRows = React.useMemo(() => {
+    return visits.filter(visit => {
+      const when = parseDate(visit.visit_date ?? visit.visit_confirmation_date)
+      return visit.status === "scheduled" && Boolean(when && when.getTime() >= now.getTime())
+    })
+  }, [visits, now])
+
   const upcomingVisits = React.useMemo(() => {
-    return [...visits]
+    return [...upcomingVisitRows]
       .sort((a, b) => {
         const aDate = parseDate(a.visit_date ?? a.visit_confirmation_date)?.getTime() ?? 0
         const bDate = parseDate(b.visit_date ?? b.visit_confirmation_date)?.getTime() ?? 0
         return aDate - bDate
       })
       .slice(0, 4)
-  }, [visits])
+  }, [upcomingVisitRows])
 
   const loading = leadsLoading || visitsLoading
   const refreshing = leadsFetching || visitsLoading
@@ -385,17 +398,17 @@ export default function DashboardPage() {
           tone="primary"
         />
         <StatCard
-          title="Follow-ups"
-          value={formatNumber(dashboard.followUpToday)}
-          detail={`${formatNumber(dashboard.overdue)} overdue`}
-          icon={Clock}
-          tone={dashboard.overdue > 0 ? "destructive" : "warning"}
+          title="Warm Leads"
+          value={formatNumber(dashboard.warm)}
+          detail={`${dashboard.warmRate.toFixed(1)}% of total leads`}
+          icon={Thermometer}
+          tone="warning"
         />
         <StatCard
-          title="Called Today"
-          value={formatNumber(dashboard.calledToday)}
-          detail={`${formatNumber(dashboard.spoken)} total spoken leads`}
-          icon={Phone}
+          title="Site Visits"
+          value={formatNumber(visits.length)}
+          detail={`${formatNumber(upcomingVisitRows.length)} upcoming visits`}
+          icon={Building2}
           tone="success"
         />
         <StatCard

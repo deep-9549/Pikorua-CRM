@@ -90,10 +90,10 @@ export class EmployeeReportInsightsService {
       })
 
       if (!response.ok) return fallback
-      const payload = await response.json() as {
+      const payload = await response.json().catch(() => null) as {
         choices?: Array<{ message?: { content?: string } }>
-      }
-      const content = payload.choices?.[0]?.message?.content
+      } | null
+      const content = payload?.choices?.[0]?.message?.content
       if (!content) return fallback
       const parsed = extractJson(content)
       const items = cleanList(parsed, 'items')

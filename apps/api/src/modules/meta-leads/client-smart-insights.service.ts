@@ -326,7 +326,7 @@ export class ClientSmartInsightsService {
         return fallbackWithReason(fallback, 'OpenRouter accepted the request but its model provider failed. Try again or select another OPENROUTER_MODEL.')
       }
 
-      const content = payload.choices?.[0]?.message?.content
+      const content = payload?.choices?.[0]?.message?.content
       if (!content) {
         this.logger.warn('OpenRouter Smart Matching response contained no message content')
         return fallbackWithReason(fallback, 'OpenRouter returned an empty response. Try again or review the configured model.')
