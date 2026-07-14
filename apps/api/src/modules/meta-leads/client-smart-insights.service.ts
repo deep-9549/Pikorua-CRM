@@ -57,12 +57,24 @@ function projectRows(input: SmartInsightInput) {
   return Array.isArray(input.recommendations) ? input.recommendations.slice(0, 5) : []
 }
 
+function isBrokerLead(input: SmartInsightInput) {
+  const client = input.client ?? {}
+  const preferences = input.preferences ?? {}
+  const history = Array.isArray(input.history) ? input.history : []
+  return [
+    client.status,
+    preferences.buyingStatus,
+    ...history.flatMap(row => [row.client_status, row.status, (row.crm as Record<string, unknown> | null)?.hwc]),
+  ].some(value => text(value, '', 80).toLowerCase() === 'broker')
+}
+
 function calculatedFallback(input: SmartInsightInput): ClientSmartInsights {
   const client = input.client ?? {}
   const preferences = input.preferences ?? {}
   const rows = projectRows(input)
   const name = text(client.full_name, 'This client', 80)
   const status = text(client.status, text(preferences.buyingStatus, 'unclassified'))
+  const broker = isBrokerLead(input)
   const budget = text(preferences.budget, 'an unconfirmed budget')
   const locations = stringList(preferences.locations, 4, 80)
   const configurations = stringList(preferences.configurations, 4, 80)
@@ -81,6 +93,50 @@ function calculatedFallback(input: SmartInsightInput): ClientSmartInsights {
       watchout: warnings[0] ?? 'Confirm live inventory before commitment.',
     }
   })
+
+  if (broker) {
+    return {
+      source: 'calculated',
+      executive_summary: `${name} is marked as broker. Treat this as a red-flag lead and do not spend sales effort pitching projects unless a super admin explicitly clears the record.`,
+      special_insights: [
+        {
+          title: 'Broker red flag',
+          insight: 'Strongly advise blocking this lead from the active sales flow and keeping it out of genuine buyer follow-ups.',
+          evidence: status === 'broker' ? 'Client status is Broker.' : 'Broker signal appears in the linked lead history.',
+        },
+        {
+          title: 'Inventory protection',
+          insight: 'Do not share project shortlist, pricing, inventory, or seller-sensitive details with a broker-marked contact.',
+          evidence: 'Broker contacts can reuse inventory information outside the intended client conversation.',
+        },
+        {
+          title: 'Operational action',
+          insight: 'Move or keep the record in the broker pool, add a clear note, and stop routine follow-up tasks for this contact.',
+          evidence: text(client.status_note, 'No status note is recorded yet.', 220),
+        },
+      ],
+      project_strategy: [],
+      pitch_plan: {
+        opening: 'This contact is marked as Broker. Do not pitch projects; verify identity only if management asks for confirmation.',
+        discovery_questions: [
+          'Is this person a direct buyer or representing another party?',
+          'Who is the end client and can they be verified directly?',
+          'Has a super admin approved any further conversation?',
+        ],
+        talking_points: [
+          'Block from normal sales follow-up until cleared.',
+          'Avoid sharing inventory, pricing or shortlist details.',
+          'Record the reason clearly for future team visibility.',
+        ],
+        objection_responses: [
+          { objection: 'They say they have a buyer', response: 'Ask for management approval before sharing any inventory or project details.' },
+          { objection: 'They want project options', response: 'Do not provide options from Smart Matching; keep the record in broker handling.' },
+        ],
+        close: 'Mark or keep this as Broker and block routine sales follow-up unless a super admin approves an exception.',
+      },
+      next_action: 'Block this broker-marked contact from active buyer follow-ups and keep the record in the broker pool with a clear note.',
+    }
+  }
 
   return {
     source: 'calculated',
@@ -242,6 +298,7 @@ function safeInput(input: SmartInsightInput) {
       campaign: text(row.campaign_name, '', 120),
       source: text(row.source, '', 60),
       status: text(row.status, '', 60),
+      client_status: text(row.client_status, '', 60),
       received_at: text(row.received_at, '', 40),
       buying_status: text((row.crm as Record<string, unknown> | null)?.buying_status, '', 60),
       site_visit_status: text((row.crm as Record<string, unknown> | null)?.site_visit_status, '', 60),
@@ -275,6 +332,8 @@ export class ClientSmartInsightsService {
 
   async analyze(input: SmartInsightInput): Promise<ClientSmartInsights> {
     const fallback = calculatedFallback(input)
+    if (isBrokerLead(input)) return fallbackWithReason(fallback, 'Broker-marked contacts are red flags. Smart Matching blocks the normal sales pitch for this record.')
+
     const apiKey = process.env.OPENROUTER_API_KEY?.trim()
     if (!apiKey) return fallbackWithReason(fallback, 'The API server does not have OPENROUTER_API_KEY available. Restart or redeploy the API after setting it.')
 

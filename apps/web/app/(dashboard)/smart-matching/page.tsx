@@ -213,7 +213,19 @@ function buildPreferences(leads: Lead[]): Preferences {
   }
 }
 
+function isBrokerClient(client: ClientProfile, leads: Lead[], preferences: Preferences) {
+  return [
+    client.status,
+    preferences.buyingStatus,
+    ...leads.flatMap(lead => [lead.client_status, lead.crm?.buying_status]),
+  ].some(value => value === "broker")
+}
+
 function buildSummary(client: ClientProfile, leads: Lead[], preferences: Preferences) {
+  if (isBrokerClient(client, leads, preferences)) {
+    return `${client.full_name ?? "This client"} is marked as Broker. Treat this as a red-flag lead, block normal buyer follow-ups, and do not share inventory, pricing, or project shortlist details unless a super admin explicitly clears the record.`
+  }
+
   const location = preferences.locations.length > 0
     ? preferences.locations.join(", ")
     : preferences.currentArea ?? preferences.currentCity
@@ -370,6 +382,7 @@ export default function SmartMatchingPage() {
   }, [selectedClientId, selectedLeadId])
 
   const clientSummary = detail ? buildSummary(detail.client, detail.leads, preferences) : ""
+  const brokerRedFlag = detail ? isBrokerClient(detail.client, detail.leads, preferences) : false
   const topProject = recommendations[0]
   const openingLine = topProject
     ? `I shortlisted ${topProject.property.name} because it aligns with ${[
@@ -466,10 +479,20 @@ export default function SmartMatchingPage() {
             <InsightStat icon={Building2} label="Configuration" value={preferences.configurations.join(", ") || "Not captured"} note={`${detail.leads.length} ${detail.leads.length === 1 ? "enquiry" : "enquiries"} since ${formatDate(detail.client.first_seen_at)}`} />
           </div>
 
-          {missingInputs.length > 0 && (
+          {missingInputs.length > 0 && !brokerRedFlag && (
             <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
               <div><p className="text-sm font-medium">Confirm {missingInputs.join(", ")} before the final pitch</p><p className="mt-1 text-xs text-muted-foreground">Projects below are still useful for discovery, but filling these fields will make the ranking more precise.</p></div>
+            </div>
+          )}
+
+          {brokerRedFlag && (
+            <div className="flex items-start gap-3 rounded-xl border border-destructive/35 bg-destructive/10 p-4 text-destructive">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold">Broker red flag: block from active sales follow-up</p>
+                <p className="mt-1 text-xs leading-5 text-destructive/85">Do not pitch projects or share inventory/pricing. Keep this record in broker handling unless a super admin clears it.</p>
+              </div>
             </div>
           )}
 
