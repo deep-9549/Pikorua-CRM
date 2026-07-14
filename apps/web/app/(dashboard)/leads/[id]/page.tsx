@@ -28,7 +28,6 @@ import {
 import { formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { ProtectedPhone } from "@/components/security/protected-phone"
-import { Checkbox } from "@/components/ui/checkbox"
 import { getLeadDisplaySections } from "@/lib/lead-display-order"
 
 // Types
@@ -103,6 +102,20 @@ interface LeadActivity {
   changes: Record<string, { label: string; from: unknown; to: unknown }> | null
   metadata: Record<string, unknown> | null
   created_at: string
+}
+
+interface LeadFollowUp {
+  id: string
+  lead_id: string
+  scheduled_at: string
+  status: "scheduled" | "completed" | "cancelled"
+  notes: string | null
+  outcome_remarks: string | null
+  completed_at: string | null
+  created_by_name: string | null
+  completed_by_name: string | null
+  created_at: string
+  updated_at: string
 }
 
 interface CrmDetails {
@@ -704,6 +717,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [client, setClient] = useState<ClientProfile | null>(null)
   const [history, setHistory] = useState<LeadHistory[]>([])
   const [activity, setActivity] = useState<LeadActivity[]>([])
+  const [followUps, setFollowUps] = useState<LeadFollowUp[]>([])
+  const [newFollowUpDate, setNewFollowUpDate] = useState<string | null>(null)
+  const [newFollowUpNotes, setNewFollowUpNotes] = useState("")
+  const [addingFollowUp, setAddingFollowUp] = useState(false)
+  const [completingFollowUpId, setCompletingFollowUpId] = useState<string | null>(null)
+  const [completionRemarks, setCompletionRemarks] = useState<Record<string, string>>({})
   const [crm, setCrm] = useState<CrmDetails>({
     first_call_date: null, last_call_date: null, call_status: null,
     not_spoken_reason: null,
@@ -759,6 +778,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         }
         if (json.history) setHistory(json.history)
         if (json.activity) setActivity(json.activity)
+        if (json.follow_ups) setFollowUps(json.follow_ups)
       } finally {
         setLoading(false)
       }
@@ -970,6 +990,55 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       alert(e instanceof Error ? e.message : "Failed to save")
       return false
     } finally { setSaving(false) }
+  }
+
+  function applyFollowUps(items: LeadFollowUp[]) {
+    setFollowUps(items)
+    const next = items
+      .filter(item => item.status === "scheduled")
+      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0]
+    setCrm(prev => ({ ...prev, follow_up_date: next?.scheduled_at ?? null, follow_up_done: !next }))
+  }
+
+  async function addFollowUp() {
+    if (!newFollowUpDate || addingFollowUp) return
+    setAddingFollowUp(true)
+    try {
+      const res = await fetch(`/api/leads/meta/${id}/follow-ups`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduled_at: newFollowUpDate, notes: newFollowUpNotes.trim() || undefined }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.message ?? json.error ?? "Failed to schedule follow-up")
+      applyFollowUps(json.follow_ups ?? [])
+      setNewFollowUpDate(null)
+      setNewFollowUpNotes("")
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to schedule follow-up")
+    } finally {
+      setAddingFollowUp(false)
+    }
+  }
+
+  async function completeFollowUp(followUpId: string) {
+    if (completingFollowUpId) return
+    setCompletingFollowUpId(followUpId)
+    try {
+      const res = await fetch(`/api/leads/meta/${id}/follow-ups/${followUpId}/complete`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remarks: completionRemarks[followUpId]?.trim() || undefined }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.message ?? json.error ?? "Failed to complete follow-up")
+      applyFollowUps(json.follow_ups ?? [])
+      setCompletionRemarks(prev => ({ ...prev, [followUpId]: "" }))
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to complete follow-up")
+    } finally {
+      setCompletingFollowUpId(null)
+    }
   }
 
   async function navigateToLead(targetId: string | null) {
@@ -1434,27 +1503,90 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   )}
                 </div>
 
-                <div className="space-y-3 rounded-lg border p-3">
-                  <div className="flex items-center gap-2">
-                    <Checkbox id="follow-up-done" checked={crm.follow_up_done}
-                      onCheckedChange={checked => setCrm(p => ({ ...p, follow_up_done: checked === true }))} />
-                    <Label htmlFor="follow-up-done" className="text-sm">Follow-up done</Label>
+                <div className="space-y-4 rounded-lg border p-3">
+                  <div>
+                    <p className="text-sm font-semibold">Client Follow-ups</p>
+                    <p className="text-xs text-muted-foreground">Schedule multiple follow-ups and keep every completed conversation in the client history.</p>
                   </div>
-                  {!crm.follow_up_done && (
-                    <FollowUpDateTimeFields label="Follow-up Date" value={crm.follow_up_date}
-                      onChange={v => setCrm(p => ({ ...p, follow_up_date: v }))} />
-                  )}
-                  {crm.follow_up_done && (
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Follow-up Remarks</Label>
-                        <Textarea value={crm.follow_up_remarks ?? ''} placeholder="What happened in this follow-up?"
-                          onChange={e => setCrm(p => ({ ...p, follow_up_remarks: e.target.value || null }))} />
-                      </div>
-                      <FollowUpDateTimeFields label="Next Follow-up Date" value={crm.follow_up_date}
-                        onChange={v => setCrm(p => ({ ...p, follow_up_date: v }))} />
+
+                  <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+                    <FollowUpDateTimeFields label="Schedule Follow-up" value={newFollowUpDate} onChange={setNewFollowUpDate} />
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Plan / reason</Label>
+                      <Textarea
+                        value={newFollowUpNotes}
+                        placeholder="What should be discussed in this follow-up?"
+                        className="min-h-[70px]"
+                        onChange={event => setNewFollowUpNotes(event.target.value)}
+                      />
                     </div>
-                  )}
+                    <Button type="button" size="sm" onClick={addFollowUp} disabled={!newFollowUpDate || addingFollowUp}>
+                      {addingFollowUp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calendar className="mr-2 h-4 w-4" />}
+                      Add Follow-up
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {followUps.length === 0 ? (
+                      <p className="rounded-md border border-dashed px-3 py-5 text-center text-xs text-muted-foreground">
+                        No follow-ups logged yet.
+                      </p>
+                    ) : [...followUps].sort((a, b) => {
+                      if (a.status === "scheduled" && b.status !== "scheduled") return -1
+                      if (a.status !== "scheduled" && b.status === "scheduled") return 1
+                      if (a.status === "scheduled") {
+                        return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+                      }
+                      return new Date(b.completed_at ?? b.updated_at).getTime() - new Date(a.completed_at ?? a.updated_at).getTime()
+                    }).map(item => (
+                      <div key={item.id} className="rounded-md border p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                              <p className="text-sm font-medium">{formatDateTime(item.scheduled_at)}</p>
+                            </div>
+                            {item.notes && <p className="mt-1 text-xs text-muted-foreground">Plan: {item.notes}</p>}
+                          </div>
+                          <Badge variant={item.status === "scheduled" ? "secondary" : "outline"} className="capitalize">
+                            {item.status}
+                          </Badge>
+                        </div>
+
+                        {item.status === "scheduled" ? (
+                          <div className="mt-3 space-y-2 border-t pt-3">
+                            <Textarea
+                              value={completionRemarks[item.id] ?? ""}
+                              placeholder="Outcome / remarks from this follow-up"
+                              className="min-h-[64px]"
+                              onChange={event => setCompletionRemarks(prev => ({ ...prev, [item.id]: event.target.value }))}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => completeFollowUp(item.id)}
+                              disabled={completingFollowUpId === item.id}
+                            >
+                              {completingFollowUpId === item.id
+                                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                : <Check className="mr-2 h-4 w-4" />}
+                              Mark Completed
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="mt-3 border-t pt-3 text-xs">
+                            <p><span className="font-medium">Outcome:</span> {item.outcome_remarks || "No remarks added"}</p>
+                            {item.completed_at && (
+                              <p className="mt-1 text-muted-foreground">
+                                Completed {formatDateTime(item.completed_at)}{item.completed_by_name ? ` by ${item.completed_by_name}` : ""}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {clientStatusSection}

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { eq, desc, isNull, and } from 'drizzle-orm'
+import { eq, desc, asc, isNull, and } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { siteVisits, leadCrmDetails } from '@pikorua/db'
+import { siteVisits, leadCrmDetails, leadFollowUps } from '@pikorua/db'
 import { CreateSiteVisitDto } from './dto/create-site-visit.dto'
 import { UpdateSiteVisitDto } from './dto/update-site-visit.dto'
 import { serializeMetaLead } from '../leads/lead.serializer'
@@ -167,9 +167,33 @@ export class SiteVisitsService {
       }).where(eq(siteVisits.id, id)).returning()
 
       if (dto.follow_up_date !== undefined || dto.outcome !== undefined) {
+        let nextFollowUpDate: Date | null | undefined
+        if (dto.follow_up_date !== undefined) {
+          const requestedDate = new Date(dto.follow_up_date)
+          const existingFollowUp = await tx.query.leadFollowUps.findFirst({
+            where: and(
+              eq(leadFollowUps.leadId, visit.leadId),
+              eq(leadFollowUps.status, 'scheduled'),
+              eq(leadFollowUps.scheduledAt, requestedDate),
+            ),
+          })
+          if (!existingFollowUp) {
+            await tx.insert(leadFollowUps).values({
+              leadId: visit.leadId,
+              scheduledAt: requestedDate,
+              notes: 'Follow-up after site visit outcome',
+              createdBy: user.id,
+            })
+          }
+          const earliest = await tx.query.leadFollowUps.findFirst({
+            where: and(eq(leadFollowUps.leadId, visit.leadId), eq(leadFollowUps.status, 'scheduled')),
+            orderBy: [asc(leadFollowUps.scheduledAt)],
+          })
+          nextFollowUpDate = earliest?.scheduledAt ?? requestedDate
+        }
         const existingCrm = await tx.query.leadCrmDetails.findFirst({ where: eq(leadCrmDetails.leadId, visit.leadId) })
         const crmUpdate = {
-          ...(dto.follow_up_date !== undefined && { followUpDate: new Date(dto.follow_up_date), followUpDone: false }),
+          ...(nextFollowUpDate !== undefined && { followUpDate: nextFollowUpDate, followUpDone: false }),
           ...(dto.outcome === 'visit_done' && {
             siteVisitStatus: 'completed' as const,
             visitDate: savedVisit.scheduledDate,

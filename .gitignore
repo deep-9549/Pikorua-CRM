@@ -56,6 +56,7 @@ drizzle/
 !db_migrations/20260703_microsite_lead_sync.sql
 !db_migrations/20260709_property_inventory_live.sql
 !db_migrations/20260711_add_plot_property_type.sql
+!db_migrations/20260714_lead_follow_up_history.sql
 *.dump
 *.db
 

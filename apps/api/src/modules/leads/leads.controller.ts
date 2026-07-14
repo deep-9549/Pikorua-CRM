@@ -4,6 +4,8 @@ import { LeadsService } from './leads.service'
 import { CreateLeadDto } from './dto/create-lead.dto'
 import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
+import { CreateFollowUpDto } from './dto/create-follow-up.dto'
+import { CompleteFollowUpDto } from './dto/complete-follow-up.dto'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard } from '../../common/guards/roles.guard'
 import { Roles } from '../../common/decorators/roles.decorator'
@@ -77,5 +79,32 @@ export class LeadsController {
     @CurrentUser() user: { id: string },
   ) {
     return this.leadsService.addNote(id, user.id, dto)
+  }
+
+  @Get(':id/follow-ups')
+  @ApiOperation({ summary: 'Get the complete follow-up timeline for a lead' })
+  getFollowUps(@Param('id') id: string, @CurrentUser() user: { id: string; role: string }) {
+    return this.leadsService.getFollowUps(id, user)
+  }
+
+  @Post(':id/follow-ups')
+  @ApiOperation({ summary: 'Schedule another follow-up for a lead' })
+  createFollowUp(
+    @Param('id') id: string,
+    @Body() dto: CreateFollowUpDto,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.leadsService.createFollowUp(id, dto, user)
+  }
+
+  @Patch(':id/follow-ups/:followUpId/complete')
+  @ApiOperation({ summary: 'Complete a scheduled follow-up and retain it in history' })
+  completeFollowUp(
+    @Param('id') id: string,
+    @Param('followUpId') followUpId: string,
+    @Body() dto: CompleteFollowUpDto,
+    @CurrentUser() user: { id: string; role: string },
+  ) {
+    return this.leadsService.completeFollowUp(id, followUpId, dto, user)
   }
 }

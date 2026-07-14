@@ -1,13 +1,15 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import { eq, desc, and, isNull, inArray, notInArray } from 'drizzle-orm'
+import { eq, desc, asc, and, isNull, inArray, notInArray } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import {
   metaLeads, leadCrmDetails, leadNotes, leadInteractions, siteVisits, clients,
-  bookings, conversations, messages,
+  bookings, conversations, messages, leadFollowUps,
 } from '@pikorua/db'
 import { CreateLeadDto } from './dto/create-lead.dto'
 import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
+import { CreateFollowUpDto } from './dto/create-follow-up.dto'
+import { CompleteFollowUpDto } from './dto/complete-follow-up.dto'
 import { serializeCrmDetails, serializeMetaLead } from './lead.serializer'
 import { LeadActivityService } from '../lead-activity/lead-activity.service'
 import { META_LEAD_POOL_STATUSES, isMetaLeadPoolStatus, poolStatusForClientStatus } from './lead-pools'
@@ -42,6 +44,29 @@ export class LeadsService {
     current_area: 'Current Area',
     preferred_locations: 'Preferred Locations',
     remarks: 'Remarks',
+  }
+
+  private serializeFollowUp(followUp: any) {
+    return {
+      id: followUp.id,
+      lead_id: followUp.leadId,
+      scheduled_at: followUp.scheduledAt,
+      status: followUp.status,
+      notes: followUp.notes ?? null,
+      outcome_remarks: followUp.outcomeRemarks ?? null,
+      completed_at: followUp.completedAt ?? null,
+      created_by_name: followUp.creator?.fullName ?? null,
+      completed_by_name: followUp.completedByProfile?.fullName ?? null,
+      created_at: followUp.createdAt,
+      updated_at: followUp.updatedAt,
+    }
+  }
+
+  private assertCanUpdateLead(lead: any, user: { id: string; role: string }) {
+    const allowed = user.role === 'super_admin'
+      || lead.assigned_to === user.id
+      || isMetaLeadPoolStatus(lead.status)
+    if (!allowed) throw new ForbiddenException('You can only update leads assigned to you')
   }
 
   async findAll(status: string | undefined, user: { id: string; role: string }, includePools = false) {
@@ -272,6 +297,102 @@ export class LeadsService {
     return { ...lead, crm: mergedCrm }
   }
 
+  async getFollowUps(leadId: string, user: { id: string; role: string }) {
+    const lead = await this.findOne(leadId)
+    this.assertCanUpdateLead(lead, user)
+    const followUps = await this.db.query.leadFollowUps.findMany({
+      where: eq(leadFollowUps.leadId, leadId),
+      with: { creator: true, completedByProfile: true },
+      orderBy: [desc(leadFollowUps.scheduledAt)],
+    })
+    return { follow_ups: followUps.map((item) => this.serializeFollowUp(item)) }
+  }
+
+  async createFollowUp(leadId: string, dto: CreateFollowUpDto, user: { id: string; role: string }) {
+    const lead = await this.findOne(leadId)
+    this.assertCanUpdateLead(lead, user)
+    const scheduledAt = new Date(dto.scheduled_at)
+
+    const followUp = await this.db.transaction(async (tx) => {
+      const [created] = await tx.insert(leadFollowUps).values({
+        leadId,
+        scheduledAt,
+        notes: dto.notes?.trim() || null,
+        createdBy: user.id,
+      }).returning()
+      await this.syncNextFollowUp(tx, leadId)
+      return created
+    })
+
+    await this.leadActivityService.record({
+      leadId,
+      actorUserId: user.id,
+      eventType: 'crm_updated',
+      source: 'follow_up',
+      title: 'Follow-up scheduled',
+      description: dto.notes?.trim() || 'A new client follow-up was scheduled.',
+      metadata: { follow_up_id: followUp.id, scheduled_at: scheduledAt.toISOString() },
+    })
+    return this.getFollowUps(leadId, user)
+  }
+
+  async completeFollowUp(
+    leadId: string,
+    followUpId: string,
+    dto: CompleteFollowUpDto,
+    user: { id: string; role: string },
+  ) {
+    const lead = await this.findOne(leadId)
+    this.assertCanUpdateLead(lead, user)
+    const now = new Date()
+
+    const completed = await this.db.transaction(async (tx) => {
+      const [updated] = await tx.update(leadFollowUps).set({
+        status: 'completed',
+        outcomeRemarks: dto.remarks?.trim() || null,
+        completedAt: now,
+        completedBy: user.id,
+        updatedAt: now,
+      }).where(and(
+        eq(leadFollowUps.id, followUpId),
+        eq(leadFollowUps.leadId, leadId),
+        eq(leadFollowUps.status, 'scheduled'),
+      )).returning()
+      if (!updated) throw new NotFoundException('Scheduled follow-up not found')
+      await this.syncNextFollowUp(tx, leadId, dto.remarks?.trim() || null)
+      return updated
+    })
+
+    await this.leadActivityService.record({
+      leadId,
+      actorUserId: user.id,
+      eventType: 'crm_updated',
+      source: 'follow_up',
+      title: 'Follow-up completed',
+      description: dto.remarks?.trim() || 'Client follow-up marked as completed.',
+      metadata: { follow_up_id: completed.id, completed_at: now.toISOString() },
+    })
+    return this.getFollowUps(leadId, user)
+  }
+
+  private async syncNextFollowUp(tx: any, leadId: string, lastRemarks: string | null = null) {
+    const next = await tx.query.leadFollowUps.findFirst({
+      where: and(eq(leadFollowUps.leadId, leadId), eq(leadFollowUps.status, 'scheduled')),
+      orderBy: [asc(leadFollowUps.scheduledAt)],
+    })
+    const existing = await tx.query.leadCrmDetails.findFirst({
+      where: eq(leadCrmDetails.leadId, leadId),
+    })
+    const payload = {
+      followUpDate: next?.scheduledAt ?? null,
+      followUpDone: !next,
+      ...(lastRemarks !== null ? { followUpRemarks: lastRemarks } : {}),
+      updatedAt: new Date(),
+    }
+    if (existing) await tx.update(leadCrmDetails).set(payload).where(eq(leadCrmDetails.leadId, leadId))
+    else await tx.insert(leadCrmDetails).values({ leadId, ...payload })
+  }
+
   private async syncSiteVisit(leadId: string, dto: UpdateLeadDto, userId?: string) {
     const uiStatus = dto.site_visit_status
     if (!uiStatus || uiStatus === 'yet_to_visit') return
@@ -330,6 +451,7 @@ export class LeadsService {
       await tx.delete(siteVisits).where(eq(siteVisits.leadId, id))
       await tx.delete(leadInteractions).where(eq(leadInteractions.leadId, id))
       await tx.delete(leadNotes).where(eq(leadNotes.leadId, id))
+      await tx.delete(leadFollowUps).where(eq(leadFollowUps.leadId, id))
       await tx.delete(leadCrmDetails).where(eq(leadCrmDetails.leadId, id))
       await tx.delete(metaLeads).where(eq(metaLeads.id, id))
     })

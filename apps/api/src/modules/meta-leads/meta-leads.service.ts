@@ -139,6 +139,10 @@ export class MetaLeadsService {
         crmDetails: true,
         notes: true,
         interactions: true,
+        followUps: {
+          with: { creator: true, completedByProfile: true },
+          orderBy: (followUps, { desc: orderDesc }) => [orderDesc(followUps.scheduledAt)],
+        },
       },
     })
     if (!lead) throw new NotFoundException(`Meta lead ${id} not found`)
@@ -175,6 +179,10 @@ export class MetaLeadsService {
         crmDetails: true,
         notes: true,
         interactions: true,
+        followUps: {
+          with: { creator: true, completedByProfile: true },
+          orderBy: (followUps, { desc: orderDesc }) => [orderDesc(followUps.scheduledAt)],
+        },
       },
     })
     if (!lead) throw new NotFoundException(`Meta lead ${id} not found`)
@@ -211,6 +219,19 @@ export class MetaLeadsService {
       client,
       history,
       activity: await this.leadActivityService.getLeadActivity(id),
+      follow_ups: lead.followUps.map((item) => ({
+        id: item.id,
+        lead_id: item.leadId,
+        scheduled_at: item.scheduledAt,
+        status: item.status,
+        notes: item.notes ?? null,
+        outcome_remarks: item.outcomeRemarks ?? null,
+        completed_at: item.completedAt ?? null,
+        created_by_name: item.creator?.fullName ?? null,
+        completed_by_name: item.completedByProfile?.fullName ?? null,
+        created_at: item.createdAt,
+        updated_at: item.updatedAt,
+      })),
     }
   }
 

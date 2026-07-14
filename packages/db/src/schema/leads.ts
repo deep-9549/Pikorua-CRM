@@ -100,6 +100,25 @@ export const leadCrmDetails = pgTable('lead_crm_details', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
+// Durable follow-up timeline. lead_crm_details.follow_up_date remains the
+// denormalized next due follow-up used by queues, reminders and reports.
+export const leadFollowUps = pgTable('lead_follow_ups', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  leadId: uuid('lead_id').references(() => metaLeads.id, { onDelete: 'cascade' }).notNull(),
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
+  status: text('status').default('scheduled').notNull(),
+  notes: text('notes'),
+  outcomeRemarks: text('outcome_remarks'),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdBy: uuid('created_by').references(() => userProfiles.id, { onDelete: 'set null' }),
+  completedBy: uuid('completed_by').references(() => userProfiles.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('lead_follow_ups_lead_scheduled_idx').on(t.leadId, t.scheduledAt),
+  index('lead_follow_ups_status_scheduled_idx').on(t.status, t.scheduledAt),
+])
+
 // Full CRM leads (converted from meta_leads or created directly)
 export const leads = pgTable('leads', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -174,6 +193,7 @@ export const metaLeadsRelations = relations(metaLeads, ({ one, many }) => ({
   notes: many(leadNotes),
   interactions: many(leadInteractions),
   activityEvents: many(leadActivityEvents),
+  followUps: many(leadFollowUps),
 }))
 
 export const leadCrmDetailsRelations = relations(leadCrmDetails, ({ one }) => ({
@@ -195,4 +215,10 @@ export const leadActivityEventsRelations = relations(leadActivityEvents, ({ one 
   actor: one(userProfiles, { fields: [leadActivityEvents.actorUserId], references: [userProfiles.id], relationName: 'activity_actor' }),
   fromUser: one(userProfiles, { fields: [leadActivityEvents.fromUserId], references: [userProfiles.id], relationName: 'activity_from_user' }),
   toUser: one(userProfiles, { fields: [leadActivityEvents.toUserId], references: [userProfiles.id], relationName: 'activity_to_user' }),
+}))
+
+export const leadFollowUpsRelations = relations(leadFollowUps, ({ one }) => ({
+  metaLead: one(metaLeads, { fields: [leadFollowUps.leadId], references: [metaLeads.id] }),
+  creator: one(userProfiles, { fields: [leadFollowUps.createdBy], references: [userProfiles.id], relationName: 'follow_up_creator' }),
+  completedByProfile: one(userProfiles, { fields: [leadFollowUps.completedBy], references: [userProfiles.id], relationName: 'follow_up_completer' }),
 }))
