@@ -59,6 +59,12 @@ interface MetaLead {
   crm?: Crm | null
   client_status?: string | null
   client_status_note?: string | null
+  today_follow_up_calls?: Array<{
+    id: string
+    call_status: "spoken" | "not_spoken"
+    completed_at: string
+    completed_by_profile: { id: string; full_name: string } | null
+  }>
 }
 
 function initials(name: string | null) {
@@ -237,9 +243,8 @@ export default function LeadsPage() {
 
   const today = dateKey(new Date(now))
 
-  // Count calls made today from the full (unfiltered) leads list. The CRM stores
-  // one current outcome per lead, so these are leads called today rather than a
-  // count of every individual attempt.
+  // Completed follow-ups are counted from their durable per-attempt log. For a
+  // lead with no completed follow-up today, retain the normal CRM call path.
   const todayCallStats = useMemo(() => {
     function calledToday(lead: MetaLead) {
       const crm = lead.crm
@@ -253,10 +258,10 @@ export default function LeadsPage() {
     let totalNotSpoken = 0
     let totalCallBack = 0
 
-    callStatsLeads.forEach(lead => {
-      if (!calledToday(lead)) return
-      const status = lead.crm?.call_status
-      const exec = lead.assigned_to_profile
+    function recordCall(
+      status: string | null | undefined,
+      exec: { id: string; full_name: string } | null,
+    ) {
       const execId = exec?.id ?? "unassigned"
       if (!byExec.has(execId)) byExec.set(execId, {
         id: execId,
@@ -269,6 +274,19 @@ export default function LeadsPage() {
       if (status === "spoken") { s.spoken++; totalSpoken++ }
       if (status === "not_spoken") { s.notSpoken++; totalNotSpoken++ }
       if (status === "call_back_later") { s.callBack++; totalCallBack++ }
+    }
+
+    callStatsLeads.forEach(lead => {
+      const followUpCalls = lead.today_follow_up_calls ?? []
+      if (followUpCalls.length > 0) {
+        followUpCalls.forEach(call => recordCall(
+          call.call_status,
+          call.completed_by_profile ?? lead.assigned_to_profile,
+        ))
+        return
+      }
+      if (!calledToday(lead)) return
+      recordCall(lead.crm?.call_status, lead.assigned_to_profile)
     })
 
     const execList = Array.from(byExec.values())

@@ -107,6 +107,7 @@ export const leadFollowUps = pgTable('lead_follow_ups', {
   leadId: uuid('lead_id').references(() => metaLeads.id, { onDelete: 'cascade' }).notNull(),
   scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
   status: text('status').default('scheduled').notNull(),
+  callStatus: text('call_status'),
   notes: text('notes'),
   outcomeRemarks: text('outcome_remarks'),
   completedAt: timestamp('completed_at', { withTimezone: true }),

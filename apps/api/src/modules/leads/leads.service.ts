@@ -52,6 +52,7 @@ export class LeadsService {
       lead_id: followUp.leadId,
       scheduled_at: followUp.scheduledAt,
       status: followUp.status,
+      call_status: followUp.callStatus ?? null,
       notes: followUp.notes ?? null,
       outcome_remarks: followUp.outcomeRemarks ?? null,
       completed_at: followUp.completedAt ?? null,
@@ -349,6 +350,7 @@ export class LeadsService {
     const completed = await this.db.transaction(async (tx) => {
       const [updated] = await tx.update(leadFollowUps).set({
         status: 'completed',
+        callStatus: dto.call_status,
         outcomeRemarks: dto.remarks?.trim() || null,
         completedAt: now,
         completedBy: user.id,
@@ -370,7 +372,12 @@ export class LeadsService {
       source: 'follow_up',
       title: 'Follow-up completed',
       description: dto.remarks?.trim() || 'Client follow-up marked as completed.',
-      metadata: { follow_up_id: completed.id, completed_at: now.toISOString() },
+      metadata: {
+        follow_up_id: completed.id,
+        completed_at: now.toISOString(),
+        call_status: dto.call_status,
+        call_logged: true,
+      },
     })
     return this.getFollowUps(leadId, user)
   }

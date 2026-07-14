@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS lead_follow_ups (
   scheduled_at timestamptz NOT NULL,
   status text NOT NULL DEFAULT 'scheduled'
     CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+  call_status text CHECK (call_status IN ('spoken', 'not_spoken')),
   notes text,
   outcome_remarks text,
   completed_at timestamptz,

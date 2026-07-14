@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   ArrowLeft, Phone, Mail, MapPin, Calendar, Loader2, Save,
@@ -109,6 +110,7 @@ interface LeadFollowUp {
   lead_id: string
   scheduled_at: string
   status: "scheduled" | "completed" | "cancelled"
+  call_status: "spoken" | "not_spoken" | null
   notes: string | null
   outcome_remarks: string | null
   completed_at: string | null
@@ -711,6 +713,7 @@ function ActivityCard({ event }: { event: LeadActivity }) {
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [openedFromTrash, setOpenedFromTrash] = useState(false)
 
   const [lead, setLead] = useState<MetaLead | null>(null)
@@ -723,6 +726,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [addingFollowUp, setAddingFollowUp] = useState(false)
   const [completingFollowUpId, setCompletingFollowUpId] = useState<string | null>(null)
   const [completionRemarks, setCompletionRemarks] = useState<Record<string, string>>({})
+  const [completionCallStatus, setCompletionCallStatus] = useState<Record<string, "spoken" | "not_spoken" | "">>({})
   const [crm, setCrm] = useState<CrmDetails>({
     first_call_date: null, last_call_date: null, call_status: null,
     not_spoken_reason: null,
@@ -1014,6 +1018,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       applyFollowUps(json.follow_ups ?? [])
       setNewFollowUpDate(null)
       setNewFollowUpNotes("")
+      void queryClient.invalidateQueries({ queryKey: ["meta-leads"] })
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to schedule follow-up")
     } finally {
@@ -1023,17 +1028,27 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   async function completeFollowUp(followUpId: string) {
     if (completingFollowUpId) return
+    const callStatus = completionCallStatus[followUpId]
+    if (!callStatus) {
+      alert("Select Spoken or Not Spoken before completing the follow-up")
+      return
+    }
     setCompletingFollowUpId(followUpId)
     try {
       const res = await fetch(`/api/leads/meta/${id}/follow-ups/${followUpId}/complete`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ remarks: completionRemarks[followUpId]?.trim() || undefined }),
+        body: JSON.stringify({
+          call_status: callStatus,
+          remarks: completionRemarks[followUpId]?.trim() || undefined,
+        }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.message ?? json.error ?? "Failed to complete follow-up")
       applyFollowUps(json.follow_ups ?? [])
       setCompletionRemarks(prev => ({ ...prev, [followUpId]: "" }))
+      setCompletionCallStatus(prev => ({ ...prev, [followUpId]: "" }))
+      void queryClient.invalidateQueries({ queryKey: ["meta-leads"] })
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to complete follow-up")
     } finally {
@@ -1555,6 +1570,22 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
                         {item.status === "scheduled" ? (
                           <div className="mt-3 space-y-2 border-t pt-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Call outcome</Label>
+                              <select
+                                value={completionCallStatus[item.id] ?? ""}
+                                className="flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm"
+                                style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                                onChange={event => setCompletionCallStatus(prev => ({
+                                  ...prev,
+                                  [item.id]: event.target.value as "spoken" | "not_spoken" | "",
+                                }))}
+                              >
+                                <option value="">Select call outcome</option>
+                                <option value="spoken">Spoken</option>
+                                <option value="not_spoken">Not Spoken</option>
+                              </select>
+                            </div>
                             <Textarea
                               value={completionRemarks[item.id] ?? ""}
                               placeholder="Outcome / remarks from this follow-up"
@@ -1566,7 +1597,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                               size="sm"
                               variant="outline"
                               onClick={() => completeFollowUp(item.id)}
-                              disabled={completingFollowUpId === item.id}
+                              disabled={completingFollowUpId === item.id || !completionCallStatus[item.id]}
                             >
                               {completingFollowUpId === item.id
                                 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1576,6 +1607,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                           </div>
                         ) : (
                           <div className="mt-3 border-t pt-3 text-xs">
+                            <p>
+                              <span className="font-medium">Call:</span>{" "}
+                              {item.call_status === "spoken" ? "Spoken" : item.call_status === "not_spoken" ? "Not Spoken" : "Not recorded"}
+                            </p>
                             <p><span className="font-medium">Outcome:</span> {item.outcome_remarks || "No remarks added"}</p>
                             {item.completed_at && (
                               <p className="mt-1 text-muted-foreground">

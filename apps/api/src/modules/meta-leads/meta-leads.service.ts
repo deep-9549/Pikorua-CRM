@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { eq, inArray, desc, and, isNull, notInArray } from 'drizzle-orm'
+import { eq, inArray, desc, and, isNull, isNotNull, notInArray, gte, lt } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { metaLeads, userProfiles, clients, properties } from '@pikorua/db'
+import { metaLeads, userProfiles, clients, properties, leadFollowUps } from '@pikorua/db'
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
 import { serializeMetaLead, serializeCrmDetails } from '../leads/lead.serializer'
+import { serializeProfile } from '../../common/serializers/profile.serializer'
 import { ClientsService } from '../clients/clients.service'
 import { LeadActivityService } from '../lead-activity/lead-activity.service'
 import {
@@ -19,6 +20,13 @@ import {
 } from '../leads/lead-pools'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
+
+function todayIstUtcRange(now = new Date()) {
+  const istOffsetMs = 5.5 * 60 * 60 * 1000
+  const shifted = new Date(now.getTime() + istOffsetMs)
+  const start = new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) - istOffsetMs)
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) }
+}
 
 @Injectable()
 export class MetaLeadsService {
@@ -121,11 +129,44 @@ export class MetaLeadsService {
       }
     }
 
+    // Completed follow-ups are real call attempts. Return today's entries with
+    // the lead list so the leads page can count each attempt from its own log
+    // instead of reusing the lead's single current call_status value.
+    const followUpCallsByLead = new Map<string, unknown[]>()
+    const leadIds = leads.map(lead => lead.id)
+    if (leadIds.length > 0 && !options.trash) {
+      const { start, end } = todayIstUtcRange()
+      const calls = await this.db.query.leadFollowUps.findMany({
+        where: and(
+          inArray(leadFollowUps.leadId, leadIds),
+          eq(leadFollowUps.status, 'completed'),
+          isNotNull(leadFollowUps.callStatus),
+          gte(leadFollowUps.completedAt, start),
+          lt(leadFollowUps.completedAt, end),
+        ),
+        with: { completedByProfile: true },
+        orderBy: [desc(leadFollowUps.completedAt)],
+      })
+      for (const call of calls) {
+        const entries = followUpCallsByLead.get(call.leadId) ?? []
+        entries.push({
+          id: call.id,
+          call_status: call.callStatus,
+          completed_at: call.completedAt,
+          completed_by_profile: serializeProfile(call.completedByProfile),
+        })
+        followUpCallsByLead.set(call.leadId, entries)
+      }
+    }
+
     return {
-      leads: leads.map(l => serializeMetaLead({
-        ...l,
-        clientStatus: l.phone ? (phoneClientMap.get(l.phone)?.status ?? null) : null,
-        clientStatusNote: l.phone ? (phoneClientMap.get(l.phone)?.statusNote ?? null) : null,
+      leads: leads.map(l => ({
+        ...serializeMetaLead({
+          ...l,
+          clientStatus: l.phone ? (phoneClientMap.get(l.phone)?.status ?? null) : null,
+          clientStatusNote: l.phone ? (phoneClientMap.get(l.phone)?.statusNote ?? null) : null,
+        }),
+        today_follow_up_calls: followUpCallsByLead.get(l.id) ?? [],
       })),
     }
   }
@@ -224,6 +265,7 @@ export class MetaLeadsService {
         lead_id: item.leadId,
         scheduled_at: item.scheduledAt,
         status: item.status,
+        call_status: item.callStatus ?? null,
         notes: item.notes ?? null,
         outcome_remarks: item.outcomeRemarks ?? null,
         completed_at: item.completedAt ?? null,
