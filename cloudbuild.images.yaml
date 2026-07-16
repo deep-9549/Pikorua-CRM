@@ -1,0 +1,34 @@
+timeout: 1800s
+
+substitutions:
+  _REGION: asia-southeast1
+  _REPOSITORY: pikorua-crm-images
+  _IMAGE_TAG: manual
+
+steps:
+  - id: build-api-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file
+      - apps/api/Dockerfile
+      - --tag
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-api:${_IMAGE_TAG}
+      - .
+
+  - id: build-web-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file
+      - apps/web/Dockerfile
+      - --tag
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-web:${_IMAGE_TAG}
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-api:${_IMAGE_TAG}
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-web:${_IMAGE_TAG}
+
+options:
+  logging: CLOUD_LOGGING_ONLY
