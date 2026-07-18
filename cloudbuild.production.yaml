@@ -1,0 +1,76 @@
+timeout: 1800s
+
+substitutions:
+  _REGION: asia-south1
+  _REPOSITORY: pikorua-crm-images
+  _RELEASE_BUCKET: project-2f5d7375-d77f-44ae-b19-pikorua-crm-releases
+
+steps:
+  - id: build-api-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file
+      - apps/api/Dockerfile
+      - --tag
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-api:${SHORT_SHA}
+      - .
+
+  - id: build-web-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file
+      - apps/web/Dockerfile
+      - --tag
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-web:${SHORT_SHA}
+      - .
+
+  - id: push-api-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-api:${SHORT_SHA}
+
+  - id: push-web-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-web:${SHORT_SHA}
+
+  - id: create-release-manifest
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        api_tag="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-api:${SHORT_SHA}"
+        web_tag="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/pikorua-crm-web:${SHORT_SHA}"
+
+        api_image="$$(docker image inspect --format='{{index .RepoDigests 0}}' "$${api_tag}")"
+        web_image="$$(docker image inspect --format='{{index .RepoDigests 0}}' "$${web_tag}")"
+
+        test -n "$${COMMIT_SHA}"
+        test -n "$${api_image}"
+        test -n "$${web_image}"
+
+        printf '%s\n' \
+          "RELEASE_SHA=$${COMMIT_SHA}" \
+          "API_IMAGE=$${api_image}" \
+          "WEB_IMAGE=$${web_image}" \
+          "CREATED_AT=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          > /workspace/production.env
+
+  - id: publish-release-manifest
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        gcloud storage cp \
+          /workspace/production.env \
+          gs://${_RELEASE_BUCKET}/releases/production.env
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
