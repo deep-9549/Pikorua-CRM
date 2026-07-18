@@ -57,6 +57,34 @@ wait_for_healthy() {
   return 1
 }
 
+registry_login() {
+  local registry="https://${REGION}-docker.pkg.dev"
+
+  if gcloud auth print-access-token 2>/dev/null | docker login \
+    --username oauth2accesstoken \
+    --password-stdin \
+    "$registry" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  command -v curl >/dev/null 2>&1 || return 1
+
+  local token_response access_token
+  token_response="$(curl -fsS \
+    -H 'Metadata-Flavor: Google' \
+    'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token' \
+    2>/dev/null)" || return 1
+
+  access_token="$(printf '%s' "$token_response" | sed -n \
+    's/.*"access_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+  [[ -n "$access_token" ]] || return 1
+
+  printf '%s' "$access_token" | docker login \
+    --username oauth2accesstoken \
+    --password-stdin \
+    "$registry" >/dev/null 2>&1
+}
+
 rollback() {
   local backup="$1"
 
@@ -121,10 +149,7 @@ main() {
 
   log "Deploying release ${release_sha}"
 
-  if ! gcloud auth print-access-token | docker login \
-    --username oauth2accesstoken \
-    --password-stdin \
-    "https://${REGION}-docker.pkg.dev" >/dev/null 2>&1; then
+  if ! registry_login; then
     fail "Artifact Registry authentication failed"
   fi
 
@@ -190,4 +215,3 @@ main() {
 }
 
 main "$@"
-
