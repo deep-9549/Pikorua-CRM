@@ -7,6 +7,8 @@ import { UpdateProfileDto } from './dto/update-profile.dto'
 import { ChangePasswordDto } from './dto/change-password.dto'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import { ForgotPasswordDto } from './dto/forgot-password.dto'
+import { ResetPasswordDto } from './dto/reset-password.dto'
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -20,6 +22,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Login with email and password' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto)
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Send a password-reset verification email' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto)
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset a password with a one-time email token' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto)
   }
 
   @Get('me')

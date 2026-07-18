@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -88,9 +89,14 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs" style={{ color: "var(--color-foreground)" }}>
-                Password
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-xs" style={{ color: "var(--color-foreground)" }}>
+                  Password
+                </Label>
+                <Link href="/forgot-password" className="text-xs font-medium hover:underline" style={{ color: "var(--color-primary)" }}>
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Input
                   id="password"

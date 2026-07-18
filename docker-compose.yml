@@ -49,6 +49,11 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      WEB_APP_URL: ${WEB_APP_URL:-http://localhost:3000}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_SEND_URL: ${BREVO_SEND_URL:-https://api.brevo.com/v3/smtp/email}
+      DEFAULT_SENDER_EMAIL: ${DEFAULT_SENDER_EMAIL:-pikoruaweb@gmail.com}
+      DEFAULT_SENDER_NAME: ${DEFAULT_SENDER_NAME:-PIKORUA}
       WEBSITE_LEAD_SYNC_ENABLED: ${WEBSITE_LEAD_SYNC_ENABLED:-false}
       WEBSITE_SUPABASE_URL: ${WEBSITE_SUPABASE_URL:-}
       WEBSITE_SUPABASE_SERVICE_ROLE_KEY: ${WEBSITE_SUPABASE_SERVICE_ROLE_KEY:-}

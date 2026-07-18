@@ -1,12 +1,16 @@
 import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcryptjs'
-import { and, eq, isNull } from 'drizzle-orm'
+import { createHash, randomBytes } from 'node:crypto'
+import { and, eq, gt, isNull, sql } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
-import { userProfiles } from '@pikorua/db'
+import { passwordResetTokens, userProfiles } from '@pikorua/db'
 import { LoginDto } from './dto/login.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
 import { ChangePasswordDto } from './dto/change-password.dto'
+import { ForgotPasswordDto } from './dto/forgot-password.dto'
+import { ResetPasswordDto } from './dto/reset-password.dto'
+import { PasswordResetMailerService } from './password-reset-mailer.service'
 
 @Injectable()
 export class AuthService {
@@ -15,6 +19,7 @@ export class AuthService {
   constructor(
     private readonly database: DatabaseService,
     private readonly jwtService: JwtService,
+    private readonly passwordResetMailer: PasswordResetMailerService,
   ) {}
 
   private get db() { return this.database.db }
@@ -74,6 +79,112 @@ export class AuthService {
     }
   }
 
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const email = dto.email.trim().toLowerCase()
+    const user = await this.db.query.userProfiles.findFirst({
+      where: and(
+        sql`lower(${userProfiles.email}) = ${email}`,
+        eq(userProfiles.status, 'active'),
+        isNull(userProfiles.deletedAt),
+      ),
+    })
+
+    // Always return the same response so this endpoint cannot be used to
+    // enumerate CRM accounts.
+    if (!user || !user.email || !user.passwordHash) return { accepted: true }
+
+    const token = randomBytes(32).toString('base64url')
+    const tokenHash = this.hashResetToken(token)
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000)
+
+    await this.db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id))
+    await this.db.insert(passwordResetTokens).values({ userId: user.id, tokenHash, expiresAt })
+
+    const appUrl = (process.env.WEB_APP_URL ?? process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+      .split(',')[0]
+      .trim()
+      .replace(/\/$/, '')
+    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`
+
+    try {
+      await this.passwordResetMailer.sendPasswordReset({
+        email: user.email,
+        name: user.fullName ?? '',
+        resetUrl,
+      })
+    } catch (error) {
+      await this.db.delete(passwordResetTokens).where(eq(passwordResetTokens.tokenHash, tokenHash))
+      // Keep the public response identical for known and unknown addresses.
+      // The detailed SMTP error remains server-side for operators.
+      this.logger.error(
+        `Unable to send password reset email for user ${user.id}`,
+        error instanceof Error ? error.stack : String(error),
+      )
+      return { accepted: true }
+    }
+
+    this.logger.log(`Password reset email sent for user ${user.id}`)
+    return { accepted: true }
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const tokenHash = this.hashResetToken(dto.token)
+    const now = new Date()
+
+    const changed = await this.db.transaction(async (tx) => {
+      const resetToken = await tx.query.passwordResetTokens.findFirst({
+        where: and(
+          eq(passwordResetTokens.tokenHash, tokenHash),
+          isNull(passwordResetTokens.usedAt),
+          gt(passwordResetTokens.expiresAt, now),
+        ),
+      })
+      if (!resetToken) return false
+
+      // Claim the token atomically. This prevents two simultaneous requests
+      // from using the same link.
+      const [claimed] = await tx
+        .update(passwordResetTokens)
+        .set({ usedAt: now })
+        .where(and(
+          eq(passwordResetTokens.id, resetToken.id),
+          isNull(passwordResetTokens.usedAt),
+        ))
+        .returning({ id: passwordResetTokens.id })
+      if (!claimed) return false
+
+      const passwordHash = await bcrypt.hash(dto.new_password, 12)
+      const [user] = await tx
+        .update(userProfiles)
+        .set({ passwordHash, passwordChangedAt: now, updatedAt: now })
+        .where(and(
+          eq(userProfiles.id, resetToken.userId),
+          eq(userProfiles.status, 'active'),
+          isNull(userProfiles.deletedAt),
+        ))
+        .returning({ id: userProfiles.id })
+      if (!user) return false
+
+      await tx
+        .update(passwordResetTokens)
+        .set({ usedAt: now })
+        .where(and(
+          eq(passwordResetTokens.userId, resetToken.userId),
+          isNull(passwordResetTokens.usedAt),
+        ))
+      return true
+    })
+
+    if (!changed) throw new BadRequestException('This reset link is invalid or has expired')
+
+    this.logger.log('A user password was reset using email verification')
+    return { changed: true }
+  }
+
+  private hashResetToken(token: string) {
+    return createHash('sha256').update(token).digest('hex')
+  }
+
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     const fullName = dto.full_name.trim()
     if (fullName.length < 2) {
@@ -130,7 +241,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.new_password, 12)
     await this.db
       .update(userProfiles)
-      .set({ passwordHash, updatedAt: new Date() })
+      .set({ passwordHash, passwordChangedAt: new Date(), updatedAt: new Date() })
       .where(eq(userProfiles.id, userId))
 
     this.logger.log(`User ${userId} changed their password`)

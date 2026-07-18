@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { JwtStrategy } from './strategies/jwt.strategy'
 import { getJwtSecret } from '../../common/config/jwt'
+import { PasswordResetMailerService } from './password-reset-mailer.service'
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { getJwtSecret } from '../../common/config/jwt'
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, PasswordResetMailerService],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}
