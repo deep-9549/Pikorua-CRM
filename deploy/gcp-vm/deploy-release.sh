@@ -113,9 +113,12 @@ main() {
     exit 0
   }
 
-  local manifest
+  local manifest docker_auth_dir
   manifest="$(mktemp)"
-  trap 'rm -f "${manifest:-}"' EXIT
+  docker_auth_dir="$(mktemp -d)"
+  chmod 700 "$docker_auth_dir"
+  export DOCKER_CONFIG="$docker_auth_dir"
+  trap 'rm -f "${manifest:-}"; rm -rf "${docker_auth_dir:-}"' EXIT
 
   if ! gcloud storage cp "$MANIFEST_URI" "$manifest" >/dev/null 2>&1; then
     fail "Unable to download release manifest"
