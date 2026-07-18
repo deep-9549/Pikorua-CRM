@@ -61,16 +61,19 @@ steps:
           "CREATED_AT=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
           > /workspace/production.env
 
-  - id: publish-release-manifest
+  - id: publish-deployment-assets
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: bash
     args:
       - -ceu
       - |
         gcloud storage cp \
+          deploy/gcp-vm/deploy-release.sh \
+          gs://${_RELEASE_BUCKET}/bootstrap/deploy-release.sh
+
+        gcloud storage cp \
           /workspace/production.env \
           gs://${_RELEASE_BUCKET}/releases/production.env
 
 options:
   logging: CLOUD_LOGGING_ONLY
-
