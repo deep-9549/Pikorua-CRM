@@ -50,12 +50,12 @@ steps:
         api_image="$$(docker image inspect --format='{{index .RepoDigests 0}}' "$${api_tag}")"
         web_image="$$(docker image inspect --format='{{index .RepoDigests 0}}' "$${web_tag}")"
 
-        test -n "$${COMMIT_SHA}"
+        test -n "${COMMIT_SHA}"
         test -n "$${api_image}"
         test -n "$${web_image}"
 
         printf '%s\n' \
-          "RELEASE_SHA=$${COMMIT_SHA}" \
+          "RELEASE_SHA=${COMMIT_SHA}" \
           "API_IMAGE=$${api_image}" \
           "WEB_IMAGE=$${web_image}" \
           "CREATED_AT=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
