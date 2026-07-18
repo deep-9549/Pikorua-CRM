@@ -7,8 +7,10 @@ import {
   ArrowUpRight,
   Bot,
   Calendar,
+  Check,
   CheckCircle2,
   Clock,
+  Copy,
   ExternalLink,
   Flame,
   Headphones,
@@ -156,6 +158,61 @@ function duration(value: number | null | undefined) {
   return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`
 }
 
+const transcriptRoleLabels: Record<TranscriptTurn["role"], string> = {
+  caller: "Caller",
+  assistant: "AI Assistant",
+  system: "System",
+}
+
+function formatTranscriptForClipboard(call: VoiceCallDetail) {
+  const header = [
+    "CALL TRANSCRIPT",
+    `Lead: ${call.lead_name?.trim() || "Unknown lead"}`,
+    `Date: ${new Date(call.answered_at ?? call.received_at).toLocaleString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`,
+    call.campaign_name?.trim() ? `Campaign: ${call.campaign_name.trim()}` : null,
+    `Direction: ${call.direction === "inbound" ? "Inbound" : "Outbound"}`,
+    `Duration: ${duration(call.duration_sec)}`,
+  ].filter((line): line is string => Boolean(line))
+
+  const turns = call.transcript_turns.map((turn) => (
+    `${transcriptRoleLabels[turn.role]}:\n${turn.text.trim()}`
+  ))
+
+  return `${header.join("\n")}\n\nTRANSCRIPT\n\n${turns.join("\n\n")}`
+}
+
+async function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return
+    } catch {
+      // Fall back for browsers where clipboard access is unavailable or denied.
+    }
+  }
+
+  const textarea = document.createElement("textarea")
+  textarea.value = text
+  textarea.setAttribute("readonly", "")
+  textarea.style.position = "fixed"
+  textarea.style.opacity = "0"
+  document.body.appendChild(textarea)
+  textarea.select()
+  let copied = false
+  try {
+    copied = document.execCommand("copy")
+  } finally {
+    document.body.removeChild(textarea)
+  }
+  if (!copied) throw new Error("Clipboard access was denied")
+}
+
 function FilterSelect({
   value,
   onChange,
@@ -199,6 +256,7 @@ export default function AiVoicePage() {
   const [overrideReason, setOverrideReason] = useState("")
   const [savingOverride, setSavingOverride] = useState(false)
   const [showTranscript, setShowTranscript] = useState(false)
+  const [transcriptCopyStatus, setTranscriptCopyStatus] = useState<"idle" | "copied" | "error">("idle")
   const [deleteTarget, setDeleteTarget] = useState<VoiceQueueItem | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -254,6 +312,7 @@ export default function AiVoicePage() {
       setOverrideLabel(json.call?.score?.effective_label ?? "hot")
       setOverrideReason("")
       setShowTranscript(false)
+      setTranscriptCopyStatus("idle")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load call")
     } finally {
@@ -353,6 +412,17 @@ export default function AiVoicePage() {
   async function markAlertRead(alertId: string) {
     await fetch(`/api/ai-voice/alerts/${alertId}/read`, { method: "PATCH" })
     setAlerts((prev) => prev.filter((alert) => alert.id !== alertId))
+  }
+
+  async function copyTranscript() {
+    if (!detail || detail.transcript_turns.length === 0) return
+    try {
+      await copyText(formatTranscriptForClipboard(detail))
+      setTranscriptCopyStatus("copied")
+    } catch {
+      setTranscriptCopyStatus("error")
+    }
+    window.setTimeout(() => setTranscriptCopyStatus("idle"), 2500)
   }
 
   async function deleteCallLog() {
@@ -698,11 +768,29 @@ export default function AiVoicePage() {
 
       <Dialog open={showTranscript} onOpenChange={setShowTranscript}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">
-          <DialogHeader className="border-b px-5 py-4" style={{ borderColor: "var(--color-border)" }}>
-            <DialogTitle>Transcript</DialogTitle>
-            <DialogDescription>
-              {detail?.lead_name || "Unknown lead"} - {detail ? formatDateTime(detail.answered_at ?? detail.received_at) : ""}
-            </DialogDescription>
+          <DialogHeader className="items-stretch gap-4 border-b px-5 py-4 pr-14 text-left sm:flex-row sm:items-center sm:pr-14" style={{ borderColor: "var(--color-border)" }}>
+            <div className="min-w-0 space-y-1">
+              <DialogTitle>Transcript</DialogTitle>
+              <DialogDescription>
+                {detail?.lead_name || "Unknown lead"} - {detail ? formatDateTime(detail.answered_at ?? detail.received_at) : ""}
+              </DialogDescription>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0 self-start gap-2"
+              aria-live="polite"
+              disabled={!detail?.transcript_turns.length}
+              onClick={() => void copyTranscript()}
+            >
+              {transcriptCopyStatus === "copied" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {transcriptCopyStatus === "copied"
+                ? "Copied"
+                : transcriptCopyStatus === "error"
+                  ? "Copy failed"
+                  : "Copy transcript"}
+            </Button>
           </DialogHeader>
           <div className="max-h-[72vh] space-y-3 overflow-y-auto px-5 py-4">
             {detail?.transcript_turns.map((turn) => (
