@@ -4,6 +4,8 @@ substitutions:
   _REGION: asia-south1
   _REPOSITORY: pikorua-crm-images
   _RELEASE_BUCKET: project-2f5d7375-d77f-44ae-b19-pikorua-crm-releases
+  _VM_NAME: instance-crm-small
+  _VM_ZONE: asia-south1-c
 
 steps:
   - id: build-api-image
@@ -74,6 +76,19 @@ steps:
         gcloud storage cp \
           /workspace/production.env \
           gs://${_RELEASE_BUCKET}/releases/production.env
+
+  - id: deploy-production-vm
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        gcloud compute ssh "${_VM_NAME}" \
+          --project="${PROJECT_ID}" \
+          --zone="${_VM_ZONE}" \
+          --tunnel-through-iap \
+          --quiet \
+          --command="sudo /opt/pikorua-crm/scripts/deploy-release.sh"
 
 options:
   logging: CLOUD_LOGGING_ONLY
