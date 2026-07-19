@@ -82,7 +82,7 @@ function escapeCsv(value: string) {
   return value
 }
 
-export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") {
+export function buildLeadsCsv(leads: ExportableLead[]) {
   const columns = [
     "Name",
     "Phone",
@@ -143,12 +143,14 @@ export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") 
     fmtDate(l.received_at),
   ])
 
-  const lines = [
+  return [
     columns.join(","),
     ...rows.map(row => row.map(cell => escapeCsv(String(cell))).join(",")),
-  ]
+  ].join("\n")
+}
 
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" })
+export function exportLeadsToExcel(leads: ExportableLead[], filename = "leads") {
+  const blob = new Blob([buildLeadsCsv(leads)], { type: "text/csv;charset=utf-8;" })
   const stamp = new Date().toISOString().split("T")[0]
   const url = URL.createObjectURL(blob)
   const link = document.createElement("a")

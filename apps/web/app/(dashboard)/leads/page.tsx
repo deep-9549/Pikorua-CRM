@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { AddLeadDialog } from "@/components/add-lead-dialog"
 import { exportLeadsToExcel } from "@/lib/export-leads"
+import { campaignOptions, EMPTY_LEAD_FILTERS, filterLeadList } from "@/lib/lead-list-filter"
 import {
   dateKey,
   getLeadDisplaySections,
@@ -140,37 +141,7 @@ function FilterSelect({ value, onChange, children }: {
   )
 }
 
-const EMPTY_FILTERS = {
-  clientStatus: "", callStatus: "", source: "", assignedTo: "", dateFrom: "", dateTo: "",
-}
-
-type LeadFilters = typeof EMPTY_FILTERS
-
 const EMPTY_LEADS: MetaLead[] = []
-
-function filterLeads(leads: MetaLead[], search: string, filters: LeadFilters) {
-  return leads.filter(l => {
-    if (search) {
-      const q = search.toLowerCase()
-      const hit = l.full_name?.toLowerCase().includes(q)
-        || l.phone?.toLowerCase().includes(q)
-        || l.email?.toLowerCase().includes(q)
-        || l.city?.toLowerCase().includes(q)
-        || l.campaign_name?.toLowerCase().includes(q)
-      if (!hit) return false
-    }
-    if (filters.clientStatus && (l.client_status ?? "") !== filters.clientStatus) return false
-    if (filters.callStatus) {
-      if (filters.callStatus === "fresh" && !isFresh(l)) return false
-      if (filters.callStatus !== "fresh" && (l.crm?.call_status ?? "") !== filters.callStatus) return false
-    }
-    if (filters.source && l.source !== filters.source) return false
-    if (filters.assignedTo && l.assigned_to_profile?.id !== filters.assignedTo) return false
-    if (filters.dateFrom && l.received_at < filters.dateFrom) return false
-    if (filters.dateTo && l.received_at > filters.dateTo + "T23:59:59") return false
-    return true
-  })
-}
 
 export default function LeadsPage() {
   const {
@@ -188,9 +159,8 @@ export default function LeadsPage() {
   const leads = data ?? EMPTY_LEADS
   const callStatsLeads = callStatsData ?? EMPTY_LEADS
   const error = queryError ? (queryError instanceof Error ? queryError.message : "Unknown error") : null
-  const [exporting, setExporting] = useState(false)
   const [search, setSearch] = useState("")
-  const [filters, setFilters] = useState({ ...EMPTY_FILTERS })
+  const [filters, setFilters] = useState({ ...EMPTY_LEAD_FILTERS })
   const [showFilters, setShowFilters] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [addOpen, setAddOpen] = useState(false)
@@ -215,26 +185,22 @@ export default function LeadsPage() {
     return Array.from(map, ([id, name]) => ({ id, name }))
   }, [leads])
 
-  function setFilter(key: keyof typeof EMPTY_FILTERS, value: string) {
+  const campaigns = useMemo(() => campaignOptions(leads), [leads])
+
+  function setFilter(key: keyof typeof EMPTY_LEAD_FILTERS, value: string) {
     setFilters(p => ({ ...p, [key]: value }))
   }
   const activeFilterCount = Object.values(filters).filter(Boolean).length
 
-  const filtered = useMemo(() => filterLeads(leads, search, filters), [leads, search, filters])
+  const filtered = useMemo(() => filterLeadList(leads, search, filters), [leads, search, filters])
 
-  const handleExport = useCallback(async () => {
+  const handleExport = useCallback(() => {
     if (!isSuperAdmin) return
-    setExporting(true)
-    try {
-      const result = await refetch()
-      const latest = (result.data ?? []) as MetaLead[]
-      exportLeadsToExcel(filterLeads(latest, search, filters), "leads")
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to export latest leads")
-    } finally {
-      setExporting(false)
-    }
-  }, [filters, isSuperAdmin, search, refetch])
+    const campaignSuffix = filters.campaign
+      ? `-${filters.campaign.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`
+      : ""
+    exportLeadsToExcel(filtered, `leads${campaignSuffix}`)
+  }, [filtered, filters.campaign, isSuperAdmin])
 
   const handleLeadAdded = useCallback(() => {
     void refetch()
@@ -340,9 +306,9 @@ export default function LeadsPage() {
           {isSuperAdmin && (
             <Button variant="outline" size="sm" className="gap-2"
               onClick={handleExport}
-              disabled={filtered.length === 0 || exporting}>
-              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              {exporting ? "Exporting" : "Export"}
+              disabled={filtered.length === 0}>
+              <Download className="w-4 h-4" />
+              Export
             </Button>
           )}
           <Button variant="outline" size="sm" className="gap-2" onClick={() => void refetch()} disabled={refreshing}>
@@ -483,6 +449,10 @@ export default function LeadsPage() {
                 <option value="not_spoken">Not Spoken</option>
                 <option value="call_back_later">Call Back Later</option>
               </FilterSelect>
+              <FilterSelect value={filters.campaign} onChange={v => setFilter("campaign", v)}>
+                <option value="">All Campaigns</option>
+                {campaigns.map(campaign => <option key={campaign} value={campaign}>{campaign}</option>)}
+              </FilterSelect>
               <FilterSelect value={filters.source} onChange={v => setFilter("source", v)}>
                 <option value="">All Sources</option>
                 <option value="meta_ad">Meta Ad</option>
@@ -504,7 +474,7 @@ export default function LeadsPage() {
                   className="h-9 rounded-lg px-2 text-xs bg-transparent" style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
               </div>
               {activeFilterCount > 0 && (
-                <Button variant="ghost" size="sm" className="gap-1 h-9 text-xs" onClick={() => setFilters({ ...EMPTY_FILTERS })}>
+                <Button variant="ghost" size="sm" className="gap-1 h-9 text-xs" onClick={() => setFilters({ ...EMPTY_LEAD_FILTERS })}>
                   <X className="w-3.5 h-3.5" /> Clear
                 </Button>
               )}
