@@ -96,26 +96,37 @@ export class AuthService {
     const token = randomBytes(32).toString('base64url')
     const tokenHash = this.hashResetToken(token)
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000)
-
-    await this.db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id))
-    await this.db.insert(passwordResetTokens).values({ userId: user.id, tokenHash, expiresAt })
-
-    const appUrl = (process.env.WEB_APP_URL ?? process.env.CORS_ORIGIN ?? 'http://localhost:3000')
-      .split(',')[0]
-      .trim()
-      .replace(/\/$/, '')
-    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`
+    let tokenStored = false
 
     try {
+      await this.db.transaction(async (tx) => {
+        await tx.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id))
+        await tx.insert(passwordResetTokens).values({ userId: user.id, tokenHash, expiresAt })
+      })
+      tokenStored = true
+
+      const resetUrl = `${this.getWebAppUrl()}/reset-password#token=${encodeURIComponent(token)}`
+
       await this.passwordResetMailer.sendPasswordReset({
         email: user.email,
         name: user.fullName ?? '',
         resetUrl,
       })
     } catch (error) {
-      await this.db.delete(passwordResetTokens).where(eq(passwordResetTokens.tokenHash, tokenHash))
+      if (tokenStored) {
+        await this.db
+          .delete(passwordResetTokens)
+          .where(eq(passwordResetTokens.tokenHash, tokenHash))
+          .catch((cleanupError) => {
+            this.logger.error(
+              `Unable to clean up password reset token for user ${user.id}`,
+              cleanupError instanceof Error ? cleanupError.stack : String(cleanupError),
+            )
+          })
+      }
       // Keep the public response identical for known and unknown addresses.
-      // The detailed SMTP error remains server-side for operators.
+      // Detailed database/Brevo errors remain server-side for operators. A
+      // missing reset-token migration therefore cannot break normal CRM use.
       this.logger.error(
         `Unable to send password reset email for user ${user.id}`,
         error instanceof Error ? error.stack : String(error),
@@ -156,7 +167,7 @@ export class AuthService {
       const passwordHash = await bcrypt.hash(dto.new_password, 12)
       const [user] = await tx
         .update(userProfiles)
-        .set({ passwordHash, passwordChangedAt: now, updatedAt: now })
+        .set({ passwordHash, updatedAt: now })
         .where(and(
           eq(userProfiles.id, resetToken.userId),
           eq(userProfiles.status, 'active'),
@@ -183,6 +194,21 @@ export class AuthService {
 
   private hashResetToken(token: string) {
     return createHash('sha256').update(token).digest('hex')
+  }
+
+  private getWebAppUrl() {
+    const configured = process.env.WEB_APP_URL?.trim()
+    if (!configured) throw new Error('WEB_APP_URL is not configured')
+
+    const url = new URL(configured)
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error('WEB_APP_URL must use http or https')
+    }
+    if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
+      throw new Error('WEB_APP_URL must use https in production')
+    }
+
+    return url.toString().replace(/\/$/, '')
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -241,7 +267,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.new_password, 12)
     await this.db
       .update(userProfiles)
-      .set({ passwordHash, passwordChangedAt: new Date(), updatedAt: new Date() })
+      .set({ passwordHash, updatedAt: new Date() })
       .where(eq(userProfiles.id, userId))
 
     this.logger.log(`User ${userId} changed their password`)

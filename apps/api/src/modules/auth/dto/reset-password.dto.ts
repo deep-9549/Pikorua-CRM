@@ -4,8 +4,9 @@ import { IsString, Matches, MaxLength, MinLength } from 'class-validator'
 export class ResetPasswordDto {
   @ApiProperty({ description: 'One-time token from the verification email' })
   @IsString()
-  @MinLength(40)
-  @MaxLength(200)
+  @MinLength(43)
+  @MaxLength(43)
+  @Matches(/^[A-Za-z0-9_-]{43}$/, { message: 'Reset token is invalid' })
   token: string
 
   @ApiProperty()

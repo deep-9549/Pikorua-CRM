@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { index, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 
 export const userRoleEnum = pgEnum('user_role', ['super_admin', 'admin', 'sales_executive', 'viewer'])
 
@@ -10,7 +10,6 @@ export const userProfiles = pgTable('user_profiles', {
   phone: text('phone'),
   role: userRoleEnum('role').default('sales_executive').notNull(),
   passwordHash: text('password_hash'),
-  passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }),
   avatarUrl: text('avatar_url'),
   status: text('status').default('active'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -30,6 +29,6 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
   usedAt: timestamp('used_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  index('password_reset_tokens_user_id_idx').on(table.userId),
+  uniqueIndex('password_reset_tokens_user_id_unique').on(table.userId),
   index('password_reset_tokens_expires_at_idx').on(table.expiresAt),
 ])

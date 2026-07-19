@@ -11,7 +11,6 @@ export interface JwtPayload {
   email: string
   role: string
   name: string
-  iat?: number
 }
 
 @Injectable()
@@ -37,15 +36,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ),
     })
     if (!user) throw new UnauthorizedException()
-
-    // Password changes revoke every JWT issued before the change. This also
-    // signs out a possibly compromised session after an email reset.
-    if (
-      user.passwordChangedAt &&
-      (!payload.iat || payload.iat < Math.floor(user.passwordChangedAt.getTime() / 1000))
-    ) {
-      throw new UnauthorizedException()
-    }
 
     return {
       id: user.id,

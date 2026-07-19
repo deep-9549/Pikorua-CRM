@@ -1,8 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { Suspense, useState } from "react"
+import { useEffect, useState } from "react"
 import { CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -10,17 +9,34 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export default function ResetPasswordPage() {
-  return <Suspense fallback={<ResetShell><Loader2 className="mx-auto size-6 animate-spin" /></ResetShell>}><ResetForm /></Suspense>
+  return <ResetForm />
 }
 
 function ResetForm() {
-  const token = useSearchParams().get("token") ?? ""
+  const [token, setToken] = useState<string | null>(null)
   const [password, setPassword] = useState("")
   const [confirmation, setConfirmation] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [changed, setChanged] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      const fragment = new URLSearchParams(window.location.hash.slice(1))
+      const query = new URLSearchParams(window.location.search)
+      const fragmentToken = fragment.get("token")
+      const legacyQueryToken = query.get("token")
+      setToken(fragmentToken ?? legacyQueryToken ?? "")
+
+      // Remove legacy query-string tokens from browser history immediately.
+      if (!fragmentToken && legacyQueryToken) {
+        window.history.replaceState(null, "", `${window.location.pathname}#token=${encodeURIComponent(legacyQueryToken)}`)
+      }
+    } catch {
+      setToken("")
+    }
+  }, [])
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -36,6 +52,7 @@ function ResetForm() {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(Array.isArray(data?.message) ? data.message[0] : data?.message ?? "Unable to reset password")
+      window.history.replaceState(null, "", window.location.pathname)
       setChanged(true)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to reset password")
@@ -60,8 +77,8 @@ function ResetForm() {
       <PasswordField id="password" label="New password" value={password} onChange={setPassword} visible={showPassword} toggle={() => setShowPassword(!showPassword)} />
       <PasswordField id="confirmation" label="Confirm new password" value={confirmation} onChange={setConfirmation} visible={showPassword} />
       {error && <p className="rounded-lg border px-3 py-2 text-xs" style={{ background: "rgb(185 28 28 / 0.10)", color: "var(--color-destructive)", borderColor: "rgb(185 28 28 / 0.24)" }}>{error}</p>}
-      <Button type="submit" disabled={loading || !token} className="gold-gradient w-full font-semibold">{loading ? <><Loader2 className="mr-2 size-4 animate-spin" />Updating...</> : "Reset password"}</Button>
-      {!token && <Link href="/forgot-password" className="block text-center text-xs hover:underline" style={{ color: "var(--color-primary)" }}>Request a new reset link</Link>}
+      <Button type="submit" disabled={loading || token === null || !token} className="gold-gradient w-full font-semibold">{loading ? <><Loader2 className="mr-2 size-4 animate-spin" />Updating...</> : token === null ? "Checking link..." : "Reset password"}</Button>
+      {token === "" && <Link href="/forgot-password" className="block text-center text-xs hover:underline" style={{ color: "var(--color-primary)" }}>Request a new reset link</Link>}
     </form>
   </ResetShell>
 }

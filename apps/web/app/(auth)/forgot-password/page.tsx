@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
           <div className="mb-6">
             <Mail className="mb-3 size-7" style={{ color: "var(--color-primary)" }} />
             <h2 className="text-[15px] font-semibold">Forgot your password?</h2>
-            <p className="mt-1 text-xs" style={{ color: "var(--color-muted-foreground)" }}>Enter your login email and we’ll send you a verification link.</p>
+            <p className="mt-1 text-xs" style={{ color: "var(--color-muted-foreground)" }}>Enter your login email and we&apos;ll send you a verification link.</p>
           </div>
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1.5">
