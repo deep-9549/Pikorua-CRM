@@ -786,13 +786,24 @@ export class DashboardService {
     return { byMonth, recentBookings }
   }
 
-  async getEmployeePerformance(employeeId?: string, startDate?: string, endDate?: string, listOnly = false) {
+  async getEmployeePerformance(
+    employeeId?: string,
+    startDate?: string,
+    endDate?: string,
+    listOnly = false,
+    requestedPeriod?: string,
+  ) {
     if ((startDate && !endDate) || (!startDate && endDate)) {
       throw new BadRequestException('Both startDate and endDate are required for a custom report.')
     }
     if (startDate && endDate && !employeeId) {
       throw new BadRequestException('employeeId is required for a custom report.')
     }
+    const validPeriods: PeriodKey[] = ['daily', 'weekly', 'monthly', 'yearly', 'lifetime']
+    if (requestedPeriod && !validPeriods.includes(requestedPeriod as PeriodKey)) {
+      throw new BadRequestException(`period must be one of: ${validPeriods.join(', ')}.`)
+    }
+    const selectedPeriod = (requestedPeriod ?? 'monthly') as PeriodKey
     const employees = await this.db.query.userProfiles.findMany({
       where: and(
         eq(userProfiles.role, 'sales_executive'),
@@ -894,9 +905,16 @@ export class DashboardService {
 
     const now = new Date()
     const periods = buildPeriodRanges(now)
-    const summaries = periods.reduce<Record<PeriodKey, PerformanceSummary>>((acc, period) => {
-      acc[period.key] = summarizeRange(
-        period,
+    const summaries: Partial<Record<PeriodKey, PerformanceSummary>> = {}
+    const trendByPeriod: Partial<Record<PeriodKey, TrendRow[]>> = {}
+    let trend: TrendRow[] = []
+
+    // Custom reports build their own requested and comparison ranges below. For the
+    // analysis page, calculate only the selected tab and let the client load others lazily.
+    if (!startDate && !endDate) {
+      const range = periods.find((candidate) => candidate.key === selectedPeriod)!
+      summaries[selectedPeriod] = summarizeRange(
+        range,
         leads,
         visits,
         ownershipWindows,
@@ -904,30 +922,9 @@ export class DashboardService {
         callActivities,
         qualityMarks,
       )
-      return acc
-    }, {} as Record<PeriodKey, PerformanceSummary>)
-
-    const trend = Array.from({ length: 12 }, (_, index) => {
-      const start = addMonths(startOfIstMonth(now), index - 11)
-      const end = addMonths(start, 1)
-      const range: PeriodRange = { key: 'monthly', label: monthLabel(start), start, end }
-
-      return {
-        month: monthLabel(start),
-        leads: leads.filter((lead) => ownershipStartedDuringPeriod(ownershipWindows, lead.id, selectedEmployee.id, range)).length,
-        calls: periodCallActivities(leads, callActivities, ownershipWindows, selectedEmployee.id, range).length,
-        visits: visits.filter((visit) => inRange(visit.scheduledDate, range)).length,
-        conversions: leads.filter((lead) =>
-          lead.status === 'converted' &&
-          inRange(lead.updatedAt, range) &&
-          ownedAt(ownershipWindows, lead.id, selectedEmployee.id, lead.updatedAt)
-        ).length,
-      }
-    })
-    const trendByPeriod = periods.reduce<Partial<Record<PeriodKey, TrendRow[]>>>((acc, period) => {
-      acc[period.key] = buildTrendRows(period.key, now, leads, visits, ownershipWindows, selectedEmployee.id, callActivities)
-      return acc
-    }, {})
+      trend = buildTrendRows(selectedPeriod, now, leads, visits, ownershipWindows, selectedEmployee.id, callActivities)
+      trendByPeriod[selectedPeriod] = trend
+    }
 
     const mostRecentOwnershipStart = (leadId: string) => {
       const starts = ownershipWindows

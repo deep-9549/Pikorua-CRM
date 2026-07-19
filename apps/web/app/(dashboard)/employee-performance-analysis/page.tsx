@@ -229,6 +229,9 @@ export default function EmployeePerformanceAnalysisPage() {
   const [data, setData] = React.useState<PerformanceResponse | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const employeeCache = React.useRef(new Map<string, PerformanceResponse>())
+  const requestSequence = React.useRef(0)
+  const initialRequestStarted = React.useRef(false)
 
   React.useEffect(() => {
     const user = getAuthUser()
@@ -239,27 +242,62 @@ export default function EmployeePerformanceAnalysisPage() {
     setAuthorized(user.role === "super_admin")
   }, [router])
 
-  const fetchPerformance = React.useCallback(async (employeeId: string) => {
+  const fetchPerformance = React.useCallback(async (employeeId: string, period: PeriodKey, force = false) => {
+    const cached = employeeId ? employeeCache.current.get(employeeId) : undefined
+    if (!force && cached?.periods?.[period] && cached.trendByPeriod?.[period]) {
+      requestSequence.current += 1
+      setData(cached)
+      setLoading(false)
+      return
+    }
+
+    const requestId = ++requestSequence.current
     setLoading(true)
     setError(null)
     try {
-      const params = employeeId ? `?employeeId=${encodeURIComponent(employeeId)}` : ""
-      const res = await fetch(`/api/dashboard/employee-performance${params}`, { cache: "no-store" })
+      const params = new URLSearchParams({ period })
+      if (employeeId) params.set("employeeId", employeeId)
+      const res = await fetch(`/api/dashboard/employee-performance?${params.toString()}`, { cache: "no-store" })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.message ?? json.error ?? "Failed to load employee performance")
-      setData(json)
-      if (json.selectedEmployee?.id) setSelectedEmployeeId(json.selectedEmployee.id)
+
+      const resolvedEmployeeId = json.selectedEmployee?.id as string | undefined
+      if (!resolvedEmployeeId) {
+        if (requestId === requestSequence.current) setData(json)
+        return
+      }
+
+      const previous = employeeCache.current.get(resolvedEmployeeId)
+      const merged: PerformanceResponse = {
+        ...previous,
+        ...json,
+        employees: json.employees ?? previous?.employees ?? [],
+        periods: { ...previous?.periods, ...json.periods },
+        trendByPeriod: { ...previous?.trendByPeriod, ...json.trendByPeriod },
+      }
+      employeeCache.current.set(resolvedEmployeeId, merged)
+
+      if (requestId === requestSequence.current) {
+        setData(merged)
+        setSelectedEmployeeId(resolvedEmployeeId)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load employee performance")
-      setData(null)
+      if (requestId === requestSequence.current) {
+        setError(err instanceof Error ? err.message : "Failed to load employee performance")
+      }
     } finally {
-      setLoading(false)
+      if (requestId === requestSequence.current) setLoading(false)
     }
   }, [])
 
   React.useEffect(() => {
-    if (authorized === true) void fetchPerformance(selectedEmployeeId)
-  }, [authorized, fetchPerformance, selectedEmployeeId])
+    if (authorized !== true) return
+    if (!selectedEmployeeId) {
+      if (initialRequestStarted.current) return
+      initialRequestStarted.current = true
+    }
+    void fetchPerformance(selectedEmployeeId, activePeriod)
+  }, [activePeriod, authorized, fetchPerformance, selectedEmployeeId])
 
   if (authorized === null) {
     return (
@@ -285,8 +323,9 @@ export default function EmployeePerformanceAnalysisPage() {
 
   const selectedEmployee = data?.selectedEmployee ?? null
   const summary = data?.periods?.[activePeriod] ?? EMPTY_SUMMARY
+  const activePeriodLabel = PERIODS.find(period => period.key === activePeriod)?.label ?? "Current"
   const trendCopy = TREND_COPY[activePeriod]
-  const trendRows = (data?.trendByPeriod?.[activePeriod] ?? data?.trend ?? []).map(row => ({
+  const trendRows = (data?.trendByPeriod?.[activePeriod] ?? []).map(row => ({
     ...row,
     label: row.label ?? row.month ?? "",
   }))
@@ -339,7 +378,7 @@ export default function EmployeePerformanceAnalysisPage() {
           <Button
             type="button"
             className="gap-2 gold-gradient font-semibold"
-            onClick={() => void fetchPerformance(selectedEmployeeId)}
+            onClick={() => void fetchPerformance(selectedEmployeeId, activePeriod, true)}
             disabled={loading}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -390,16 +429,16 @@ export default function EmployeePerformanceAnalysisPage() {
               </div>
               <div className="grid grid-cols-3 gap-2 text-center sm:w-[360px]">
                 <div className="rounded-lg bg-muted/60 px-3 py-2">
-                  <p className="text-lg font-bold">{formatNumber(data?.periods?.lifetime?.totalLeads ?? 0)}</p>
-                  <p className="text-[11px] text-muted-foreground">Leads</p>
+                  <p className="text-lg font-bold">{formatNumber(summary.totalLeads)}</p>
+                  <p className="text-[11px] text-muted-foreground">{activePeriodLabel} leads</p>
                 </div>
                 <div className="rounded-lg bg-muted/60 px-3 py-2">
-                  <p className="text-lg font-bold">{formatNumber(data?.periods?.lifetime?.callsLogged ?? 0)}</p>
-                  <p className="text-[11px] text-muted-foreground">Calls</p>
+                  <p className="text-lg font-bold">{formatNumber(summary.callsLogged)}</p>
+                  <p className="text-[11px] text-muted-foreground">{activePeriodLabel} calls</p>
                 </div>
                 <div className="rounded-lg bg-muted/60 px-3 py-2">
-                  <p className="text-lg font-bold">{formatNumber(data?.periods?.lifetime?.siteVisitsCompleted ?? 0)}</p>
-                  <p className="text-[11px] text-muted-foreground">Visits</p>
+                  <p className="text-lg font-bold">{formatNumber(summary.siteVisitsCompleted)}</p>
+                  <p className="text-[11px] text-muted-foreground">{activePeriodLabel} visits</p>
                 </div>
               </div>
             </CardContent>
