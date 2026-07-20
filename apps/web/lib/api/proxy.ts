@@ -2,15 +2,34 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { getApiBaseUrl } from './base-url'
 
+type ProxyOptions = {
+  authorization?: 'session' | 'request'
+  forwardHeaders?: string[]
+}
+
 export async function proxyToApi(
   request: NextRequest,
   path: string,
+  options: ProxyOptions = {},
 ): Promise<NextResponse> {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('pikorua_token')?.value
+  const headers: Record<string, string> = {
+    'Content-Type': request.headers.get('content-type') ?? 'application/json',
+  }
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers['Authorization'] = `Bearer ${token}`
+  if (options.authorization === 'request') {
+    const authorization = request.headers.get('authorization')
+    if (authorization) headers.Authorization = authorization
+  } else {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('pikorua_token')?.value
+    if (token) headers.Authorization = `Bearer ${token}`
+  }
+
+  for (const name of options.forwardHeaders ?? []) {
+    const value = request.headers.get(name)
+    if (value) headers[name] = value
+  }
+
   const metaSignature = request.headers.get('x-hub-signature-256')
   if (metaSignature) headers['X-Hub-Signature-256'] = metaSignature
 
