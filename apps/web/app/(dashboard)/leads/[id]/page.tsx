@@ -1356,7 +1356,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Call Status</Label>
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Initial Call Status</Label>
                   <SearchableSelect
                     value={crm.call_status ?? ""}
                     onValueChange={v => setCrm(p => ({
@@ -1369,6 +1369,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     searchPlaceholder="Search status..."
                     triggerClassName="h-9 text-sm"
                   />
+                  <p className="text-[11px] leading-4" style={{ color: "var(--color-muted-foreground)" }}>
+                    Lead queue shifting uses this initial Spoken / Not Spoken status. Follow-up call outcomes do not change it.
+                  </p>
                 </div>
 
                 {crm.call_status === 'not_spoken' && (
@@ -1521,7 +1524,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <div className="space-y-4 rounded-lg border p-3">
                   <div>
                     <p className="text-sm font-semibold">Client Follow-ups</p>
-                    <p className="text-xs text-muted-foreground">Schedule multiple follow-ups and keep every completed conversation in the client history.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Schedule multiple follow-ups and keep every completed conversation in the client history. Spoken / Not Spoken here is a follow-up outcome only and does not shift the lead.
+                    </p>
                   </div>
 
                   <div className="space-y-3 rounded-md border bg-muted/20 p-3">
@@ -1585,6 +1590,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                                 <option value="spoken">Spoken</option>
                                 <option value="not_spoken">Not Spoken</option>
                               </select>
+                              <p className="text-[11px] leading-4 text-muted-foreground">
+                                This records the follow-up only; lead shifting still uses the initial call status above.
+                              </p>
                             </div>
                             <Textarea
                               value={completionRemarks[item.id] ?? ""}
