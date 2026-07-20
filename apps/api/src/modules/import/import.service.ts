@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, leadCrmDetails, clients } from '@pikorua/db'
 import { ImportResultDto } from './dto/import-result.dto'
-import { normalizeMetaBudget, normalizeCampaignName, stripPhonePrefix } from '../../common/utils/meta-format'
+import { normalizeMetaBudget, normalizeCampaignName, normalizeMetaPlatform, stripPhonePrefix } from '../../common/utils/meta-format'
 import { poolStatusForClientStatus } from '../leads/lead-pools'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
@@ -17,6 +17,7 @@ const HEADER_MAP: Record<string, string[]> = {
   email:          ['email', 'email address', 'e-mail'],
   city:           ['city', 'location', 'town'],
   campaign_name:  ['source', 'campaign', 'campaign name', 'campaign_name', 'lead source'],
+  platform:       ['platform', 'publisher platform', 'publisher_platform'],
   received_at:    ['date', 'received', 'received at', 'created', 'created_time', 'created time', 'lead date', 'enquiry date'],
   call_status:    ['call status', 'call_status', 'status'],
   hwc:            ['client status', 'client_status', 'hwc', 'priority', 'temperature', 'lead quality'],
@@ -56,6 +57,7 @@ interface ParsedRow {
   email: string | null
   city: string | null
   campaignName: string | null
+  platform: string | null
   receivedAt: Date
   callStatus: string | null
   hwc: string | null
@@ -197,6 +199,7 @@ export class ImportService {
         email:        this.cell(row, idx['email']),
         city:         this.cell(row, idx['city']),
         campaignName: normalizeCampaignName(this.cell(row, idx['campaign_name'])),
+        platform:     normalizeMetaPlatform(this.cell(row, idx['platform'])),
         receivedAt:   this.parseDate(this.cell(row, idx['received_at'])) ?? new Date(),
         callStatus:   callStatusRaw ? (CALL_STATUS_MAP[callStatusRaw.toLowerCase()] ?? null) : null,
         hwc:          hwcRaw        ? (HWC_MAP[hwcRaw.toLowerCase()] ?? null)        : null,
@@ -325,6 +328,7 @@ export class ImportService {
           email:        r.email,
           city:         r.city,
           campaignName: r.campaignName,
+          platform:     r.platform,
           clientId:     clientIdByPhone.get(r.phone) ?? null,
           source:       'migrated',
           status:       (poolStatusForClientStatus(r.hwc ?? clientStatusByPhone.get(r.phone)) ?? 'unassigned') as never,
@@ -374,12 +378,12 @@ export class ImportService {
 
   generateMetaLeadsTemplate(): Buffer {
     const headers = [
-      'Name', 'Phone', 'Email', 'City', 'Source',
+      'Name', 'Phone', 'Email', 'City', 'Source', 'Platform',
       'Date', 'Call Status', 'Client Status', 'Budget', 'Profession', 'Company',
       'Current City', 'Current Area', 'Follow Up', 'Remarks',
     ]
     const sample = [
-      'John Doe', '9876543210', 'john@example.com', 'Mumbai', 'Referral',
+      'John Doe', '9876543210', 'john@example.com', 'Mumbai', 'Meta Campaign', 'ig',
       '2024-01-15', 'spoken', 'hot', '50-80L', 'IT Professional', 'Acme Corp',
       'Pune', 'Baner', '2024-02-01', 'Looking for 2BHK near metro',
     ]

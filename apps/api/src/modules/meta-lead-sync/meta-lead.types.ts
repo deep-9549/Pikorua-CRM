@@ -12,6 +12,7 @@ export interface MetaLeadData {
   adset_name?: string
   campaign_id?: string
   campaign_name?: string
+  platform?: string
   form_id?: string
   field_data?: MetaFieldData[]
 }
@@ -42,6 +43,7 @@ export const META_LEAD_FIELDS = [
   'adset_name',
   'campaign_id',
   'campaign_name',
+  'platform',
   'form_id',
   'field_data',
 ].join(',')

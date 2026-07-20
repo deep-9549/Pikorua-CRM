@@ -76,6 +76,7 @@ export function serializeMetaLead(lead: any) {
     id: lead.id,
     form_id: lead.formId ?? null,
     ad_id: lead.adId ?? null,
+    platform: lead.platform ?? null,
     campaign_name: lead.campaignName ?? null,
     full_name: lead.fullName ?? null,
     phone: lead.phone ?? null,

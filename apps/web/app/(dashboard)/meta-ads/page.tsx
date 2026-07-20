@@ -43,6 +43,7 @@ interface MetaLead {
   email: string | null
   city: string | null
   campaign_name: string | null
+  platform: "instagram" | "facebook" | null
   source: "meta_ad" | "website" | "microsite" | "manual" | "migrated"
   status: "unassigned" | "assigned"
   received_at: string
@@ -330,6 +331,15 @@ function LeadRow({
               MICROSITE
             </span>
           )}
+          {lead.source === "meta_ad" && lead.platform && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+              style={{
+                background: lead.platform === "instagram" ? "rgb(219 39 119 / 0.10)" : "rgb(37 99 235 / 0.10)",
+                color: lead.platform === "instagram" ? "rgb(190 24 93)" : "rgb(37 99 235)",
+              }}>
+              {lead.platform === "instagram" ? "INSTAGRAM" : "FACEBOOK"}
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
           {lead.phone && (
@@ -441,6 +451,7 @@ export default function MetaAdsPage() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [search, setSearch] = useState("")
   const [sourceFilter, setSourceFilter] = useState("")
+  const [platformFilter, setPlatformFilter] = useState("")
   const [campaignFilter, setCampaignFilter] = useState("")
   const [receivedDateFromFilter, setReceivedDateFromFilter] = useState("")
   const [receivedDateToFilter, setReceivedDateToFilter] = useState("")
@@ -582,6 +593,8 @@ export default function MetaAdsPage() {
   const websiteCount = leads.filter(l => l.source === "website").length
   const micrositeCount = leads.filter(l => l.source === "microsite").length
   const manualCount = leads.filter(l => l.source === "manual").length
+  const instagramCount = leads.filter(l => l.platform === "instagram").length
+  const facebookCount = leads.filter(l => l.platform === "facebook").length
   // Bulk select is available where leads await assignment
   const selectable = isSuperAdmin && activeTab === "unassigned"
 
@@ -604,15 +617,16 @@ export default function MetaAdsPage() {
       if (!hit) return false
     }
     if (sourceFilter && l.source !== sourceFilter) return false
+    if (platformFilter && l.platform !== platformFilter) return false
     if (campaignFilter && l.campaign_name !== campaignFilter) return false
     const receivedDate = toDateInputValue(l.received_at)
     if ((receivedDateFromFilter || receivedDateToFilter) && !receivedDate) return false
     if (receivedDateFromFilter && receivedDate < receivedDateFromFilter) return false
     if (receivedDateToFilter && receivedDate > receivedDateToFilter) return false
     return true
-  }), [leads, search, sourceFilter, campaignFilter, receivedDateFromFilter, receivedDateToFilter])
+  }), [leads, search, sourceFilter, platformFilter, campaignFilter, receivedDateFromFilter, receivedDateToFilter])
 
-  const hasActiveFilter = Boolean(search || sourceFilter || campaignFilter || receivedDateFromFilter || receivedDateToFilter)
+  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || receivedDateFromFilter || receivedDateToFilter)
   const shownLeadIds = useMemo(() => filteredLeads.map(lead => lead.id), [filteredLeads])
   const shownSelectionOnly = useMemo(
     () => shownLeadIds.length > 0 && selected.size === shownLeadIds.length && shownLeadIds.every(id => selected.has(id)),
@@ -686,7 +700,39 @@ export default function MetaAdsPage() {
                 <p className="text-xs font-medium" style={{ color: "var(--color-muted-foreground)" }}>{label}</p>
                 <Icon className="w-4 h-4" style={{ color }} />
               </div>
-              <p className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>{value}</p>
+              {label === "From Meta" ? (
+                <div className="flex items-end justify-between gap-2">
+                  <p className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>{value}</p>
+                  <div className="grid grid-cols-2 divide-x rounded-md border" style={{ borderColor: "var(--color-border)" }}>
+                    <button
+                      type="button"
+                      className="min-w-10 px-2 py-0.5 text-left transition-colors hover:bg-muted/50"
+                      onClick={() => {
+                        setSourceFilter("meta_ad")
+                        setPlatformFilter(current => current === "instagram" ? "" : "instagram")
+                      }}
+                      aria-pressed={platformFilter === "instagram"}
+                    >
+                      <span className="block text-[9px] font-semibold uppercase" style={{ color: "rgb(190 24 93)" }}>IG</span>
+                      <span className="text-sm font-bold" style={{ color: "var(--color-foreground)" }}>{instagramCount}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="min-w-10 px-2 py-0.5 text-left transition-colors hover:bg-muted/50"
+                      onClick={() => {
+                        setSourceFilter("meta_ad")
+                        setPlatformFilter(current => current === "facebook" ? "" : "facebook")
+                      }}
+                      aria-pressed={platformFilter === "facebook"}
+                    >
+                      <span className="block text-[9px] font-semibold uppercase" style={{ color: "rgb(37 99 235)" }}>FB</span>
+                      <span className="text-sm font-bold" style={{ color: "var(--color-foreground)" }}>{facebookCount}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>{value}</p>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -731,6 +777,16 @@ export default function MetaAdsPage() {
                 <option value="microsite">Microsite</option>
                 <option value="manual">Manual</option>
                 <option value="migrated">Migrated</option>
+              </select>
+              <select
+                value={platformFilter}
+                onChange={e => setPlatformFilter(e.target.value)}
+                className="h-9 rounded-lg px-2.5 text-xs bg-transparent cursor-pointer"
+                style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+              >
+                <option value="">All Platforms</option>
+                <option value="instagram">Instagram</option>
+                <option value="facebook">Facebook</option>
               </select>
               {campaigns.length > 0 && (
                 <select
@@ -784,7 +840,7 @@ export default function MetaAdsPage() {
                   variant="ghost"
                   size="sm"
                   className="gap-1 h-9 text-xs shrink-0"
-                  onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
+                  onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
                 >
                   <X className="w-3.5 h-3.5" /> Clear
                 </Button>
@@ -851,7 +907,7 @@ export default function MetaAdsPage() {
                         size="sm"
                         variant="outline"
                         className="gap-2 mx-auto"
-                        onClick={() => { setSearch(""); setSourceFilter(""); setCampaignFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
+                        onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
                       >
                         <X className="w-3.5 h-3.5" />
                         Clear filters

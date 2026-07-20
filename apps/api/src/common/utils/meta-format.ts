@@ -55,6 +55,13 @@ export function stripPhonePrefix(raw: string): string {
   return raw.replace(/^\s*p:\s*/i, '').trim()
 }
 
+export function normalizeMetaPlatform(value: string | null | undefined) {
+  const platform = value?.trim().toLowerCase()
+  if (platform === 'ig' || platform === 'instagram') return 'instagram'
+  if (platform === 'fb' || platform === 'facebook') return 'facebook'
+  return null
+}
+
 // Friendly campaign labels shown to sales execs. The raw Meta/Excel campaign
 // name is matched (case-insensitive) against each rule's substrings — first
 // match wins. Add a rule here to map a new campaign; unmatched campaign names

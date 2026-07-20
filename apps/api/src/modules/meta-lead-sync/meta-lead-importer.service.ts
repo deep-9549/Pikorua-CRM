@@ -5,6 +5,7 @@ import { DatabaseService } from '../../database/database.service'
 import {
   normalizeCampaignName,
   normalizeMetaBudget,
+  normalizeMetaPlatform,
   stripPhonePrefix,
 } from '../../common/utils/meta-format'
 import { MetaLeadData } from './meta-lead.types'
@@ -48,6 +49,7 @@ export class MetaLeadImporterService {
         pageName: fallback.pageName ?? null,
         formId: metaLead.form_id ?? fallback.formId ?? null,
         adId: metaLead.ad_id ?? fallback.adId ?? null,
+        platform: normalizeMetaPlatform(metaLead.platform ?? fields.platform),
         campaignName: normalizeCampaignName(metaLead.campaign_name ?? null),
         fullName: fields.full_name ?? fields.name ?? null,
         phone,

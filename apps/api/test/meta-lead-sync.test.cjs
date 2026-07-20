@@ -160,6 +160,7 @@ test('shared importer maps lead and CRM fields and remains idempotent', async ()
     id: 'meta-lead-id',
     form_id: 'form-id',
     campaign_name: 'campaign_one',
+    platform: 'ig',
     created_time: '2026-06-21T10:00:00+0000',
     field_data: [
       { name: 'full_name', values: ['Test Person'] },
@@ -176,12 +177,42 @@ test('shared importer maps lead and CRM fields and remains idempotent', async ()
   assert.equal(captured.leads[0].externalId, 'meta-lead-id')
   assert.equal(captured.leads[0].pageId, null)
   assert.equal(captured.leads[0].phone, '+919999999999')
+  assert.equal(captured.leads[0].platform, 'instagram')
   assert.equal(captured.details[0].profession, 'Founder')
   assert.equal(captured.details[0].companyName, 'Example Co')
 
   returnInserted = false
   assert.equal(await importer.importLead(lead), 'duplicate')
   assert.equal(captured.details.length, 1)
+})
+
+test('shared importer normalizes a platform supplied in Meta field data', async () => {
+  const captured = []
+  const tx = {
+    insert(table) {
+      return {
+        values(values) {
+          if (table === metaLeads) captured.push(values)
+          return {
+            onConflictDoNothing() {
+              return table === metaLeads
+                ? { returning: async () => [{ id: 'crm-lead-id' }] }
+                : Promise.resolve()
+            },
+          }
+        },
+      }
+    },
+  }
+  const database = { db: { transaction: async (callback) => callback(tx) } }
+  const importer = new MetaLeadImporterService(database)
+
+  await importer.importLead({
+    id: 'meta-lead-from-facebook',
+    field_data: [{ name: 'platform', values: ['FB'] }],
+  })
+
+  assert.equal(captured[0].platform, 'facebook')
 })
 
 test('shared importer stores fallback page identity for polled multi-page leads', async () => {
