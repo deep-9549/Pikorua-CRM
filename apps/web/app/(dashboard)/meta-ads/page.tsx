@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine, X, FileUp, Search, Undo2, ListChecks, CalendarDays
+  Plus, PenLine, X, FileUp, Search, Undo2, ListChecks, CalendarDays, Shuffle
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -435,6 +435,152 @@ function LeadRow({
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Page Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
+function SplitLeadsDialog({
+  open,
+  leadIds,
+  employees,
+  onClose,
+  onSplit,
+}: {
+  open: boolean
+  leadIds: string[]
+  employees: Employee[]
+  onClose: () => void
+  onSplit: (leadIds: string[]) => void
+}) {
+  const [selectedExecutives, setSelectedExecutives] = useState<Set<string>>(new Set())
+  const [splitting, setSplitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (open) {
+      setSelectedExecutives(new Set())
+      setError(null)
+    }
+  }, [open])
+
+  const chosenEmployees = employees.filter(employee => selectedExecutives.has(employee.id))
+
+  function toggleExecutive(employeeId: string) {
+    setSelectedExecutives(current => {
+      const next = new Set(current)
+      if (next.has(employeeId)) next.delete(employeeId)
+      else next.add(employeeId)
+      return next
+    })
+  }
+
+  async function handleSplit() {
+    if (leadIds.length === 0 || chosenEmployees.length === 0) return
+    setSplitting(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/leads/meta/split-assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_ids: leadIds,
+          assigned_to_ids: chosenEmployees.map(employee => employee.id),
+        }),
+      })
+      if (!res.ok) throw new Error(await readApiError(res, "Lead split failed"))
+      onSplit(leadIds)
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Lead split failed")
+    } finally {
+      setSplitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={value => !value && !splitting && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Shuffle className="h-4 w-4" style={{ color: "var(--color-primary)" }} />
+            Split {leadIds.length} lead{leadIds.length === 1 ? "" : "s"}
+          </DialogTitle>
+          <DialogDescription>
+            Select the sales executives who should receive these leads. The difference between their allocations will never be more than one lead.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
+          {employees.length === 0 ? (
+            <div className="rounded-lg border px-4 py-6 text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+              No active sales executives are available.
+            </div>
+          ) : employees.map(employee => {
+            const isSelected = selectedExecutives.has(employee.id)
+            const chosenIndex = chosenEmployees.findIndex(chosen => chosen.id === employee.id)
+            const allocation = chosenIndex < 0
+              ? 0
+              : Math.floor(leadIds.length / chosenEmployees.length)
+                + (chosenIndex < leadIds.length % chosenEmployees.length ? 1 : 0)
+
+            return (
+              <div
+                key={employee.id}
+                className="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors hover:bg-muted/50"
+                style={{ borderColor: isSelected ? "var(--color-primary)" : "var(--color-border)" }}
+              >
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => toggleExecutive(employee.id)}
+                  aria-label={`Select ${employee.full_name}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => toggleExecutive(employee.id)}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-[10px]">{initials(employee.full_name)}</AvatarFallback>
+                  </Avatar>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{employee.full_name}</span>
+                  {isSelected && (
+                    <Badge variant="secondary" className="shrink-0">
+                      {allocation} lead{allocation === 1 ? "" : "s"}
+                    </Badge>
+                  )}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        {chosenEmployees.length > 0 && (
+          <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+            {leadIds.length} lead{leadIds.length === 1 ? "" : "s"} will be split between {chosenEmployees.length} executive{chosenEmployees.length === 1 ? "" : "s"}.
+          </p>
+        )}
+
+        {error && (
+          <div className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs"
+            style={{ background: "rgb(185 28 28 / 0.10)", color: "var(--color-destructive)", border: "1px solid rgb(185 28 28 / 0.24)" }}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {error}
+          </div>
+        )}
+
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={onClose} disabled={splitting}>Cancel</Button>
+          <Button
+            className="gap-2 gold-gradient font-semibold shadow-gold-sm"
+            style={{ color: "var(--color-primary-foreground)" }}
+            disabled={splitting || chosenEmployees.length === 0 || leadIds.length === 0}
+            onClick={handleSplit}
+          >
+            {splitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4" />}
+            {splitting ? "Splitting..." : "Split and assign"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function MetaAdsPage() {
   const [leads, setLeads] = useState<MetaLead[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -448,6 +594,7 @@ export default function MetaAdsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkExec, setBulkExec] = useState("")
   const [bulkAssigning, setBulkAssigning] = useState(false)
+  const [splitOpen, setSplitOpen] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [search, setSearch] = useState("")
   const [sourceFilter, setSourceFilter] = useState("")
@@ -628,6 +775,10 @@ export default function MetaAdsPage() {
 
   const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || receivedDateFromFilter || receivedDateToFilter)
   const shownLeadIds = useMemo(() => filteredLeads.map(lead => lead.id), [filteredLeads])
+  const splitLeadIds = useMemo(
+    () => selected.size > 0 ? Array.from(selected) : shownLeadIds,
+    [selected, shownLeadIds],
+  )
   const shownSelectionOnly = useMemo(
     () => shownLeadIds.length > 0 && selected.size === shownLeadIds.length && shownLeadIds.every(id => selected.has(id)),
     [shownLeadIds, selected],
@@ -636,6 +787,12 @@ export default function MetaAdsPage() {
   function selectShownLeads() {
     if (!selectable) return
     setSelected(new Set(shownLeadIds))
+  }
+
+  function handleSplitComplete(leadIds: string[]) {
+    const splitIds = new Set(leadIds)
+    setLeads(current => current.filter(lead => !splitIds.has(lead.id)))
+    setSelected(new Set())
   }
 
   return (
@@ -824,16 +981,27 @@ export default function MetaAdsPage() {
                 </div>
               )}
               {selectable && filteredLeads.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 h-9 text-xs shrink-0"
-                  disabled={shownSelectionOnly}
-                  onClick={selectShownLeads}
-                >
-                  <ListChecks className="w-3.5 h-3.5" />
-                  Select shown
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-9 text-xs shrink-0"
+                    disabled={shownSelectionOnly}
+                    onClick={selectShownLeads}
+                  >
+                    <ListChecks className="w-3.5 h-3.5" />
+                    Select shown
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="gap-1.5 h-9 text-xs shrink-0 gold-gradient font-semibold shadow-gold-sm"
+                    style={{ color: "var(--color-primary-foreground)" }}
+                    onClick={() => setSplitOpen(true)}
+                  >
+                    <Shuffle className="w-3.5 h-3.5" />
+                    {selected.size > 0 ? `Split selected (${selected.size})` : `Split shown (${shownLeadIds.length})`}
+                  </Button>
+                </>
               )}
               {hasActiveFilter && (
                 <Button
@@ -971,6 +1139,14 @@ export default function MetaAdsPage() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onImported={() => fetchLeads(activeTab === "all" ? undefined : activeTab)}
+      />
+
+      <SplitLeadsDialog
+        open={splitOpen}
+        leadIds={splitLeadIds}
+        employees={employees}
+        onClose={() => setSplitOpen(false)}
+        onSplit={handleSplitComplete}
       />
     </div>
   )

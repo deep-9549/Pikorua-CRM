@@ -4,6 +4,7 @@ import { DatabaseService } from '../../database/database.service'
 import { metaLeads, userProfiles, clients, properties, leadFollowUps } from '@pikorua/db'
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
+import { SplitAssignDto } from './dto/split-assign.dto'
 import { serializeMetaLead, serializeCrmDetails } from '../leads/lead.serializer'
 import { serializeProfile } from '../../common/serializers/profile.serializer'
 import { ClientsService } from '../clients/clients.service'
@@ -405,6 +406,104 @@ export class MetaLeadsService {
     })
     this.logger.log(`Bulk-assigned ${updated.length} lead(s) to ${dto.assigned_to} by ${assignedBy}`)
     return { updated: updated.length }
+  }
+
+  async splitAssign(assignedBy: string, dto: SplitAssignDto) {
+    const assignees = await this.db.query.userProfiles.findMany({
+      where: and(
+        inArray(userProfiles.id, dto.assigned_to_ids),
+        eq(userProfiles.role, 'sales_executive'),
+        eq(userProfiles.status, 'active'),
+        isNull(userProfiles.deletedAt),
+      ),
+    })
+
+    if (assignees.length !== dto.assigned_to_ids.length) {
+      throw new BadRequestException('All selected users must be active sales executives')
+    }
+
+    const assigneeById = new Map(assignees.map(assignee => [assignee.id, assignee]))
+    const result = await this.db.transaction(async (tx) => {
+      const existing = await tx.query.metaLeads.findMany({
+        where: and(inArray(metaLeads.id, dto.lead_ids), isNull(metaLeads.deletedAt)),
+      })
+
+      if (existing.length !== dto.lead_ids.length) {
+        throw new BadRequestException('One or more selected leads no longer exist')
+      }
+      if (existing.some(lead => lead.status !== 'unassigned' || lead.assignedTo)) {
+        throw new BadRequestException('Only currently unassigned leads can be split')
+      }
+
+      const leadById = new Map(existing.map(lead => [lead.id, lead]))
+      const orderedLeads = dto.lead_ids.map(id => leadById.get(id)!)
+      const counts: Record<string, number> = Object.fromEntries(
+        dto.assigned_to_ids.map(id => [id, 0]),
+      )
+      const assignedAt = new Date()
+      const assignmentByLeadId = new Map<string, string>()
+
+      for (let index = 0; index < orderedLeads.length; index += 1) {
+        const lead = orderedLeads[index]
+        const assigneeId = dto.assigned_to_ids[index % dto.assigned_to_ids.length]
+        assignmentByLeadId.set(lead.id, assigneeId)
+        counts[assigneeId] += 1
+      }
+
+      for (const assigneeId of dto.assigned_to_ids) {
+        const assignedLeadIds = orderedLeads
+          .filter(lead => assignmentByLeadId.get(lead.id) === assigneeId)
+          .map(lead => lead.id)
+        if (assignedLeadIds.length === 0) continue
+
+        const rows = await tx
+          .update(metaLeads)
+          .set({
+            assignedTo: assigneeId,
+            assignedBy,
+            assignedAt,
+            status: 'assigned',
+            updatedAt: assignedAt,
+          })
+          .where(and(
+            inArray(metaLeads.id, assignedLeadIds),
+            eq(metaLeads.status, 'unassigned'),
+            isNull(metaLeads.assignedTo),
+            isNull(metaLeads.deletedAt),
+          ))
+          .returning({ id: metaLeads.id })
+
+        if (rows.length !== assignedLeadIds.length) {
+          throw new BadRequestException('The lead queue changed while it was being split. Please refresh and try again')
+        }
+      }
+
+      for (const lead of orderedLeads) {
+        const assigneeId = assignmentByLeadId.get(lead.id)!
+        const assignee = assigneeById.get(assigneeId)!
+        await this.leadActivityService.record({
+          leadId: lead.id,
+          actorUserId: assignedBy,
+          eventType: 'assigned',
+          source: 'bulk',
+          title: 'Lead assigned by equal split',
+          description: 'Lead was distributed as part of an equal split.',
+          toUserId: assigneeId,
+          changes: {
+            assigned_to: { label: 'Assigned To', from: null, to: assignee.fullName ?? assignee.email ?? assigneeId },
+          },
+          metadata: {
+            split_count: dto.lead_ids.length,
+            executive_count: dto.assigned_to_ids.length,
+          },
+        }, tx)
+      }
+
+      return { updated: orderedLeads.length, counts }
+    })
+
+    this.logger.log(`Split ${result.updated} lead(s) between ${dto.assigned_to_ids.length} executive(s) by ${assignedBy}`)
+    return result
   }
 
   async unassign(id: string, actorUserId: string) {

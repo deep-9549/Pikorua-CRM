@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { MetaLeadsService } from './meta-leads.service'
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
+import { SplitAssignDto } from './dto/split-assign.dto'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard } from '../../common/guards/roles.guard'
 import { Roles } from '../../common/decorators/roles.decorator'
@@ -146,6 +147,13 @@ export class MetaLeadsController {
   @ApiOperation({ summary: 'Bulk assign leads to an employee' })
   bulkAssign(@Body() dto: BulkAssignDto, @CurrentUser() user: { id: string }) {
     return this.metaLeadsService.bulkAssign(user.id, dto)
+  }
+
+  @Post('split-assign')
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Split unassigned leads evenly between sales executives' })
+  splitAssign(@Body() dto: SplitAssignDto, @CurrentUser() user: { id: string }) {
+    return this.metaLeadsService.splitAssign(user.id, dto)
   }
 
   @Post(':id/unassign')
