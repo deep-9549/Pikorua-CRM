@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine, X, FileUp, Search, Undo2, ListChecks, CalendarDays, Shuffle, Trash2
+  Plus, PenLine, X, FileUp, Search, Undo2, ListChecks, CalendarDays, Shuffle, Trash2, MoreHorizontal
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -1101,16 +1101,28 @@ export default function MetaAdsPage() {
             {selectable && selected.size > 0 && (
               <div className="mb-4 flex flex-col gap-2 rounded-xl px-3 py-3 sm:flex-row sm:items-center sm:gap-3 sm:px-4 sm:py-2.5"
                 style={{ background: "rgb(194 65 12 / 0.08)", border: "1px solid var(--color-primary)" }}>
-                <span className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
-                  {selected.size} selected
-                </span>
+                <div className="flex w-full items-center justify-between sm:w-auto">
+                  <span className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>
+                    {selected.size} selected
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 sm:hidden"
+                    aria-label="Clear selected leads"
+                    onClick={() => setSelected(new Set())}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
                 <div className="hidden flex-1 sm:block" />
                 {activeTab === "unassigned" ? (
-                  <>
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                     <select
                       value={bulkExec}
                       onChange={e => setBulkExec(e.target.value)}
-                      className="h-8 rounded-lg px-2 text-xs bg-transparent cursor-pointer"
+                      aria-label="Executive to assign selected leads to"
+                      className="h-10 w-full rounded-lg bg-card px-3 text-sm cursor-pointer sm:h-9 sm:w-[210px] sm:text-xs"
                       style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
                     >
                       <option value="">Choose executive...</option>
@@ -1120,7 +1132,7 @@ export default function MetaAdsPage() {
                     </select>
                     <Button
                       size="sm"
-                      className="h-8 gap-1.5 gold-gradient text-[11px] font-semibold shadow-gold-sm"
+                      className="h-10 w-full gap-1.5 gold-gradient px-5 text-sm font-semibold shadow-gold-sm sm:h-9 sm:w-auto sm:text-xs"
                       style={{ color: "var(--color-primary-foreground)" }}
                       disabled={!bulkExec || bulkAssigning || bulkDeleting}
                       onClick={handleBulkAssign}
@@ -1129,21 +1141,35 @@ export default function MetaAdsPage() {
                         ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         : <><UserPlus className="w-3.5 h-3.5" />Assign {selected.size}</>}
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8 gap-1.5 text-[11px] font-semibold"
-                      disabled={bulkAssigning || bulkDeleting}
-                      onClick={() => setDeleteConfirmOpen(true)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />Delete {selected.size}
-                    </Button>
-                  </>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-10 w-full shrink-0 gap-2 sm:h-9 sm:w-9"
+                          aria-label="More actions for selected leads"
+                          disabled={bulkAssigning || bulkDeleting}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sm:sr-only">More actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-48">
+                        <DropdownMenuItem
+                          className="gap-2 text-destructive focus:text-destructive"
+                          onSelect={() => setDeleteConfirmOpen(true)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete selected leads
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 ) : (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1.5 text-[11px] font-semibold"
+                    className="h-10 w-full gap-1.5 text-xs font-semibold sm:h-9 sm:w-auto"
                     disabled={bulkUnassigning}
                     onClick={handleBulkUnassign}
                   >
@@ -1152,7 +1178,13 @@ export default function MetaAdsPage() {
                       : <><Undo2 className="w-3.5 h-3.5" />Unassign {selected.size}</>}
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelected(new Set())}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden h-9 w-9 sm:inline-flex"
+                  aria-label="Clear selected leads"
+                  onClick={() => setSelected(new Set())}
+                >
                   <X className="w-4 h-4" />
                 </Button>
               </div>
