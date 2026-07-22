@@ -26,6 +26,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -133,6 +134,7 @@ function buildMonthBuckets(now: Date) {
       month: date.toLocaleDateString("en-IN", { month: "short" }),
       leads: 0,
       spoken: 0,
+      notSpoken: 0,
       callbacks: 0,
     }
   })
@@ -140,6 +142,16 @@ function buildMonthBuckets(now: Date) {
 
 function callWasToday(lead: MetaLead, today: string) {
   return [lead.crm?.first_call_date, lead.crm?.last_call_date].some(value => dateKey(value) === today)
+}
+
+function latestCallDate(lead: MetaLead) {
+  const dates = [lead.crm?.first_call_date, lead.crm?.last_call_date]
+    .map(parseDate)
+    .filter((date): date is Date => date !== null)
+
+  return dates.length > 0
+    ? new Date(Math.max(...dates.map(date => date.getTime())))
+    : null
 }
 
 function displayStatus(lead: MetaLead) {
@@ -267,9 +279,18 @@ export default function DashboardPage() {
         const bucket = byMonth.get(key)
         if (bucket) {
           bucket.leads += 1
-          if (lead.crm?.call_status === "spoken") bucket.spoken += 1
-          if (lead.crm?.call_status === "call_back_later") bucket.callbacks += 1
         }
+      }
+
+      // A call outcome belongs to the month the call was made, not the month
+      // the lead entered the CRM. The CRM list exposes the latest outcome per
+      // lead, so each lead contributes once at its most recent recorded call.
+      const callDate = latestCallDate(lead)
+      const callBucket = callDate ? byMonth.get(monthKey(callDate)) : undefined
+      if (callBucket) {
+        if (lead.crm?.call_status === "spoken") callBucket.spoken += 1
+        if (lead.crm?.call_status === "not_spoken") callBucket.notSpoken += 1
+        if (lead.crm?.call_status === "call_back_later") callBucket.callbacks += 1
       }
 
       const owner = lead.assigned_to_profile
@@ -475,7 +496,7 @@ export default function DashboardPage() {
           <Card className="shadow-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Call Outcomes</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">Spoken and callback distribution</p>
+              <p className="mt-1 text-xs text-muted-foreground">Latest recorded outcome by call date</p>
             </CardHeader>
             <CardContent className="pt-2">
               <div className="h-[270px]">
@@ -483,17 +504,19 @@ export default function DashboardPage() {
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
-                ) : dashboard.chartData.every(row => row.spoken === 0 && row.callbacks === 0) ? (
+                ) : dashboard.chartData.every(row => row.spoken === 0 && row.notSpoken === 0 && row.callbacks === 0) ? (
                   <EmptyBlock icon={Phone} label="Call outcomes will appear after CRM calls are logged." />
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dashboard.chartData} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
+                    <BarChart data={dashboard.chartData} margin={{ top: 8, right: 12, left: -18, bottom: 0 }} barCategoryGap="24%">
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                       <XAxis dataKey="month" tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                       <Tooltip cursor={{ fill: "var(--color-muted)" }} />
-                      <Bar dataKey="spoken" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="callbacks" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                      <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                      <Bar dataKey="spoken" name="Spoken" fill="var(--color-success)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="notSpoken" name="Not spoken" fill="var(--color-destructive)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="callbacks" name="Call back" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
