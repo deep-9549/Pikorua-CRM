@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { eq, desc, asc, and, isNull, inArray, notInArray } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import {
@@ -464,6 +464,40 @@ export class LeadsService {
     })
 
     return { deleted: true }
+  }
+
+  async removeUnassignedBulk(ids: string[]) {
+    const deleted = await this.db.transaction(async (tx) => {
+      const existing = await tx.query.metaLeads.findMany({
+        where: and(inArray(metaLeads.id, ids), isNull(metaLeads.deletedAt)),
+        columns: { id: true, status: true, assignedTo: true },
+      })
+
+      if (existing.length !== ids.length) {
+        throw new BadRequestException('One or more selected leads no longer exist')
+      }
+      if (existing.some(lead => lead.status !== 'unassigned' || lead.assignedTo)) {
+        throw new BadRequestException('Only currently unassigned leads can be deleted in bulk')
+      }
+
+      await tx.delete(messages).where(
+        inArray(
+          messages.conversationId,
+          tx.select({ id: conversations.id }).from(conversations).where(inArray(conversations.leadId, ids)),
+        ),
+      )
+      await tx.delete(conversations).where(inArray(conversations.leadId, ids))
+      await tx.delete(bookings).where(inArray(bookings.leadId, ids))
+      await tx.delete(siteVisits).where(inArray(siteVisits.leadId, ids))
+      await tx.delete(leadInteractions).where(inArray(leadInteractions.leadId, ids))
+      await tx.delete(leadNotes).where(inArray(leadNotes.leadId, ids))
+      await tx.delete(leadFollowUps).where(inArray(leadFollowUps.leadId, ids))
+      await tx.delete(leadCrmDetails).where(inArray(leadCrmDetails.leadId, ids))
+      const rows = await tx.delete(metaLeads).where(inArray(metaLeads.id, ids)).returning({ id: metaLeads.id })
+      return rows.length
+    })
+
+    return { deleted }
   }
 
   async getNotes(leadId: string) {

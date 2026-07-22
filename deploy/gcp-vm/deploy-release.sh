@@ -181,6 +181,13 @@ main() {
     fail "Updated Compose configuration is invalid"
   fi
 
+  # Artifact images are the largest consumers on the small production VM.
+  # Images backing running containers are retained, so the current release is
+  # still available to rollback if the new pull or health checks fail.
+  log "Pruning unused Docker images before pulling the release"
+  docker image prune -af >/dev/null 2>&1 || \
+    fail "Unable to reclaim Docker image storage before deployment"
+
   if ! docker compose -f "$BASE_COMPOSE" -f "$APP_COMPOSE" pull api web; then
     rollback "$backup"
     fail "Unable to pull release images"
@@ -213,7 +220,7 @@ main() {
   printf '%s\n' "$release_sha" > "$CURRENT_RELEASE_FILE"
   chmod 640 "$CURRENT_RELEASE_FILE"
 
-  docker image prune -f --filter 'until=168h' >/dev/null 2>&1 || true
+  docker image prune -af >/dev/null 2>&1 || true
   log "Release ${release_sha} deployed successfully"
 }
 

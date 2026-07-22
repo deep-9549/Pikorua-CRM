@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   BarChart3, Users, Clock, UserPlus, RefreshCw, Phone, Mail,
   MapPin, Check, ChevronDown, Loader2, AlertCircle,
-  Plus, PenLine, X, FileUp, Search, Undo2, ListChecks, CalendarDays, Shuffle
+  Plus, PenLine, X, FileUp, Search, Undo2, ListChecks, CalendarDays, Shuffle, Trash2
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -26,6 +26,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -594,12 +604,16 @@ export default function MetaAdsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkExec, setBulkExec] = useState("")
   const [bulkAssigning, setBulkAssigning] = useState(false)
+  const [bulkUnassigning, setBulkUnassigning] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [splitOpen, setSplitOpen] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [search, setSearch] = useState("")
   const [sourceFilter, setSourceFilter] = useState("")
   const [platformFilter, setPlatformFilter] = useState("")
   const [campaignFilter, setCampaignFilter] = useState("")
+  const [executiveFilter, setExecutiveFilter] = useState("")
   const [receivedDateFromFilter, setReceivedDateFromFilter] = useState("")
   const [receivedDateToFilter, setReceivedDateToFilter] = useState("")
 
@@ -656,6 +670,49 @@ export default function MetaAdsPage() {
       alert(e instanceof Error ? e.message : "Bulk assignment failed")
     } finally {
       setBulkAssigning(false)
+    }
+  }
+
+  async function handleBulkUnassign() {
+    if (!isSuperAdmin || activeTab !== "assigned" || selected.size === 0) return
+    setBulkUnassigning(true)
+    try {
+      const selectedIds = Array.from(selected)
+      const res = await fetch("/api/leads/meta/bulk-unassign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_ids: selectedIds }),
+      })
+      if (!res.ok) throw new Error(await readApiError(res, "Bulk unassign failed"))
+      const selectedSet = new Set(selectedIds)
+      setLeads(current => current.filter(lead => !selectedSet.has(lead.id)))
+      setSelected(new Set())
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Bulk unassign failed")
+    } finally {
+      setBulkUnassigning(false)
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (!isSuperAdmin || activeTab !== "unassigned" || selected.size === 0) return
+    setBulkDeleting(true)
+    try {
+      const selectedIds = Array.from(selected)
+      const res = await fetch("/api/leads/meta/delete-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_ids: selectedIds }),
+      })
+      if (!res.ok) throw new Error(await readApiError(res, "Bulk delete failed"))
+      const selectedSet = new Set(selectedIds)
+      setLeads(current => current.filter(lead => !selectedSet.has(lead.id)))
+      setSelected(new Set())
+      setDeleteConfirmOpen(false)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Bulk delete failed")
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
@@ -725,6 +782,7 @@ export default function MetaAdsPage() {
   function handleTabChange(tab: string) {
     setActiveTab(tab)
     setSelected(new Set())
+    setExecutiveFilter("")
     fetchLeads(tab === "all" ? undefined : tab)
   }
 
@@ -743,7 +801,7 @@ export default function MetaAdsPage() {
   const instagramCount = leads.filter(l => l.platform === "instagram").length
   const facebookCount = leads.filter(l => l.platform === "facebook").length
   // Bulk select is available where leads await assignment
-  const selectable = isSuperAdmin && activeTab === "unassigned"
+  const selectable = isSuperAdmin && (activeTab === "unassigned" || activeTab === "assigned")
 
   // Distinct campaign names present in the current queue (for the filter)
   const campaigns = useMemo(() => {
@@ -766,14 +824,15 @@ export default function MetaAdsPage() {
     if (sourceFilter && l.source !== sourceFilter) return false
     if (platformFilter && l.platform !== platformFilter) return false
     if (campaignFilter && l.campaign_name !== campaignFilter) return false
+    if (executiveFilter && l.assigned_to_profile?.id !== executiveFilter) return false
     const receivedDate = toDateInputValue(l.received_at)
     if ((receivedDateFromFilter || receivedDateToFilter) && !receivedDate) return false
     if (receivedDateFromFilter && receivedDate < receivedDateFromFilter) return false
     if (receivedDateToFilter && receivedDate > receivedDateToFilter) return false
     return true
-  }), [leads, search, sourceFilter, platformFilter, campaignFilter, receivedDateFromFilter, receivedDateToFilter])
+  }), [leads, search, sourceFilter, platformFilter, campaignFilter, executiveFilter, receivedDateFromFilter, receivedDateToFilter])
 
-  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || receivedDateFromFilter || receivedDateToFilter)
+  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || executiveFilter || receivedDateFromFilter || receivedDateToFilter)
   const shownLeadIds = useMemo(() => filteredLeads.map(lead => lead.id), [filteredLeads])
   const splitLeadIds = useMemo(
     () => selected.size > 0 ? Array.from(selected) : shownLeadIds,
@@ -956,6 +1015,20 @@ export default function MetaAdsPage() {
                   {campaigns.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               )}
+              {isSuperAdmin && activeTab !== "unassigned" && (
+                <select
+                  value={executiveFilter}
+                  onChange={e => setExecutiveFilter(e.target.value)}
+                  aria-label="Filter by sales executive"
+                  className="h-9 w-full rounded-lg px-2.5 text-xs bg-transparent cursor-pointer sm:max-w-[200px]"
+                  style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                >
+                  <option value="">All Sales Executives</option>
+                  {employees.map(employee => (
+                    <option key={employee.id} value={employee.id}>{employee.full_name}</option>
+                  ))}
+                </select>
+              )}
               {isSuperAdmin && (
                 <div className="flex w-full items-center gap-1.5 sm:w-auto">
                   <div className="relative min-w-0 flex-1 sm:flex-none">
@@ -992,15 +1065,17 @@ export default function MetaAdsPage() {
                     <ListChecks className="w-3.5 h-3.5" />
                     Select shown
                   </Button>
-                  <Button
-                    size="sm"
-                    className="gap-1.5 h-9 text-xs shrink-0 gold-gradient font-semibold shadow-gold-sm"
-                    style={{ color: "var(--color-primary-foreground)" }}
-                    onClick={() => setSplitOpen(true)}
-                  >
-                    <Shuffle className="w-3.5 h-3.5" />
-                    {selected.size > 0 ? `Split selected (${selected.size})` : `Split shown (${shownLeadIds.length})`}
-                  </Button>
+                  {activeTab === "unassigned" && (
+                    <Button
+                      size="sm"
+                      className="gap-1.5 h-9 text-xs shrink-0 gold-gradient font-semibold shadow-gold-sm"
+                      style={{ color: "var(--color-primary-foreground)" }}
+                      onClick={() => setSplitOpen(true)}
+                    >
+                      <Shuffle className="w-3.5 h-3.5" />
+                      {selected.size > 0 ? `Split selected (${selected.size})` : `Split shown (${shownLeadIds.length})`}
+                    </Button>
+                  )}
                 </>
               )}
               {hasActiveFilter && (
@@ -1008,7 +1083,7 @@ export default function MetaAdsPage() {
                   variant="ghost"
                   size="sm"
                   className="gap-1 h-9 text-xs shrink-0"
-                  onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
+                  onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setExecutiveFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
                 >
                   <X className="w-3.5 h-3.5" /> Clear
                 </Button>
@@ -1030,28 +1105,53 @@ export default function MetaAdsPage() {
                   {selected.size} selected
                 </span>
                 <div className="hidden flex-1 sm:block" />
-                <select
-                  value={bulkExec}
-                  onChange={e => setBulkExec(e.target.value)}
-                  className="h-8 rounded-lg px-2 text-xs bg-transparent cursor-pointer"
-                  style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
-                >
-                  <option value="">Choose executive...</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.full_name}</option>
-                  ))}
-                </select>
-                <Button
-                  size="sm"
-                  className="h-8 gap-1.5 gold-gradient text-[11px] font-semibold shadow-gold-sm"
-                  style={{ color: "var(--color-primary-foreground)" }}
-                  disabled={!bulkExec || bulkAssigning}
-                  onClick={handleBulkAssign}
-                >
-                  {bulkAssigning
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <><UserPlus className="w-3.5 h-3.5" />Assign {selected.size}</>}
-                </Button>
+                {activeTab === "unassigned" ? (
+                  <>
+                    <select
+                      value={bulkExec}
+                      onChange={e => setBulkExec(e.target.value)}
+                      className="h-8 rounded-lg px-2 text-xs bg-transparent cursor-pointer"
+                      style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                    >
+                      <option value="">Choose executive...</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.full_name}</option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      className="h-8 gap-1.5 gold-gradient text-[11px] font-semibold shadow-gold-sm"
+                      style={{ color: "var(--color-primary-foreground)" }}
+                      disabled={!bulkExec || bulkAssigning || bulkDeleting}
+                      onClick={handleBulkAssign}
+                    >
+                      {bulkAssigning
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <><UserPlus className="w-3.5 h-3.5" />Assign {selected.size}</>}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 gap-1.5 text-[11px] font-semibold"
+                      disabled={bulkAssigning || bulkDeleting}
+                      onClick={() => setDeleteConfirmOpen(true)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />Delete {selected.size}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-[11px] font-semibold"
+                    disabled={bulkUnassigning}
+                    onClick={handleBulkUnassign}
+                  >
+                    {bulkUnassigning
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <><Undo2 className="w-3.5 h-3.5" />Unassign {selected.size}</>}
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelected(new Set())}>
                   <X className="w-4 h-4" />
                 </Button>
@@ -1075,7 +1175,7 @@ export default function MetaAdsPage() {
                         size="sm"
                         variant="outline"
                         className="gap-2 mx-auto"
-                        onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
+                        onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setExecutiveFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
                       >
                         <X className="w-3.5 h-3.5" />
                         Clear filters
@@ -1148,6 +1248,28 @@ export default function MetaAdsPage() {
         onClose={() => setSplitOpen(false)}
         onSplit={handleSplitComplete}
       />
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={open => !bulkDeleting && setDeleteConfirmOpen(open)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selected.size} unassigned lead{selected.size === 1 ? "" : "s"} permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the selected leads and their related CRM history. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkDeleting}
+              onClick={event => { event.preventDefault(); handleBulkDelete() }}
+            >
+              {bulkDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              {bulkDeleting ? "Deleting..." : "Delete permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

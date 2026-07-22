@@ -5,6 +5,7 @@ import { metaLeads, userProfiles, clients, properties, leadFollowUps } from '@pi
 import { AssignLeadDto } from './dto/assign-lead.dto'
 import { BulkAssignDto } from './dto/bulk-assign.dto'
 import { SplitAssignDto } from './dto/split-assign.dto'
+import { BulkLeadIdsDto } from '../leads/dto/bulk-lead-ids.dto'
 import { serializeMetaLead, serializeCrmDetails } from '../leads/lead.serializer'
 import { serializeProfile } from '../../common/serializers/profile.serializer'
 import { ClientsService } from '../clients/clients.service'
@@ -543,6 +544,61 @@ export class MetaLeadsService {
     if (!updated) throw new NotFoundException(`Meta lead ${id} not found`)
     this.logger.log(`Lead ${id} unassigned`)
     return this.findOne(id)
+  }
+
+  async bulkUnassign(actorUserId: string, dto: BulkLeadIdsDto) {
+    const result = await this.db.transaction(async (tx) => {
+      const existing = await tx.query.metaLeads.findMany({
+        where: and(inArray(metaLeads.id, dto.lead_ids), isNull(metaLeads.deletedAt)),
+        with: { assignedToProfile: true },
+      })
+
+      if (existing.length !== dto.lead_ids.length) {
+        throw new BadRequestException('One or more selected leads no longer exist')
+      }
+      if (existing.some(lead => lead.status !== 'assigned' || !lead.assignedTo)) {
+        throw new BadRequestException('Only currently assigned leads can be unassigned in bulk')
+      }
+
+      const updatedAt = new Date()
+      const rows = await tx
+        .update(metaLeads)
+        .set({ assignedTo: null, assignedBy: null, assignedAt: null, status: 'unassigned', updatedAt })
+        .where(and(
+          inArray(metaLeads.id, dto.lead_ids),
+          eq(metaLeads.status, 'assigned'),
+          isNotNull(metaLeads.assignedTo),
+          isNull(metaLeads.deletedAt),
+        ))
+        .returning({ id: metaLeads.id })
+
+      if (rows.length !== dto.lead_ids.length) {
+        throw new BadRequestException('The assigned lead queue changed. Please refresh and try again')
+      }
+
+      for (const lead of existing) {
+        const fromName = lead.assignedToProfile?.fullName ?? null
+        await this.leadActivityService.record({
+          leadId: lead.id,
+          actorUserId,
+          eventType: 'unassigned',
+          source: 'bulk',
+          title: 'Lead unassigned in bulk',
+          description: 'Lead was returned to the unassigned queue by a bulk action.',
+          fromUserId: lead.assignedTo,
+          fromUserName: fromName,
+          changes: {
+            assigned_to: { label: 'Assigned To', from: fromName, to: null },
+          },
+          metadata: { bulk_count: dto.lead_ids.length },
+        }, tx)
+      }
+
+      return rows.length
+    })
+
+    this.logger.log(`Bulk-unassigned ${result} lead(s) by ${actorUserId}`)
+    return { updated: result }
   }
 
   async convertToCrm(id: string) {

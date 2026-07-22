@@ -6,6 +6,7 @@ import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
 import { CreateFollowUpDto } from './dto/create-follow-up.dto'
 import { CompleteFollowUpDto } from './dto/complete-follow-up.dto'
+import { BulkLeadIdsDto } from './dto/bulk-lead-ids.dto'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard } from '../../common/guards/roles.guard'
 import { Roles } from '../../common/decorators/roles.decorator'
@@ -63,6 +64,13 @@ export class LeadsController {
   @ApiOperation({ summary: 'Permanently delete a lead and all its related records' })
   remove(@Param('id') id: string) {
     return this.leadsService.remove(id)
+  }
+
+  @Post('bulk-delete')
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Permanently delete selected unassigned leads' })
+  removeUnassignedBulk(@Body() dto: BulkLeadIdsDto) {
+    return this.leadsService.removeUnassignedBulk(dto.lead_ids)
   }
 
   @Get(':id/notes')
