@@ -1,7 +1,7 @@
 # Graph Report - Pikorua-CRM  (2026-08-02)
 
 ## Corpus Check
-- 334 files · ~215,484 words
+- 334 files · ~215,676 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7e556887`
+- Built from commit: `41971114`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -165,6 +165,7 @@
 - public.clients
 - @nestjs/passport
 - @nestjs/swagger
+- @nestjs/config
 - passport-jwt
 - @pikorua/db
 - @pikorua/shared
@@ -184,7 +185,7 @@
 - jose
 - lucide-react
 - next
-- @pikorua/shared
+- clsx
 - @radix-ui/react-accordion
 - @radix-ui/react-alert-dialog
 - @radix-ui/react-aspect-ratio
@@ -234,7 +235,6 @@
 - voice_sync_audit_log Table
 - public.lead_activity_events
 - Q: also the sql relations are based on the sql migrations available in the git or all the sql migrations available locally??
-- cache-manager
 - public.user_profiles
 - public.lead_crm_details
 - public.lead_crm_details
@@ -451,7 +451,7 @@ Nodes (23): AppModule, DatabaseModule, AuthModule, BookingsModule, ClientsModule
 
 ### Community 45 - "dependencies"
 Cohesion: 0.09
-Nodes (23): dependencies, bcryptjs, dotenv, express, multer, @nestjs/common, @nestjs/config, @nestjs/core (+15 more)
+Nodes (23): dependencies, bcryptjs, cache-manager, dotenv, express, multer, @nestjs/common, @nestjs/core (+15 more)
 
 ### Community 46 - "PropertiesController"
 Cohesion: 0.13
@@ -555,7 +555,7 @@ Nodes (9): poolStatusForClientStatus(), buildMicrositeLeadExternalId(), clean(),
 
 ### Community 72 - "dependencies"
 Cohesion: 0.15
-Nodes (13): dependencies, clsx, input-otp, next-themes, @radix-ui/react-collapsible, @radix-ui/react-slot, @radix-ui/react-tooltip, clsx (+5 more)
+Nodes (13): dependencies, input-otp, next-themes, @pikorua/shared, @radix-ui/react-collapsible, @radix-ui/react-slot, @radix-ui/react-tooltip, @pikorua/shared (+5 more)
 
 ### Community 73 - "microsite-lead-sync.test.cjs"
 Cohesion: 0.17

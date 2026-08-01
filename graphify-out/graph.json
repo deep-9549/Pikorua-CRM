@@ -400,8 +400,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "apps_api_package_dependencies_nestjs_config",
-      "community": 45,
-      "community_name": "dependencies",
+      "community": 154,
+      "community_name": "@nestjs/config",
       "norm_label": "@nestjs/config"
     },
     {
@@ -411,8 +411,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "nestjs_config",
-      "community": 45,
-      "community_name": "dependencies",
+      "community": 154,
+      "community_name": "@nestjs/config",
       "norm_label": "@nestjs/config"
     },
     {
@@ -620,8 +620,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "apps_api_package_dependencies_cache_manager",
-      "community": 237,
-      "community_name": "cache-manager",
+      "community": 45,
+      "community_name": "dependencies",
       "norm_label": "cache-manager"
     },
     {
@@ -631,8 +631,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "cache_manager",
-      "community": 237,
-      "community_name": "cache-manager",
+      "community": 45,
+      "community_name": "dependencies",
       "norm_label": "cache-manager"
     },
     {
@@ -25788,8 +25788,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "apps_web_package_dependencies_pikorua_shared",
-      "community": 178,
-      "community_name": "@pikorua/shared",
+      "community": 72,
+      "community_name": "dependencies",
       "norm_label": "@pikorua/shared"
     },
     {
@@ -25799,8 +25799,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "apps_web_package_json_pikorua_shared",
-      "community": 178,
-      "community_name": "@pikorua/shared",
+      "community": 72,
+      "community_name": "dependencies",
       "norm_label": "@pikorua/shared"
     },
     {
@@ -26492,8 +26492,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "apps_web_package_dependencies_clsx",
-      "community": 72,
-      "community_name": "dependencies",
+      "community": 178,
+      "community_name": "clsx",
       "norm_label": "clsx"
     },
     {
@@ -26503,8 +26503,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "clsx",
-      "community": 72,
-      "community_name": "dependencies",
+      "community": 178,
+      "community_name": "clsx",
       "norm_label": "clsx"
     },
     {
@@ -69470,7 +69470,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L1180",
+      "source_location": "L1200",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69541,7 +69541,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L1236",
+      "source_location": "L1256",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69577,7 +69577,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L1645",
+      "source_location": "L1697",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69601,7 +69601,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L1810",
+      "source_location": "L1862",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69625,7 +69625,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L1818",
+      "source_location": "L1870",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69662,7 +69662,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L803",
+      "source_location": "L823",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69674,7 +69674,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L854",
+      "source_location": "L874",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69686,7 +69686,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L845",
+      "source_location": "L865",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69698,7 +69698,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L1306",
+      "source_location": "L1358",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69710,7 +69710,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L1306",
+      "source_location": "L1358",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -69722,7 +69722,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/app/(dashboard)/leads/[id]/page.tsx",
-      "source_location": "L1178",
+      "source_location": "L1198",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_web_app_dashboard_leads_id_page_leaddetailpage",
@@ -100732,5 +100732,5 @@
       "source_file": "test.md"
     }
   ],
-  "built_at_commit": "7e5568878834c3b5a9d383fac0b101457737b6fc"
+  "built_at_commit": "41971114a92cc04ef9bdb132e7351ed350917ff7"
 }

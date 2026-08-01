@@ -792,6 +792,26 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [deleting, setDeleting] = useState(false)
   const [previousLeadId, setPreviousLeadId] = useState<string | null>(null)
   const [nextLeadId, setNextLeadId] = useState<string | null>(null)
+  const [atPageTop, setAtPageTop] = useState(true)
+  const [atPageBottom, setAtPageBottom] = useState(false)
+
+  useEffect(() => {
+    const updateScrollPosition = () => {
+      const scrollTop = window.scrollY
+      const viewportBottom = scrollTop + window.innerHeight
+      const pageHeight = document.documentElement.scrollHeight
+      setAtPageTop(scrollTop <= 80)
+      setAtPageBottom(viewportBottom >= pageHeight - 80)
+    }
+
+    updateScrollPosition()
+    window.addEventListener("scroll", updateScrollPosition, { passive: true })
+    window.addEventListener("resize", updateScrollPosition)
+    return () => {
+      window.removeEventListener("scroll", updateScrollPosition)
+      window.removeEventListener("resize", updateScrollPosition)
+    }
+  }, [loading, activeTab])
   const [propertyRecommendations, setPropertyRecommendations] = useState<PropertyRecommendation[]>([])
   const [recommendationsLoading, setRecommendationsLoading] = useState(false)
   const [recommendationsError, setRecommendationsError] = useState<string | null>(null)
@@ -1240,7 +1260,39 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   )
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5 pb-24">
+    <div className="relative max-w-2xl mx-auto space-y-5 pb-24">
+      <div className="absolute inset-y-0 -right-16 z-40 hidden xl:block">
+        <div className="sticky top-[calc(50vh-3.25rem)] flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            disabled={atPageTop}
+            className="group relative h-11 w-11 rounded-full bg-background/95 shadow-lg backdrop-blur disabled:opacity-30"
+            aria-label="Go to top"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
+            <ArrowUp className="h-5 w-5" />
+            <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              Go to top
+            </span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            disabled={atPageBottom}
+            className="group relative h-11 w-11 rounded-full bg-background/95 shadow-lg backdrop-blur disabled:opacity-30"
+            aria-label="Go to bottom"
+            onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" })}
+          >
+            <ArrowDown className="h-5 w-5" />
+            <span className="pointer-events-none absolute right-full mr-2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              Go to bottom
+            </span>
+          </Button>
+        </div>
+      </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.push(openedFromTrash ? "/trash" : "/leads")}>
           <ArrowLeft className="w-4 h-4" /> {openedFromTrash ? "Back to Trash" : "Back to Leads"}
@@ -1881,12 +1933,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         </DialogContent>
       </Dialog>
 
-      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 flex flex-col gap-2">
+      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-40 flex -translate-x-1/2 gap-2 xl:hidden">
         <Button
           type="button"
           variant="outline"
           size="icon"
-          className="rounded-full bg-background/95 shadow-lg backdrop-blur"
+          disabled={atPageTop}
+          className="h-11 w-11 rounded-full bg-background/95 shadow-lg backdrop-blur disabled:opacity-30"
           aria-label="Go to top"
           title="Go to top"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
@@ -1897,7 +1950,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           type="button"
           variant="outline"
           size="icon"
-          className="rounded-full bg-background/95 shadow-lg backdrop-blur"
+          disabled={atPageBottom}
+          className="h-11 w-11 rounded-full bg-background/95 shadow-lg backdrop-blur disabled:opacity-30"
           aria-label="Go to bottom"
           title="Go to bottom"
           onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" })}
