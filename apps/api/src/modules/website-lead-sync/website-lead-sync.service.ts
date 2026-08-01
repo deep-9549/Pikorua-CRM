@@ -32,14 +32,6 @@ type WebsiteLead = {
   consent: boolean
 }
 
-const BUDGET_LABELS: Record<string, string> = {
-  '1-2cr': '1 Cr – 2 Cr',
-  '3-5cr': '3 Cr – 5 Cr',
-  '5-10cr': '5 Cr – 10 Cr',
-  '10cr-plus': '10 Cr & Above',
-  custom: 'Custom',
-}
-
 const humanize = (value: string | null) => value
   ? value.replace(/-/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
   : null
@@ -166,9 +158,6 @@ export class WebsiteLeadSyncService implements OnModuleInit, OnModuleDestroy {
 
       if (!inserted) return false
 
-      const budgetRange = sourceLead.budget_band
-        ? (BUDGET_LABELS[sourceLead.budget_band] ?? humanize(sourceLead.budget_band))
-        : null
       const remarks = [
         sourceLead.message,
         sourceLead.category ? `Category: ${humanize(sourceLead.category)}` : null,
@@ -179,10 +168,9 @@ export class WebsiteLeadSyncService implements OnModuleInit, OnModuleDestroy {
           : null,
       ].filter(Boolean).join('\n') || null
 
-      if (budgetRange || sourceLead.location || sourceLead.property_ref || remarks) {
+      if (sourceLead.location || sourceLead.property_ref || remarks) {
         await tx.insert(leadCrmDetails).values({
           leadId: inserted.id,
-          budgetRange,
           currentArea: humanize(sourceLead.location),
           projectName: sourceLead.property_ref,
           remarks,

@@ -137,6 +137,9 @@ test('shared importer maps lead and CRM fields and remains idempotent', async ()
   const captured = { leads: [], details: [] }
   let returnInserted = true
   const tx = {
+    query: {
+      clients: { findFirst: async () => null },
+    },
     insert(table) {
       return {
         values(values) {
@@ -180,6 +183,8 @@ test('shared importer maps lead and CRM fields and remains idempotent', async ()
   assert.equal(captured.leads[0].platform, 'instagram')
   assert.equal(captured.details[0].profession, 'Founder')
   assert.equal(captured.details[0].companyName, 'Example Co')
+  assert.equal(captured.details[0].budgetRange, undefined)
+  assert.equal(captured.leads[0].formData.field_data.some(field => field.name === 'budget_range'), true)
 
   returnInserted = false
   assert.equal(await importer.importLead(lead), 'duplicate')

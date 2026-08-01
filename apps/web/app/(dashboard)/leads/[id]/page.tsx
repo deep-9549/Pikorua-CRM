@@ -9,7 +9,7 @@ import {
   Check, Flame, Thermometer, Snowflake, User, History,
   AlertTriangle, Briefcase, Building, TrendingDown,
   PhoneOff, Clock, ChevronDown, ChevronUp, Trash2, ChevronLeft, ChevronRight,
-  Activity, ArrowRight, Sparkles, Copy, Home,
+  Activity, ArrowRight, Sparkles, Copy, Home, ArrowUp, ArrowDown, ShieldOff,
   type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,13 @@ import { formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { getLeadDisplaySections } from "@/lib/lead-display-order"
+import { readLeadQueueSnapshot } from "@/lib/lead-list-state"
+import {
+  isAntiBrokerCompatibleStatus,
+  missingSpokenLeadFields,
+  NOT_PROVIDED_BY_CLIENT,
+  SPOKEN_REQUIRED_FIELD_LABELS,
+} from "@pikorua/shared"
 
 // Types
 
@@ -56,6 +63,7 @@ interface ClientProfile {
   email: string | null
   city: string | null
   status: string | null
+  anti_broker: boolean
   status_note: string | null
   status_updated_at: string | null
   first_seen_at: string
@@ -72,6 +80,7 @@ interface LeadHistory {
   received_at: string
   assigned_to_profile: { id: string; full_name: string } | null
   client_status?: string | null
+  client_anti_broker?: boolean
   crm: {
     call_status: string | null
     site_visit_status: string | null
@@ -358,6 +367,35 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
 }
 
+function ClientProvidedField({ label, value, placeholder, required, onChange }: {
+  label: string
+  value: string
+  placeholder: string
+  required: boolean
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
+        {label}{required && <span style={{ color: "var(--color-primary)" }}> *</span>}
+      </Label>
+      <SearchableSelect
+        value={value}
+        onValueChange={nextValue => onChange(nextValue === "__clear__" ? "" : nextValue)}
+        options={[
+          { value: "__clear__", label: `Clear ${label.toLowerCase()}` },
+          { value: NOT_PROVIDED_BY_CLIENT, label: NOT_PROVIDED_BY_CLIENT },
+        ]}
+        placeholder={placeholder}
+        searchPlaceholder={`Type or search ${label.toLowerCase()}...`}
+        allowCustomValue
+        customOptionLabel={custom => `Use "${custom}"`}
+        triggerClassName="h-9 text-sm"
+      />
+    </div>
+  )
+}
+
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("en-IN", {
     day: "numeric",
@@ -581,6 +619,11 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
               </span>
             )}
             <StatusPill status={entry.client_status ?? entry.crm?.hwc ?? null} />
+            {entry.client_anti_broker && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white">
+                <ShieldOff className="h-3 w-3" />Anti-Broker
+              </span>
+            )}
           </div>
         </div>
         {hasCrm && (
@@ -738,6 +781,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     follow_up_date: null, follow_up_done: false, follow_up_remarks: null, hwc: null, remarks: null,
   })
   const [clientStatus, setClientStatus] = useState<string | null>(null)
+  const [clientAntiBroker, setClientAntiBroker] = useState(false)
   const [clientNote, setClientNote] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -778,6 +822,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               ? json.crm.hwc
               : null
           setClientStatus(status)
+          setClientAntiBroker(Boolean(json.client.anti_broker))
           setClientNote(json.client.status_note ?? "")
         }
         if (json.history) setHistory(json.history)
@@ -797,18 +842,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       return
     }
 
+    const storedOrder = readLeadQueueSnapshot()?.ids ?? []
+    if (storedOrder.includes(id)) {
+      const index = storedOrder.indexOf(id)
+      setPreviousLeadId(index > 0 ? storedOrder[index - 1] : null)
+      setNextLeadId(index < storedOrder.length - 1 ? storedOrder[index + 1] : null)
+      return
+    }
+
     fetch('/api/leads/meta').then(res => res.json()).then(json => {
-      const storedIds = JSON.parse(
-        window.sessionStorage.getItem("pikorua.leads.visibleOrder") ?? "[]",
-      ) as unknown
-      const storedOrder = Array.isArray(storedIds)
-        ? storedIds.filter((item): item is string => typeof item === "string")
-        : []
       const fallbackOrder = getLeadDisplaySections(
         (json.leads ?? []) as MetaLead[],
         Date.now(),
       ).ordered.map(item => item.id)
-      const ids = storedOrder.includes(id) ? storedOrder : fallbackOrder
+      const ids = fallbackOrder
       const index = ids.indexOf(id)
       setPreviousLeadId(index > 0 ? ids[index - 1] : null)
       setNextLeadId(index >= 0 && index < ids.length - 1 ? ids[index + 1] : null)
@@ -906,6 +953,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     if (crm.call_status === "spoken" && !clientStatus) {
       missingFields.push("Client Status is required when Call Status is Spoken")
     }
+    const missingSpokenFields = missingSpokenLeadFields(crm)
+    missingFields.push(...missingSpokenFields.map(field => `${SPOKEN_REQUIRED_FIELD_LABELS[field]} is required when Call Status is Spoken`))
     if (clientStatus && !BUYING_STATUS_OPTIONAL_CLIENT_STATUSES.has(clientStatus) && !crm.buying_status) {
       missingFields.push("Buying Status is required unless Client Status is Broker or Construction Owner")
     }
@@ -954,7 +1003,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           ? fetch(`/api/clients/${client.id}/status`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status: clientStatus, status_note: clientNote }),
+              body: JSON.stringify({
+                status: clientStatus,
+                status_note: clientNote,
+                anti_broker: clientAntiBroker,
+              }),
             })
           : Promise.resolve(null),
       ])
@@ -978,6 +1031,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         if (statusJson.client) {
           setClient(statusJson.client)
           setClientStatus(CLIENT_STATUS_VALUES.has(statusJson.client.status) ? statusJson.client.status : null)
+          setClientAntiBroker(Boolean(statusJson.client.anti_broker))
           setClientNote(statusJson.client.status_note ?? "")
         }
       }
@@ -1121,6 +1175,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const showVisitDate = crm.site_visit_status === "visited"
   const showConfirmDate = crm.site_visit_status === "visit_date_confirmed"
   const isClientStatusRequired = crm.call_status === "spoken"
+  const isAntiBrokerEnabled = isAntiBrokerCompatibleStatus(clientStatus)
   const isBuyingStatusRequired = Boolean(
     clientStatus && !BUYING_STATUS_OPTIONAL_CLIENT_STATUSES.has(clientStatus),
   )
@@ -1143,7 +1198,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           const active = clientStatus === s.value
           return (
             <button key={s.value}
-              onClick={() => setClientStatus(active ? null : s.value)}
+              onClick={() => {
+                const nextStatus = active ? null : s.value
+                setClientStatus(nextStatus)
+                if (!isAntiBrokerCompatibleStatus(nextStatus)) setClientAntiBroker(false)
+              }}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
               style={active ? { background: s.bg, color: s.color, border: `1px solid ${s.color}60` }
                 : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
@@ -1152,6 +1211,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           )
         })}
       </div>
+      <button
+        type="button"
+        disabled={!isAntiBrokerEnabled}
+        onClick={() => setClientAntiBroker(current => !current)}
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40"
+        style={clientAntiBroker
+          ? { background: "rgb(124 58 237 / 0.15)", color: "rgb(167 139 250)", border: "1px solid rgb(139 92 246 / 0.6)" }
+          : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}
+      >
+        <ShieldOff className="h-3 w-3" />Anti-Broker
+      </button>
+      <p className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
+        Anti-Broker can only be combined with Hot, Warm, or Cold.
+      </p>
       <div className="flex gap-2">
         <input type="text" placeholder="Optional note..."
           value={clientNote} onChange={e => setClientNote(e.target.value)}
@@ -1167,7 +1240,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   )
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5 pb-12">
+    <div className="max-w-2xl mx-auto space-y-5 pb-24">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" size="sm" className="gap-2 -ml-2" onClick={() => router.push(openedFromTrash ? "/trash" : "/leads")}>
           <ArrowLeft className="w-4 h-4" /> {openedFromTrash ? "Back to Trash" : "Back to Leads"}
@@ -1309,13 +1382,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     Client Details
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <TextField label="Profession" value={crm.profession ?? ""} placeholder="e.g. Founder, Doctor"
+                    <ClientProvidedField label="Profession" value={crm.profession ?? ""} placeholder="e.g. Founder, Doctor"
+                      required={crm.call_status === "spoken"}
                       onChange={v => setCrm(p => ({ ...p, profession: v || null }))} />
                     <TextField label="Company" value={crm.company_name ?? ""} placeholder="e.g. Acme Corp"
                       onChange={v => setCrm(p => ({ ...p, company_name: v || null }))} />
-                    <TextField label="Current City" value={crm.current_city ?? ""} placeholder="e.g. Pune"
+                    <ClientProvidedField label="Current City" value={crm.current_city ?? ""} placeholder="e.g. Pune"
+                      required={crm.call_status === "spoken"}
                       onChange={v => setCrm(p => ({ ...p, current_city: v || null }))} />
-                    <TextField label="Current Area" value={crm.current_area ?? ""} placeholder="e.g. Baner"
+                    <ClientProvidedField label="Current Area" value={crm.current_area ?? ""} placeholder="e.g. Baner"
+                      required={crm.call_status === "spoken"}
                       onChange={v => setCrm(p => ({ ...p, current_area: v || null }))} />
                   </div>
                 </div>
@@ -1434,7 +1510,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>Budget</Label>
+                  <Label className="text-xs" style={{ color: "var(--color-foreground)" }}>
+                    Budget{crm.call_status === "spoken" && <span style={{ color: "var(--color-primary)" }}> *</span>}
+                  </Label>
                   <SearchableSelect
                     value={crm.budget_range ?? ""}
                     onValueChange={v => setCrm(p => ({ ...p, budget_range: v || null }))}
@@ -1802,6 +1880,31 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           )}
         </DialogContent>
       </Dialog>
+
+      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="rounded-full bg-background/95 shadow-lg backdrop-blur"
+          aria-label="Go to top"
+          title="Go to top"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        >
+          <ArrowUp className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="rounded-full bg-background/95 shadow-lg backdrop-blur"
+          aria-label="Go to bottom"
+          title="Go to bottom"
+          onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" })}
+        >
+          <ArrowDown className="h-4 w-4" />
+        </Button>
+      </div>
 
       <AlertDialog open={confirmDelete} onOpenChange={o => !deleting && setConfirmDelete(o)}>
         <AlertDialogContent>

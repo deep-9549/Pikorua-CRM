@@ -40,6 +40,7 @@ import { ProtectedPhone } from "@/components/security/protected-phone"
 import { useMetaLeads } from "@/hooks/use-meta-leads"
 import { cn, formatPhone } from "@/lib/utils"
 import { dateKey, isFreshLead } from "@/lib/lead-display-order"
+import { calculateComparableLeadGrowth, comparableLeadGrowthLabel } from "@/lib/dashboard-lead-growth"
 
 interface CrmDetails {
   call_status?: "spoken" | "not_spoken" | "call_back_later" | string | null
@@ -115,11 +116,6 @@ function parseDate(value: string | null | undefined) {
 
 function formatNumber(value: number) {
   return value.toLocaleString("en-IN")
-}
-
-function formatPercent(value: number) {
-  if (!Number.isFinite(value)) return "0%"
-  return `${value > 0 ? "+" : ""}${Math.round(value)}%`
 }
 
 function monthKey(date: Date) {
@@ -250,10 +246,6 @@ export default function DashboardPage() {
     let callback = 0
     let hot = 0
     let warm = 0
-    let previousMonthLeads = 0
-    let currentMonthLeads = 0
-    const currentMonth = monthKey(now)
-    const previousMonth = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1))
 
     leads.forEach((lead) => {
       if (isFreshLead(lead)) fresh += 1
@@ -274,8 +266,6 @@ export default function DashboardPage() {
       const received = parseDate(lead.received_at)
       if (received) {
         const key = monthKey(received)
-        if (key === currentMonth) currentMonthLeads += 1
-        if (key === previousMonth) previousMonthLeads += 1
         const bucket = byMonth.get(key)
         if (bucket) {
           bucket.leads += 1
@@ -322,9 +312,7 @@ export default function DashboardPage() {
 
     const conversionRate = leads.length ? (spoken / leads.length) * 100 : 0
     const warmRate = leads.length ? (warm / leads.length) * 100 : 0
-    const leadGrowth = previousMonthLeads
-      ? ((currentMonthLeads - previousMonthLeads) / previousMonthLeads) * 100
-      : currentMonthLeads > 0 ? 100 : 0
+    const leadGrowth = calculateComparableLeadGrowth(leads.map(lead => lead.received_at), now)
 
     return {
       fresh,
@@ -414,7 +402,7 @@ export default function DashboardPage() {
         <StatCard
           title="Total Leads"
           value={formatNumber(leads.length)}
-          detail={`${formatPercent(dashboard.leadGrowth)} vs previous month`}
+          detail={comparableLeadGrowthLabel(dashboard.leadGrowth)}
           icon={Users}
           tone="primary"
         />

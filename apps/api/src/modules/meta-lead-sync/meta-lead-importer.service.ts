@@ -4,7 +4,6 @@ import { clients, leadCrmDetails, metaLeads } from '@pikorua/db'
 import { DatabaseService } from '../../database/database.service'
 import {
   normalizeCampaignName,
-  normalizeMetaBudget,
   normalizeMetaPlatform,
   stripPhonePrefix,
 } from '../../common/utils/meta-format'
@@ -67,15 +66,11 @@ export class MetaLeadImporterService {
 
       const profession = fields.job_title ?? fields.profession ?? fields.occupation ?? null
       const companyName = fields.company_name ?? fields.company ?? null
-      const budgetKey = Object.keys(fields).find((key) => key.toLowerCase().includes('budget'))
-      const budgetRange = budgetKey ? normalizeMetaBudget(fields[budgetKey]) : null
-
-      if (profession || companyName || budgetRange) {
+      if (profession || companyName) {
         await tx.insert(leadCrmDetails).values({
           leadId: inserted.id,
           ...(profession ? { profession } : {}),
           ...(companyName ? { companyName } : {}),
-          ...(budgetRange ? { budgetRange } : {}),
         }).onConflictDoNothing()
       }
 

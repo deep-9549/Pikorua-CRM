@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   Search, Users, Phone, MapPin, Flame,
   Thermometer, Snowflake, ChevronRight, Loader2, AlertCircle,
-  RefreshCw, Calendar, Star, Download, Filter, X, Plus
+  RefreshCw, Calendar, Star, Download, Filter, X, Plus, ShieldOff
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { AddLeadDialog } from "@/components/add-lead-dialog"
 import { exportLeadsToExcel } from "@/lib/export-leads"
@@ -24,6 +25,12 @@ import {
   getLeadDisplaySections,
   isFreshLead,
 } from "@/lib/lead-display-order"
+import {
+  readLeadListViewState,
+  writeLeadListViewState,
+  writeLeadQueueSnapshot,
+  type LeadTab,
+} from "@/lib/lead-list-state"
 
 interface Crm {
   first_call_date?: string | null
@@ -60,6 +67,7 @@ interface MetaLead {
   crm?: Crm | null
   client_status?: string | null
   client_status_note?: string | null
+  client_anti_broker?: boolean
   today_follow_up_calls?: Array<{
     id: string
     call_status: "spoken" | "not_spoken"
@@ -100,16 +108,23 @@ const CLIENT_STATUS_MAP: Record<string, { label: string; icon: React.ElementType
   construction_biz_owner: { label: "Const. Owner",      icon: Users,        color: "oklch(0.65 0.12 200)" },
 }
 
-function ClientStatusBadge({ status }: { status: string | null | undefined }) {
-  if (!status) return null
-  const m = CLIENT_STATUS_MAP[status]
-  if (!m) return null
-  const Icon = m.icon
+function ClientStatusBadge({ status, antiBroker }: { status: string | null | undefined; antiBroker?: boolean }) {
+  const m = status ? CLIENT_STATUS_MAP[status] : undefined
+  const Icon = m?.icon
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
-      style={{ background: m.color, color: "#fff" }}>
-      <Icon className="w-2.5 h-2.5" />{m.label}
-    </span>
+    <>
+      {m && Icon && (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
+          style={{ background: m.color, color: "#fff" }}>
+          <Icon className="w-2.5 h-2.5" />{m.label}
+        </span>
+      )}
+      {antiBroker && (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 bg-violet-600 text-white">
+          <ShieldOff className="w-2.5 h-2.5" />Anti-Broker
+        </span>
+      )}
+    </>
   )
 }
 
@@ -162,9 +177,25 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("")
   const [filters, setFilters] = useState({ ...EMPTY_LEAD_FILTERS })
   const [showFilters, setShowFilters] = useState(false)
+  const [activeTab, setActiveTab] = useState<LeadTab>("leads")
+  const [viewStateHydrated, setViewStateHydrated] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [addOpen, setAddOpen] = useState(false)
   const isSuperAdmin = getAuthUser()?.role === "super_admin"
+
+  useEffect(() => {
+    const restored = readLeadListViewState()
+    setSearch(restored.search)
+    setFilters(restored.filters)
+    setShowFilters(restored.showFilters)
+    setActiveTab(restored.activeTab)
+    setViewStateHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!viewStateHydrated) return
+    writeLeadListViewState({ search, filters, showFilters, activeTab })
+  }, [activeTab, filters, search, showFilters, viewStateHydrated])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
@@ -269,17 +300,25 @@ export default function LeadsPage() {
 
   // This is the exact order rendered on the page and used by the lead-detail
   // Previous/Next buttons when a sales executive opens a lead from here.
-  const { dueToday, overdue, rest, ordered } = useMemo(
+  const { dueToday, overdue, rest } = useMemo(
     () => getLeadDisplaySections(filtered, now),
     [filtered, now],
   )
 
+  const visibleLeads = useMemo(() => {
+    if (activeTab === "follow-ups") return dueToday
+    if (activeTab === "overdue") return overdue
+    return rest
+  }, [activeTab, dueToday, overdue, rest])
+
   useEffect(() => {
-    window.sessionStorage.setItem(
-      "pikorua.leads.visibleOrder",
-      JSON.stringify(ordered.map(lead => lead.id)),
-    )
-  }, [ordered])
+    if (!viewStateHydrated) return
+    writeLeadQueueSnapshot(visibleLeads.map(lead => lead.id))
+  }, [viewStateHydrated, visibleLeads])
+
+  const captureVisibleQueue = useCallback(() => {
+    writeLeadQueueSnapshot(visibleLeads.map(lead => lead.id))
+  }, [visibleLeads])
 
   return (
     <div className="space-y-6">
@@ -439,6 +478,7 @@ export default function LeadsPage() {
                 <option value="hot">Hot</option>
                 <option value="warm">Warm</option>
                 <option value="cold">Cold</option>
+                <option value="anti_broker">Anti-Broker</option>
                 <option value="postponed">Postponed</option>
                 <option value="lost">Lost</option>
               </FilterSelect>
@@ -491,36 +531,45 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* List */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--color-primary)" }} />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20 space-y-3">
-          <Users className="w-10 h-10 mx-auto opacity-20" />
-          <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-            {search || activeFilterCount > 0 ? "No leads match your filters" : "No leads assigned yet"}
-          </p>
-          {!search && activeFilterCount === 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-2 mx-auto"
-              onClick={() => setAddOpen(true)}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add your first lead manually
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {dueToday.length > 0 && <Section title="Follow up Today" accentColor="var(--color-warning)" leads={dueToday} />}
-          {overdue.length > 0 && <Section title="Overdue Follow-ups" accentColor="var(--color-destructive)" leads={overdue} />}
-          {rest.length > 0 && <Section title={overdue.length + dueToday.length > 0 ? "Others" : "All Leads"} accentColor="var(--color-primary)" leads={rest} />}
-        </div>
-      )}
+      {/* Lead category tabs + list */}
+      <Tabs value={activeTab} onValueChange={value => setActiveTab(value as LeadTab)} className="gap-4">
+        <TabsList aria-label="Lead categories" className="sm:w-full lg:w-fit">
+          <TabsTrigger value="leads">
+            Leads
+            <TabCount value={rest.length} />
+          </TabsTrigger>
+          <TabsTrigger value="follow-ups">
+            Follow-ups
+            <TabCount value={dueToday.length} tone="warning" />
+          </TabsTrigger>
+          <TabsTrigger value="overdue">
+            Overdue Follow-ups
+            <TabCount value={overdue.length} tone="destructive" />
+          </TabsTrigger>
+        </TabsList>
+
+        {(["leads", "follow-ups", "overdue"] as LeadTab[]).map(tab => {
+          const tabLeads = tab === "follow-ups" ? dueToday : tab === "overdue" ? overdue : rest
+          return (
+            <TabsContent key={tab} value={tab} className="mt-0">
+              {loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--color-primary)" }} />
+                </div>
+              ) : tabLeads.length === 0 ? (
+                <EmptyLeadTab
+                  tab={tab}
+                  hasQuery={Boolean(search || activeFilterCount > 0)}
+                  hasAnyLeads={leads.length > 0}
+                  onAdd={() => setAddOpen(true)}
+                />
+              ) : (
+                <Section leads={tabLeads} onOpenLead={captureVisibleQueue} />
+              )}
+            </TabsContent>
+          )
+        })}
+      </Tabs>
 
       <AddLeadDialog<MetaLead>
         open={addOpen}
@@ -531,16 +580,63 @@ export default function LeadsPage() {
   )
 }
 
-function Section({ title, accentColor, leads }: { title: string; accentColor: string; leads: MetaLead[] }) {
+function TabCount({ value, tone = "default" }: {
+  value: number
+  tone?: "default" | "warning" | "destructive"
+}) {
+  const colors = {
+    default: { background: "var(--color-primary)", color: "var(--color-primary-foreground)" },
+    warning: { background: "var(--color-warning)", color: "var(--color-primary-foreground)" },
+    destructive: { background: "var(--color-destructive)", color: "white" },
+  }
+
+  return (
+    <span
+      className="inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none"
+      style={colors[tone]}
+    >
+      {value}
+    </span>
+  )
+}
+
+function EmptyLeadTab({ tab, hasQuery, hasAnyLeads, onAdd }: {
+  tab: LeadTab
+  hasQuery: boolean
+  hasAnyLeads: boolean
+  onAdd: () => void
+}) {
+  const message = hasQuery
+    ? `No ${tab === "leads" ? "leads" : tab} match your search or filters`
+    : tab === "follow-ups"
+      ? "No follow-ups due today"
+      : tab === "overdue"
+        ? "No overdue follow-ups"
+        : hasAnyLeads
+          ? "No other leads to show"
+          : "No leads assigned yet"
+
+  return (
+    <div className="space-y-3 py-20 text-center">
+      <Users className="mx-auto h-10 w-10 opacity-20" />
+      <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>{message}</p>
+      {tab === "leads" && !hasQuery && !hasAnyLeads && (
+        <Button size="sm" variant="outline" className="mx-auto gap-2" onClick={onAdd}>
+          <Plus className="h-3.5 w-3.5" />
+          Add your first lead manually
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function Section({ leads, onOpenLead }: { leads: MetaLead[]; onOpenLead: () => void }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold tracking-wider uppercase px-1" style={{ color: accentColor }}>
-        {title} ({leads.length})
-      </p>
       <AnimatePresence initial={false}>
         {leads.map((lead, i) => (
           <motion.div key={lead.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-            <Link href={`/leads/${lead.id}`}>
+            <Link href={`/leads/${lead.id}`} onClick={onOpenLead}>
               <div className="flex flex-col gap-3 px-4 py-3.5 rounded-xl transition-all duration-150 hover:scale-[1.005] cursor-pointer sm:flex-row sm:items-center sm:gap-4"
                 style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
                 {/* Avatar */}
@@ -559,7 +655,7 @@ function Section({ title, accentColor, leads }: { title: string; accentColor: st
                     <p className="text-sm font-semibold truncate" style={{ color: "var(--color-foreground)" }}>
                       {lead.full_name ?? "Unknown"}
                     </p>
-                    <ClientStatusBadge status={lead.client_status} />
+                    <ClientStatusBadge status={lead.client_status} antiBroker={lead.client_anti_broker} />
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     {lead.phone && (

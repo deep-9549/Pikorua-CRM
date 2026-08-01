@@ -95,6 +95,7 @@ test('microsite mapper enriches CRM fields from lead and job rows', () => {
   assert.equal(mapped.crmDetails.projectName, 'Pikorua Heights')
   assert.equal(mapped.crmDetails.currentArea, 'Ahmedabad')
   assert.equal(mapped.crmDetails.companyName, 'Buyer Co')
+  assert.equal(mapped.crmDetails.budgetRange, undefined)
   assert.equal(mapped.crmDetails.remarks.includes('Requirement: 3 BHK'), true)
   assert.equal(mapped.metaLead.formData.job.property_name, 'Pikorua Heights')
 })

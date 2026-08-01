@@ -190,7 +190,6 @@ export class MicrositeLeadSyncService implements OnModuleInit, OnModuleDestroy {
       const crmDetails = mapped.crmDetails
       if (
         crmDetails.projectName ||
-        crmDetails.budgetRange ||
         crmDetails.currentArea ||
         crmDetails.companyName ||
         crmDetails.remarks
@@ -198,7 +197,6 @@ export class MicrositeLeadSyncService implements OnModuleInit, OnModuleDestroy {
         await tx.insert(leadCrmDetails).values({
           leadId: inserted.id,
           ...(crmDetails.projectName ? { projectName: crmDetails.projectName } : {}),
-          ...(crmDetails.budgetRange ? { budgetRange: crmDetails.budgetRange } : {}),
           ...(crmDetails.currentArea ? { currentArea: crmDetails.currentArea } : {}),
           ...(crmDetails.companyName ? { companyName: crmDetails.companyName } : {}),
           ...(crmDetails.remarks ? { remarks: crmDetails.remarks } : {}),

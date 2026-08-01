@@ -1,0 +1,4 @@
+# Graphify runtime output and its own installed skill are not project architecture.
+graphify-out/
+.codex/skills/graphify/
+**/.next*/

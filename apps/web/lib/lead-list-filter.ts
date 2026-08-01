@@ -17,6 +17,7 @@ export interface FilterableLead {
   source: string
   received_at: string
   client_status?: string | null
+  client_anti_broker?: boolean
   assigned_to_profile?: { id: string } | null
   crm?: { call_status?: string | null } | null
 }
@@ -55,7 +56,8 @@ export function filterLeadList<T extends FilterableLead>(
         || lead.campaign_name?.toLowerCase().includes(query)
       if (!matchesSearch) return false
     }
-    if (filters.clientStatus && (lead.client_status ?? "") !== filters.clientStatus) return false
+    if (filters.clientStatus === "anti_broker" && !lead.client_anti_broker) return false
+    if (filters.clientStatus && filters.clientStatus !== "anti_broker" && (lead.client_status ?? "") !== filters.clientStatus) return false
     if (filters.callStatus) {
       const callStatus = lead.crm?.call_status ?? ""
       if (filters.callStatus === "fresh" && callStatus === "spoken") return false

@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, index } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, boolean, index } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { metaLeads } from './leads'
 import { userProfiles } from './users'
@@ -10,6 +10,7 @@ export const clients = pgTable('clients', {
   phone: text('phone'),
   email: text('email'),
   status: text('status').default('active'),
+  antiBroker: boolean('anti_broker').default(false).notNull(),
   statusNote: text('status_note'),
   statusUpdatedBy: uuid('status_updated_by').references(() => userProfiles.id, { onDelete: 'set null' }),
   statusUpdatedAt: timestamp('status_updated_at', { withTimezone: true }),

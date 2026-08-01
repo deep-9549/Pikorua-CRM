@@ -1,14 +1,16 @@
 import { Controller, Get, Patch, Put, Param, Body, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
-import { IsString, IsOptional } from 'class-validator'
+import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator'
+import { CLIENT_STATUS_VALUES } from '@pikorua/shared'
 import { ClientsService } from './clients.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard } from '../../common/guards/roles.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 
 class UpdateStatusDto {
-  @IsString() @IsOptional() status?: string
+  @IsIn(CLIENT_STATUS_VALUES) @IsOptional() status?: string | null
   @IsString() @IsOptional() status_note?: string
+  @IsBoolean() @IsOptional() anti_broker?: boolean
 }
 
 @ApiTags('Clients')
@@ -25,6 +27,6 @@ export class ClientsController {
   @Put(':id/status')
   @ApiOperation({ summary: 'Update client status' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateStatusDto, @CurrentUser() user: { id: string }) {
-    return this.clientsService.updateStatus(id, user.id, dto.status ?? null, dto.status_note)
+    return this.clientsService.updateStatus(id, user.id, dto)
   }
 }

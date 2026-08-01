@@ -5,6 +5,7 @@ import {
   metaLeads, leadCrmDetails, leadNotes, leadInteractions, siteVisits, clients,
   bookings, conversations, messages, leadFollowUps,
 } from '@pikorua/db'
+import { missingSpokenLeadFields, SPOKEN_REQUIRED_FIELD_LABELS } from '@pikorua/shared'
 import { CreateLeadDto } from './dto/create-lead.dto'
 import { UpdateLeadDto } from './dto/update-lead.dto'
 import { CreateLeadNoteDto } from './dto/create-lead-note.dto'
@@ -220,6 +221,20 @@ export class LeadsService {
     const savedCallStatus = dto.call_status !== undefined
       ? dto.call_status
       : existing?.callStatus ?? null
+    const missingSpokenFields = missingSpokenLeadFields({
+      call_status: savedCallStatus,
+      budget_range: dto.budget_range !== undefined ? dto.budget_range : existing?.budgetRange,
+      profession: dto.profession !== undefined ? dto.profession : existing?.profession,
+      current_city: dto.current_city !== undefined ? dto.current_city : existing?.currentCity,
+      current_area: dto.current_area !== undefined ? dto.current_area : existing?.currentArea,
+    })
+    if (missingSpokenFields.length > 0) {
+      const labels = missingSpokenFields.map(field => SPOKEN_REQUIRED_FIELD_LABELS[field])
+      throw new BadRequestException({
+        message: `Spoken leads require ${labels.join(', ')}`,
+        missing_fields: missingSpokenFields,
+      })
+    }
     const shouldLogSaveAsCall = isAssignedOwnerSave
     const savedAtIst = new Date(now.getTime() + 5.5 * 60 * 60 * 1000).toISOString().replace('Z', '+05:30')
 

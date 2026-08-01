@@ -118,7 +118,7 @@ export class MetaLeadsService {
 
     // Build phone list for client status lookup (works even when clientId is not yet set)
     const phones = [...new Set(leads.map(l => l.phone).filter(Boolean))] as string[]
-    const phoneClientMap = new Map<string, { status: string | null; statusNote: string | null }>()
+    const phoneClientMap = new Map<string, { status: string | null; statusNote: string | null; antiBroker: boolean }>()
     if (phones.length > 0) {
       const rows = await this.db.query.clients.findMany({
         where: inArray(clients.phone, phones),
@@ -127,6 +127,7 @@ export class MetaLeadsService {
         if (row.phone) phoneClientMap.set(row.phone, {
           status: row.status,
           statusNote: row.statusNote,
+          antiBroker: Boolean(row.antiBroker),
         })
       }
     }
@@ -167,6 +168,7 @@ export class MetaLeadsService {
           ...l,
           clientStatus: l.phone ? (phoneClientMap.get(l.phone)?.status ?? null) : null,
           clientStatusNote: l.phone ? (phoneClientMap.get(l.phone)?.statusNote ?? null) : null,
+          clientAntiBroker: l.phone ? (phoneClientMap.get(l.phone)?.antiBroker ?? false) : false,
         }),
         today_follow_up_calls: followUpCallsByLead.get(l.id) ?? [],
       })),
@@ -196,15 +198,17 @@ export class MetaLeadsService {
     // Fetch current client status (for the response)
     let clientStatus: string | null = null
     let clientStatusNote: string | null = null
+    let clientAntiBroker = false
     if (clientId) {
       const client = await this.db.query.clients.findFirst({
         where: eq(clients.id, clientId),
       })
       clientStatus = client?.status ?? null
       clientStatusNote = client?.statusNote ?? null
+      clientAntiBroker = Boolean(client?.antiBroker)
     }
 
-    return { lead: serializeMetaLead({ ...lead, clientId, clientStatus, clientStatusNote }) }
+    return { lead: serializeMetaLead({ ...lead, clientId, clientStatus, clientStatusNote, clientAntiBroker }) }
   }
 
   /**
@@ -237,6 +241,7 @@ export class MetaLeadsService {
     let history: unknown[] = []
     let clientStatus: string | null = null
     let clientStatusNote: string | null = null
+    let clientAntiBroker = false
     if (clientId) {
       // A missing client shouldn't take down the whole lead page — degrade to
       // showing the lead without its profile/history (matches the old behaviour).
@@ -246,6 +251,7 @@ export class MetaLeadsService {
         history = profile.leads
         clientStatus = profile.client?.status ?? null
         clientStatusNote = profile.client?.status_note ?? null
+        clientAntiBroker = Boolean(profile.client?.anti_broker)
       } catch (error) {
         // Degrade gracefully, but record why so a DB/network failure is
         // distinguishable from a genuinely missing client.
@@ -257,7 +263,7 @@ export class MetaLeadsService {
     }
 
     return {
-      lead: serializeMetaLead({ ...lead, clientId, clientStatus, clientStatusNote }),
+      lead: serializeMetaLead({ ...lead, clientId, clientStatus, clientStatusNote, clientAntiBroker }),
       crm: serializeCrmDetails(lead.crmDetails),
       client,
       history,

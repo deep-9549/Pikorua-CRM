@@ -1,4 +1,4 @@
-import { normalizeMetaBudget, stripPhonePrefix } from '../../common/utils/meta-format'
+import { stripPhonePrefix } from '../../common/utils/meta-format'
 import { MicrositeLeadSourceConfig } from './microsite-lead-source-config'
 import { MicrositeJob, MicrositeLead } from './microsite-lead.types'
 
@@ -46,10 +46,6 @@ export function mapMicrositeLeadToCrm(
   const campaignName = projectName
     ? `${source.label} - ${projectName}`
     : `${source.label} - ${leadSourceLabel ?? 'Microsite'}`
-  const budgetRange = clean(lead.budget)
-    ? normalizeMetaBudget(lead.budget) ?? clean(lead.budget)
-    : clean(job?.price)
-
   const remarks = [
     clean(lead.requirement) ? `Requirement: ${clean(lead.requirement)}` : null,
     clean(lead.message),
@@ -81,7 +77,6 @@ export function mapMicrositeLeadToCrm(
     },
     crmDetails: {
       projectName,
-      budgetRange,
       currentArea: location,
       companyName: clean(lead.company),
       remarks,

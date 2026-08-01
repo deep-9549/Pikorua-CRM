@@ -32,6 +32,7 @@ const leads = [
     full_name: 'Asha', phone: '111', email: 'asha@example.com', city: 'Pune',
     campaign_name: 'Luxury Villas', source: 'meta_ad', status: 'assigned',
     received_at: '2026-07-10T10:00:00Z', client_status: 'hot',
+    client_anti_broker: true,
     assigned_to_profile: { id: 'exec-1', full_name: 'Executive One' },
     crm: { call_status: 'spoken' },
   },
@@ -76,4 +77,11 @@ test('CSV built from the filtered result contains no unfiltered leads', () => {
   assert.match(csv, /City Apartments/)
   assert.doesNotMatch(csv, /Asha|Mira|Luxury Villas/)
   assert.equal(csv.trim().split('\n').length, 2)
+})
+
+test('CSV exports Anti-Broker separately from primary client status', () => {
+  const csv = buildLeadsCsv([leads[0]])
+  const [header, row] = csv.split('\n')
+  assert.match(header, /Client Status,Anti-Broker,Client Status Note/)
+  assert.match(row, /,Hot,Yes,/)
 })

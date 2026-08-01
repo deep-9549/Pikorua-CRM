@@ -10,7 +10,8 @@
         "build": "next build",
         "start": "next start -p 3000",
         "lint": "eslint .",
-        "test:leads-filter": "node --test test/leads-filter-export.test.cjs"
+        "test:leads-filter": "node --test test/leads-filter-export.test.cjs",
+        "test:crm-workflow": "node --test test/crm-workflow.test.cjs"
     },
     "dependencies": {
         "@hookform/resolvers": "^3.9.1",

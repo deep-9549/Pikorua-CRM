@@ -1,12 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { usePathname } from "next/navigation"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { TopNav } from "@/components/layout/top-nav"
 import { CommandPalette } from "@/components/layout/command-palette"
 import { PrivacyGuard } from "@/components/security/privacy-guard"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { AppPreferencesProvider } from "@/components/providers/app-preferences-provider"
+import { clearLeadSectionState } from "@/lib/lead-list-state"
 
 export default function DashboardLayout({
   children,
@@ -16,7 +18,12 @@ export default function DashboardLayout({
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false)
+  const pathname = usePathname()
   const sidebarOffset = sidebarCollapsed ? 68 : 256
+
+  React.useEffect(() => {
+    if (!pathname.startsWith("/leads")) clearLeadSectionState()
+  }, [pathname])
 
   return (
     <AppPreferencesProvider className="min-h-screen bg-background text-foreground">

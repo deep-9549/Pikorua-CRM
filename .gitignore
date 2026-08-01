@@ -53,12 +53,7 @@ coverage/
 # ── Database ───────────────────────────────────────────────────────────────────
 drizzle/
 *.sql
-!db_migrations/20260703_microsite_lead_sync.sql
-!db_migrations/20260709_property_inventory_live.sql
-!db_migrations/20260711_add_plot_property_type.sql
-!db_migrations/20260714_lead_follow_up_history.sql
-!db_migrations/20260718_password_reset_tokens.sql
-!db_migrations/20260720_meta_lead_platform.sql
+!db_migrations/*.sql
 *.dump
 *.db
 
@@ -81,3 +76,6 @@ Thumbs.db
 *.csv
 TECHSTACK.md
 production.md
+
+# Graphify local usage accounting
+graphify-out/cost.json

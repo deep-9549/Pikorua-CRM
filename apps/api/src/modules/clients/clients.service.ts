@@ -1,7 +1,8 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { eq, and, inArray, isNotNull, isNull } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { clients, metaLeads } from '@pikorua/db'
+import { isAntiBrokerCompatibleStatus } from '@pikorua/shared'
 import { serializeMetaLead } from '../leads/lead.serializer'
 import { serializeProfile } from '../../common/serializers/profile.serializer'
 import { LeadActivityService } from '../lead-activity/lead-activity.service'
@@ -19,6 +20,7 @@ function serializeClient(client: any) {
     email: client.email ?? null,
     city: client.city ?? null,
     status: client.status ?? null,
+    anti_broker: Boolean(client.antiBroker),
     status_note: client.statusNote ?? null,
     status_updated_by: client.statusUpdatedBy ?? null,
     status_updated_by_profile: serializeProfile(client.statusUpdatedByProfile),
@@ -78,22 +80,37 @@ export class ClientsService {
         ...lead,
         clientStatus: client.status,
         clientStatusNote: client.statusNote,
+        clientAntiBroker: client.antiBroker,
       })),
     }
   }
 
-  async updateStatus(id: string, updatedBy: string, status: string | null, statusNote?: string) {
+  async updateStatus(
+    id: string,
+    updatedBy: string,
+    input: { status?: string | null; status_note?: string; anti_broker?: boolean },
+  ) {
     const client = await this.db.query.clients.findFirst({
       where: eq(clients.id, id),
       with: { statusUpdatedByProfile: true },
     })
     if (!client) throw new NotFoundException(`Client ${id} not found`)
 
+    const status = input.status === undefined ? client.status ?? null : input.status
+    const statusNote = input.status_note === undefined ? client.statusNote ?? null : input.status_note
+    if (input.anti_broker === true && !isAntiBrokerCompatibleStatus(status)) {
+      throw new BadRequestException('Anti-Broker can only be combined with Hot, Warm, or Cold')
+    }
+    const antiBroker = isAntiBrokerCompatibleStatus(status)
+      ? input.anti_broker ?? Boolean(client.antiBroker)
+      : false
+
     await this.db
       .update(clients)
       .set({
         status: status ?? null,
         statusNote: statusNote ?? null,
+        antiBroker,
         statusUpdatedBy: updatedBy,
         statusUpdatedAt: new Date(),
         updatedAt: new Date(),
@@ -101,9 +118,9 @@ export class ClientsService {
       .where(eq(clients.id, id))
 
     const changes = this.leadActivityService.diff(
-      { status: client.status ?? null, status_note: client.statusNote ?? null },
-      { status: status ?? null, status_note: statusNote ?? null },
-      { status: 'Client Status', status_note: 'Client Status Note' },
+      { status: client.status ?? null, status_note: client.statusNote ?? null, anti_broker: Boolean(client.antiBroker) },
+      { status: status ?? null, status_note: statusNote ?? null, anti_broker: antiBroker },
+      { status: 'Client Status', status_note: 'Client Status Note', anti_broker: 'Anti-Broker' },
     )
 
     const previousPoolStatus = poolStatusForClientStatus(client.status)

@@ -9,6 +9,7 @@ export interface ExportableLead {
   received_at: string
   client_status?: string | null
   client_status_note?: string | null
+  client_anti_broker?: boolean
   assigned_to_profile?: { full_name: string } | null
   crm?: {
     first_call_date?: string | null
@@ -92,6 +93,7 @@ export function buildLeadsCsv(leads: ExportableLead[]) {
     "Source",
     "Status",
     "Client Status",
+    "Anti-Broker",
     "Client Status Note",
     "Assigned To",
     "Call Status",
@@ -122,6 +124,7 @@ export function buildLeadsCsv(leads: ExportableLead[]) {
     pretty(l.source),
     pretty(l.status),
     prettyClientStatus(l.client_status),
+    l.client_anti_broker ? "Yes" : "No",
     l.client_status_note ?? "",
     l.assigned_to_profile?.full_name ?? "",
     pretty(l.crm?.call_status),

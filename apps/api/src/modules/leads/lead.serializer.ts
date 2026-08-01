@@ -98,5 +98,6 @@ export function serializeMetaLead(lead: any) {
     crm: serializeCrmDetails(lead.crmDetails),
     client_status: normalizeClientStatus(lead.clientStatus, lead.crmDetails),
     client_status_note: lead.clientStatusNote ?? null,
+    client_anti_broker: Boolean(lead.clientAntiBroker),
   }
 }
