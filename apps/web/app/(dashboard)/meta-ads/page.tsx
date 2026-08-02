@@ -59,6 +59,7 @@ interface MetaLead {
   received_at: string
   assigned_at: string | null
   assigned_to_profile: { id: string; full_name: string; role: string } | null
+  crm: { call_status: "spoken" | "not_spoken" | "call_back_later" | null } | null
 }
 
 interface Employee {
@@ -614,6 +615,7 @@ export default function MetaAdsPage() {
   const [platformFilter, setPlatformFilter] = useState("")
   const [campaignFilter, setCampaignFilter] = useState("")
   const [executiveFilter, setExecutiveFilter] = useState("")
+  const [callStatusFilter, setCallStatusFilter] = useState("")
   const [receivedDateFromFilter, setReceivedDateFromFilter] = useState("")
   const [receivedDateToFilter, setReceivedDateToFilter] = useState("")
 
@@ -783,6 +785,7 @@ export default function MetaAdsPage() {
     setActiveTab(tab)
     setSelected(new Set())
     setExecutiveFilter("")
+    setCallStatusFilter("")
     fetchLeads(tab === "all" ? undefined : tab)
   }
 
@@ -825,14 +828,15 @@ export default function MetaAdsPage() {
     if (platformFilter && l.platform !== platformFilter) return false
     if (campaignFilter && l.campaign_name !== campaignFilter) return false
     if (executiveFilter && l.assigned_to_profile?.id !== executiveFilter) return false
+    if (callStatusFilter && l.crm?.call_status !== callStatusFilter) return false
     const receivedDate = toDateInputValue(l.received_at)
     if ((receivedDateFromFilter || receivedDateToFilter) && !receivedDate) return false
     if (receivedDateFromFilter && receivedDate < receivedDateFromFilter) return false
     if (receivedDateToFilter && receivedDate > receivedDateToFilter) return false
     return true
-  }), [leads, search, sourceFilter, platformFilter, campaignFilter, executiveFilter, receivedDateFromFilter, receivedDateToFilter])
+  }), [leads, search, sourceFilter, platformFilter, campaignFilter, executiveFilter, callStatusFilter, receivedDateFromFilter, receivedDateToFilter])
 
-  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || executiveFilter || receivedDateFromFilter || receivedDateToFilter)
+  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || executiveFilter || callStatusFilter || receivedDateFromFilter || receivedDateToFilter)
   const shownLeadIds = useMemo(() => filteredLeads.map(lead => lead.id), [filteredLeads])
   const splitLeadIds = useMemo(
     () => selected.size > 0 ? Array.from(selected) : shownLeadIds,
@@ -1029,6 +1033,19 @@ export default function MetaAdsPage() {
                   ))}
                 </select>
               )}
+              {activeTab === "assigned" && (
+                <select
+                  value={callStatusFilter}
+                  onChange={e => setCallStatusFilter(e.target.value)}
+                  aria-label="Filter by call status"
+                  className="h-9 w-full rounded-lg px-2.5 text-xs bg-transparent cursor-pointer sm:max-w-[160px]"
+                  style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                >
+                  <option value="">All Call Statuses</option>
+                  <option value="spoken">Spoken</option>
+                  <option value="not_spoken">Not Spoken</option>
+                </select>
+              )}
               {isSuperAdmin && (
                 <div className="flex w-full items-center gap-1.5 sm:w-auto">
                   <div className="relative min-w-0 flex-1 sm:flex-none">
@@ -1083,7 +1100,7 @@ export default function MetaAdsPage() {
                   variant="ghost"
                   size="sm"
                   className="gap-1 h-9 text-xs shrink-0"
-                  onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setExecutiveFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
+                  onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setExecutiveFilter(""); setCallStatusFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
                 >
                   <X className="w-3.5 h-3.5" /> Clear
                 </Button>
