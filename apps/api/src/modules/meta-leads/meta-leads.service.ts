@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { eq, inArray, desc, and, isNull, isNotNull, notInArray, gte, lt } from 'drizzle-orm'
+import { eq, inArray, desc, and, or, isNull, isNotNull, notInArray, gte, lt } from 'drizzle-orm'
 import { DatabaseService } from '../../database/database.service'
 import { metaLeads, userProfiles, clients, properties, leadFollowUps } from '@pikorua/db'
 import { AssignLeadDto } from './dto/assign-lead.dto'
@@ -283,6 +283,26 @@ export class MetaLeadsService {
         updated_at: item.updatedAt,
       })),
     }
+  }
+
+  async markAssignmentViewed(id: string, userId: string) {
+    const viewedAt = new Date()
+    const [updated] = await this.db
+      .update(metaLeads)
+      .set({ assignmentViewedAt: viewedAt })
+      .where(and(
+        eq(metaLeads.id, id),
+        eq(metaLeads.assignedTo, userId),
+        isNull(metaLeads.deletedAt),
+        isNotNull(metaLeads.assignedAt),
+        or(
+          isNull(metaLeads.assignmentViewedAt),
+          lt(metaLeads.assignmentViewedAt, metaLeads.assignedAt),
+        ),
+      ))
+      .returning({ assignmentViewedAt: metaLeads.assignmentViewedAt })
+
+    return updated?.assignmentViewedAt ?? null
   }
 
   async propertyRecommendations(id: string, input: PropertyRecommendationInput) {

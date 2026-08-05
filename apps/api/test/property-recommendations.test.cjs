@@ -222,3 +222,30 @@ test('recommendation endpoint preserves assigned-lead access boundary', async ()
     { recommendations: [] },
   )
 })
+
+test('opening assigned lead detail acknowledges the current assignment once authorized', async () => {
+  const viewedAt = new Date('2026-08-05T10:00:00Z')
+  const marked = []
+  const controller = new MetaLeadsController({
+    detail: async () => ({ lead: { assigned_to: 'owner-id', status: 'assigned' } }),
+    markAssignmentViewed: async (leadId, userId) => {
+      marked.push([leadId, userId])
+      return viewedAt
+    },
+  })
+
+  const result = await controller.detail('lead-id', { id: 'owner-id', role: 'sales_executive' })
+  assert.deepEqual(marked, [['lead-id', 'owner-id']])
+  assert.equal(result.lead.assignment_viewed_at, viewedAt)
+})
+
+test('opening lead detail as admin does not acknowledge a sales executive assignment', async () => {
+  let marked = false
+  const controller = new MetaLeadsController({
+    detail: async () => ({ lead: { assigned_to: 'owner-id', status: 'assigned' } }),
+    markAssignmentViewed: async () => { marked = true },
+  })
+
+  await controller.detail('lead-id', { id: 'admin-id', role: 'super_admin' })
+  assert.equal(marked, false)
+})

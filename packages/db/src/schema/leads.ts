@@ -59,6 +59,7 @@ export const metaLeads = pgTable('meta_leads', {
   assignedTo: uuid('assigned_to').references(() => userProfiles.id, { onDelete: 'set null' }),
   assignedBy: uuid('assigned_by').references(() => userProfiles.id, { onDelete: 'set null' }),
   assignedAt: timestamp('assigned_at', { withTimezone: true }),
+  assignmentViewedAt: timestamp('assignment_viewed_at', { withTimezone: true }),
   receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

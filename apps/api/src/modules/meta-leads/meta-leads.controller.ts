@@ -118,6 +118,10 @@ export class MetaLeadsController {
     if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id && !isMetaLeadPoolStatus(result.lead?.status)) {
       throw new ForbiddenException('You can only view leads assigned to you')
     }
+    if (user.role === 'sales_executive' && result.lead?.assigned_to === user.id) {
+      const viewedAt = await this.metaLeadsService.markAssignmentViewed(id, user.id)
+      if (viewedAt) result.lead.assignment_viewed_at = viewedAt
+    }
     return result
   }
 
@@ -128,6 +132,10 @@ export class MetaLeadsController {
     // A sales executive may only open leads assigned to them.
     if (user.role !== 'super_admin' && result.lead?.assigned_to !== user.id && !isMetaLeadPoolStatus(result.lead?.status)) {
       throw new ForbiddenException('You can only view leads assigned to you')
+    }
+    if (user.role === 'sales_executive' && result.lead?.assigned_to === user.id) {
+      const viewedAt = await this.metaLeadsService.markAssignmentViewed(id, user.id)
+      if (viewedAt) result.lead.assignment_viewed_at = viewedAt
     }
     return result
   }

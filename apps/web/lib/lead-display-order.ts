@@ -5,6 +5,8 @@ export interface LeadOrderCrm {
 
 export interface LeadForDisplayOrder {
   id: string
+  assigned_at?: string | null
+  assignment_viewed_at?: string | null
   crm?: LeadOrderCrm | null
 }
 
@@ -32,6 +34,18 @@ export function followUpTimestamp(value: string | null | undefined) {
 
 export function isFreshLead(lead: LeadForDisplayOrder) {
   return lead.crm?.call_status !== "spoken"
+}
+
+export function isFreshlyAssignedLead(lead: LeadForDisplayOrder) {
+  if (!lead.assigned_at) return false
+  const assignedAt = new Date(lead.assigned_at).getTime()
+  if (Number.isNaN(assignedAt)) return false
+
+  const viewedAt = lead.assignment_viewed_at
+    ? new Date(lead.assignment_viewed_at).getTime()
+    : Number.NaN
+
+  return Number.isNaN(viewedAt) || assignedAt > viewedAt
 }
 
 export function getLeadDisplaySections<T extends LeadForDisplayOrder>(

@@ -31,6 +31,7 @@ const {
   isAntiBrokerCompatibleStatus,
 } = require('../../../packages/shared/src/lead-crm.ts')
 const { EMPTY_LEAD_FILTERS, filterLeadList } = require('../lib/lead-list-filter.ts')
+const { isFreshlyAssignedLead } = require('../lib/lead-display-order.ts')
 
 test.after(() => {
   if (originalTsLoader) require.extensions['.ts'] = originalTsLoader
@@ -57,6 +58,25 @@ test('lead queue snapshot accepts only versioned string id arrays', () => {
   const snapshot = { version: 1, source: 'lead-list', ids: ['a', 'b'], createdAt: 42 }
   assert.deepEqual(parseLeadQueueSnapshot(JSON.stringify(snapshot)), snapshot)
   assert.equal(parseLeadQueueSnapshot(JSON.stringify({ ...snapshot, ids: ['a', 3] })), null)
+})
+
+test('freshly assigned leads move out after the assignment is visited', () => {
+  assert.equal(isFreshlyAssignedLead({
+    id: 'new',
+    assigned_at: '2026-08-05T09:00:00Z',
+    assignment_viewed_at: null,
+  }), true)
+  assert.equal(isFreshlyAssignedLead({
+    id: 'transferred',
+    assigned_at: '2026-08-05T09:00:00Z',
+    assignment_viewed_at: '2026-08-04T09:00:00Z',
+  }), true)
+  assert.equal(isFreshlyAssignedLead({
+    id: 'visited',
+    assigned_at: '2026-08-04T09:00:00Z',
+    assignment_viewed_at: '2026-08-05T09:00:00Z',
+  }), false)
+  assert.equal(isFreshlyAssignedLead({ id: 'unassigned', assigned_at: null, assignment_viewed_at: null }), false)
 })
 
 test('spoken leads require four client qualification fields', () => {

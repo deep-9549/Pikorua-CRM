@@ -90,6 +90,7 @@ export function serializeMetaLead(lead: any) {
     assigned_to: lead.assignedTo ?? null,
     assigned_by: lead.assignedBy ?? null,
     assigned_at: lead.assignedAt ?? null,
+    assignment_viewed_at: lead.assignmentViewedAt ?? null,
     received_at: lead.receivedAt,
     created_at: lead.createdAt,
     updated_at: lead.updatedAt,

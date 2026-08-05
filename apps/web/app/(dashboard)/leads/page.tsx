@@ -16,6 +16,13 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { AddLeadDialog } from "@/components/add-lead-dialog"
 import { exportLeadsToExcel } from "@/lib/export-leads"
@@ -24,6 +31,7 @@ import {
   dateKey,
   getLeadDisplaySections,
   isFreshLead,
+  isFreshlyAssignedLead,
 } from "@/lib/lead-display-order"
 import {
   readLeadListViewState,
@@ -63,6 +71,7 @@ interface MetaLead {
   status: string
   received_at: string
   assigned_at: string | null
+  assignment_viewed_at: string | null
   assigned_to_profile: { id: string; full_name: string } | null
   crm?: Crm | null
   client_status?: string | null
@@ -157,6 +166,8 @@ function FilterSelect({ value, onChange, children }: {
 }
 
 const EMPTY_LEADS: MetaLead[] = []
+type CallListStatus = "spoken" | "not_spoken" | "call_back_later"
+type CallListEntry = { key: string; lead: MetaLead }
 
 export default function LeadsPage() {
   const {
@@ -181,6 +192,7 @@ export default function LeadsPage() {
   const [viewStateHydrated, setViewStateHydrated] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [addOpen, setAddOpen] = useState(false)
+  const [callListStatus, setCallListStatus] = useState<CallListStatus | null>(null)
   const isSuperAdmin = getAuthUser()?.role === "super_admin"
 
   useEffect(() => {
@@ -251,13 +263,17 @@ export default function LeadsPage() {
     }
 
     const byExec = new Map<string, { id: string; name: string; spoken: number; notSpoken: number; callBack: number }>()
-    let totalSpoken = 0
-    let totalNotSpoken = 0
-    let totalCallBack = 0
+    const callsByStatus: Record<CallListStatus, CallListEntry[]> = {
+      spoken: [],
+      not_spoken: [],
+      call_back_later: [],
+    }
 
     function recordCall(
       status: string | null | undefined,
       exec: { id: string; full_name: string } | null,
+      lead: MetaLead,
+      occurrenceId: string,
     ) {
       const execId = exec?.id ?? "unassigned"
       if (!byExec.has(execId)) byExec.set(execId, {
@@ -268,9 +284,12 @@ export default function LeadsPage() {
         callBack: 0,
       })
       const s = byExec.get(execId)!
-      if (status === "spoken") { s.spoken++; totalSpoken++ }
-      if (status === "not_spoken") { s.notSpoken++; totalNotSpoken++ }
-      if (status === "call_back_later") { s.callBack++; totalCallBack++ }
+      if (status === "spoken") s.spoken++
+      if (status === "not_spoken") s.notSpoken++
+      if (status === "call_back_later") s.callBack++
+      if (status === "spoken" || status === "not_spoken" || status === "call_back_later") {
+        callsByStatus[status].push({ key: `${lead.id}-${occurrenceId}`, lead })
+      }
     }
 
     callStatsLeads.forEach(lead => {
@@ -279,11 +298,13 @@ export default function LeadsPage() {
         followUpCalls.forEach(call => recordCall(
           call.call_status,
           call.completed_by_profile ?? lead.assigned_to_profile,
+          lead,
+          call.id,
         ))
         return
       }
       if (!calledToday(lead)) return
-      recordCall(lead.crm?.call_status, lead.assigned_to_profile)
+      recordCall(lead.crm?.call_status, lead.assigned_to_profile, lead, "crm")
     })
 
     const execList = Array.from(byExec.values())
@@ -291,25 +312,41 @@ export default function LeadsPage() {
 
     return {
       execList,
-      totalSpoken,
-      totalNotSpoken,
-      totalCallBack,
-      totalCalls: totalSpoken + totalNotSpoken + totalCallBack,
+      callsByStatus,
+      totalSpoken: callsByStatus.spoken.length,
+      totalNotSpoken: callsByStatus.not_spoken.length,
+      totalCallBack: callsByStatus.call_back_later.length,
+      totalCalls: callsByStatus.spoken.length + callsByStatus.not_spoken.length + callsByStatus.call_back_later.length,
     }
   }, [callStatsLeads, today])
 
+  const freshlyAssigned = useMemo(
+    () => filtered
+      .filter(isFreshlyAssignedLead)
+      .sort((a, b) => new Date(b.assigned_at ?? 0).getTime() - new Date(a.assigned_at ?? 0).getTime()),
+    [filtered],
+  )
+  const workedLeads = useMemo(
+    () => filtered.filter(lead => !isFreshlyAssignedLead(lead)),
+    [filtered],
+  )
+
   // This is the exact order rendered on the page and used by the lead-detail
   // Previous/Next buttons when a sales executive opens a lead from here.
+  // Fresh assignments are intentionally kept in their own queue.
   const { dueToday, overdue, rest } = useMemo(
-    () => getLeadDisplaySections(filtered, now),
-    [filtered, now],
+    () => getLeadDisplaySections(workedLeads, now),
+    [now, workedLeads],
   )
 
   const visibleLeads = useMemo(() => {
     if (activeTab === "follow-ups") return dueToday
     if (activeTab === "overdue") return overdue
+    if (activeTab === "freshly-assigned") return freshlyAssigned
     return rest
-  }, [activeTab, dueToday, overdue, rest])
+  }, [activeTab, dueToday, freshlyAssigned, overdue, rest])
+
+  const selectedCallEntries = callListStatus ? todayCallStats.callsByStatus[callListStatus] : []
 
   useEffect(() => {
     if (!viewStateHydrated) return
@@ -421,24 +458,20 @@ export default function LeadsPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <Card className="shadow-card">
-                <CardContent className="p-4">
-                  <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Spoken Today</p>
-                  <p className="text-2xl font-bold" style={{ color: "oklch(0.65 0.18 145)" }}>{todayCallStats.totalSpoken}</p>
-                </CardContent>
-              </Card>
-              <Card className="shadow-card">
-                <CardContent className="p-4">
-                  <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Not Spoken Today</p>
-                  <p className="text-2xl font-bold" style={{ color: "var(--color-destructive)" }}>{todayCallStats.totalNotSpoken}</p>
-                </CardContent>
-              </Card>
-              <Card className="shadow-card">
-                <CardContent className="p-4">
-                  <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Call Back Today</p>
-                  <p className="text-2xl font-bold" style={{ color: "var(--color-primary)" }}>{todayCallStats.totalCallBack}</p>
-                </CardContent>
-              </Card>
+              {([
+                { status: "spoken", label: "Spoken Today", value: todayCallStats.totalSpoken, color: "oklch(0.65 0.18 145)" },
+                { status: "not_spoken", label: "Not Spoken Today", value: todayCallStats.totalNotSpoken, color: "var(--color-destructive)" },
+                { status: "call_back_later", label: "Call Back Today", value: todayCallStats.totalCallBack, color: "var(--color-primary)" },
+              ] as const).map(item => (
+                <button key={item.status} type="button" className="rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setCallListStatus(item.status)}>
+                  <Card className="h-full shadow-card transition-colors hover:border-primary/50">
+                    <CardContent className="p-4">
+                      <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>{item.label}</p>
+                      <p className="text-2xl font-bold" style={{ color: item.color }}>{item.value}</p>
+                    </CardContent>
+                  </Card>
+                </button>
+              ))}
               <Card className="shadow-card">
                 <CardContent className="p-4">
                   <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Leads Called Today</p>
@@ -449,6 +482,12 @@ export default function LeadsPage() {
           )}
         </div>
       )}
+
+      <CallListDialog
+        status={callListStatus}
+        entries={selectedCallEntries}
+        onClose={() => setCallListStatus(null)}
+      />
 
       {/* Search + filter toggle */}
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -538,6 +577,10 @@ export default function LeadsPage() {
             Leads
             <TabCount value={rest.length} />
           </TabsTrigger>
+          <TabsTrigger value="freshly-assigned">
+            Freshly Assigned
+            <TabCount value={freshlyAssigned.length} />
+          </TabsTrigger>
           <TabsTrigger value="follow-ups">
             Follow-ups
             <TabCount value={dueToday.length} tone="warning" />
@@ -548,8 +591,8 @@ export default function LeadsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {(["leads", "follow-ups", "overdue"] as LeadTab[]).map(tab => {
-          const tabLeads = tab === "follow-ups" ? dueToday : tab === "overdue" ? overdue : rest
+        {(["leads", "freshly-assigned", "follow-ups", "overdue"] as LeadTab[]).map(tab => {
+          const tabLeads = tab === "follow-ups" ? dueToday : tab === "overdue" ? overdue : tab === "freshly-assigned" ? freshlyAssigned : rest
           return (
             <TabsContent key={tab} value={tab} className="mt-0">
               {loading ? (
@@ -608,7 +651,9 @@ function EmptyLeadTab({ tab, hasQuery, hasAnyLeads, onAdd }: {
 }) {
   const message = hasQuery
     ? `No ${tab === "leads" ? "leads" : tab} match your search or filters`
-    : tab === "follow-ups"
+    : tab === "freshly-assigned"
+      ? "No freshly assigned or transferred leads"
+      : tab === "follow-ups"
       ? "No follow-ups due today"
       : tab === "overdue"
         ? "No overdue follow-ups"
@@ -627,6 +672,57 @@ function EmptyLeadTab({ tab, hasQuery, hasAnyLeads, onAdd }: {
         </Button>
       )}
     </div>
+  )
+}
+
+function CallListDialog({ status, entries, onClose }: {
+  status: CallListStatus | null
+  entries: CallListEntry[]
+  onClose: () => void
+}) {
+  const labels: Record<CallListStatus, string> = {
+    spoken: "Spoken",
+    not_spoken: "Not Spoken",
+    call_back_later: "Call Back Later",
+  }
+
+  const openLead = () => {
+    writeLeadQueueSnapshot(Array.from(new Set(entries.map(entry => entry.lead.id))))
+    onClose()
+  }
+
+  return (
+    <Dialog open={status !== null} onOpenChange={open => { if (!open) onClose() }}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{status ? `${labels[status]} calls today` : "Calls today"}</DialogTitle>
+          <DialogDescription>
+            {entries.length} logged call{entries.length === 1 ? "" : "s"}. Open a lead to continue working it.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+          {entries.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No leads in this list yet.</p>
+          ) : entries.map(entry => (
+            <Card key={entry.key}>
+              <CardContent className="flex items-center gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{entry.lead.full_name ?? "Unknown lead"}</p>
+                  <ProtectedPhone value={entry.lead.phone} className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Phone className="h-3 w-3" />
+                    {entry.lead.phone ? formatPhone(entry.lead.phone) : "No contact number"}
+                  </ProtectedPhone>
+                  {!entry.lead.phone && <p className="mt-0.5 text-xs text-muted-foreground">No contact number</p>}
+                </div>
+                <Button asChild size="sm">
+                  <Link href={`/leads/${entry.lead.id}`} onClick={openLead}>Open Lead</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
