@@ -1337,6 +1337,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   <h2 className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>
                     {lead.full_name ?? "Unknown"}
                   </h2>
+                  <StatusPill status={clientStatus} />
                   {repeatClient && (
                     <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
                       style={{ background: "oklch(0.75 0.18 35 / 0.15)", color: "oklch(0.75 0.18 35)", border: "1px solid oklch(0.75 0.18 35 / 0.3)" }}>
