@@ -43,6 +43,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { getAuthUser } from "@/lib/auth/cookies"
+import {
+  filterMetaAdsQueueLeads,
+  matchingSelectedMetaAdsQueueLeadIds,
+  metaAdsQueueLeadIds,
+} from "@/lib/meta-ads-queue-filter"
+import type { MetaAdsQueueFilters } from "@/lib/meta-ads-queue-filter"
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Types Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
@@ -83,16 +89,6 @@ function timeAgo(dateStr: string) {
 function initials(name: string | null) {
   if (!name) return "?"
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
-}
-
-function toDateInputValue(dateStr: string) {
-  const date = new Date(dateStr)
-  if (Number.isNaN(date.getTime())) return ""
-
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
 }
 
 async function readApiError(res: Response, fallback: string) {
@@ -653,19 +649,21 @@ export default function MetaAdsPage() {
 
   async function handleBulkAssign() {
     if (!isSuperAdmin) return
-    if (!bulkExec || selected.size === 0) return
+    if (!bulkExec || selectedShownLeadIds.length === 0) return
     setBulkAssigning(true)
     try {
+      const selectedIds = selectedShownLeadIds
       const res = await fetch("/api/leads/meta/assign-bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lead_ids: Array.from(selected), assigned_to: bulkExec }),
+        body: JSON.stringify({ lead_ids: selectedIds, assigned_to: bulkExec }),
       })
       if (!res.ok) {
         throw new Error(await readApiError(res, "Bulk assignment failed"))
       }
       // Selected leads leave the current (unassigned / cold pool) view
-      setLeads(prev => prev.filter(l => !selected.has(l.id)))
+      const selectedSet = new Set(selectedIds)
+      setLeads(prev => prev.filter(l => !selectedSet.has(l.id)))
       setSelected(new Set())
       setBulkExec("")
     } catch (e) {
@@ -676,10 +674,10 @@ export default function MetaAdsPage() {
   }
 
   async function handleBulkUnassign() {
-    if (!isSuperAdmin || activeTab !== "assigned" || selected.size === 0) return
+    if (!isSuperAdmin || activeTab !== "assigned" || selectedShownLeadIds.length === 0) return
     setBulkUnassigning(true)
     try {
-      const selectedIds = Array.from(selected)
+      const selectedIds = selectedShownLeadIds
       const res = await fetch("/api/leads/meta/bulk-unassign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -697,10 +695,10 @@ export default function MetaAdsPage() {
   }
 
   async function handleBulkDelete() {
-    if (!isSuperAdmin || activeTab !== "unassigned" || selected.size === 0) return
+    if (!isSuperAdmin || activeTab !== "unassigned" || selectedShownLeadIds.length === 0) return
     setBulkDeleting(true)
     try {
-      const selectedIds = Array.from(selected)
+      const selectedIds = selectedShownLeadIds
       const res = await fetch("/api/leads/meta/delete-bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -813,39 +811,42 @@ export default function MetaAdsPage() {
     return Array.from(set).sort()
   }, [leads])
 
-  // Apply search + filters to the loaded queue
-  const filteredLeads = useMemo(() => leads.filter(l => {
-    if (search) {
-      const q = search.toLowerCase()
-      const hit = l.full_name?.toLowerCase().includes(q)
-        || l.phone?.toLowerCase().includes(q)
-        || l.email?.toLowerCase().includes(q)
-        || l.city?.toLowerCase().includes(q)
-        || l.campaign_name?.toLowerCase().includes(q)
-      if (!hit) return false
-    }
-    if (sourceFilter && l.source !== sourceFilter) return false
-    if (platformFilter && l.platform !== platformFilter) return false
-    if (campaignFilter && l.campaign_name !== campaignFilter) return false
-    if (executiveFilter && l.assigned_to_profile?.id !== executiveFilter) return false
-    if (callStatusFilter && l.crm?.call_status !== callStatusFilter) return false
-    const receivedDate = toDateInputValue(l.received_at)
-    if ((receivedDateFromFilter || receivedDateToFilter) && !receivedDate) return false
-    if (receivedDateFromFilter && receivedDate < receivedDateFromFilter) return false
-    if (receivedDateToFilter && receivedDate > receivedDateToFilter) return false
-    return true
-  }), [leads, search, sourceFilter, platformFilter, campaignFilter, executiveFilter, callStatusFilter, receivedDateFromFilter, receivedDateToFilter])
+  const queueFilters = useMemo<MetaAdsQueueFilters>(() => ({
+    search,
+    source: sourceFilter,
+    platform: platformFilter,
+    campaign: campaignFilter,
+    executive: executiveFilter,
+    callStatus: callStatusFilter,
+    receivedDateFrom: receivedDateFromFilter,
+    receivedDateTo: receivedDateToFilter,
+    queueStatus: activeTab === "assigned" || activeTab === "unassigned" ? activeTab : "",
+  }), [activeTab, search, sourceFilter, platformFilter, campaignFilter, executiveFilter, callStatusFilter, receivedDateFromFilter, receivedDateToFilter])
+
+  // Apply search + filters to the loaded queue through a pure, regression-tested helper.
+  const filteredLeads = useMemo(
+    () => filterMetaAdsQueueLeads(leads, queueFilters),
+    [leads, queueFilters],
+  )
 
   const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || executiveFilter || callStatusFilter || receivedDateFromFilter || receivedDateToFilter)
-  const shownLeadIds = useMemo(() => filteredLeads.map(lead => lead.id), [filteredLeads])
-  const splitLeadIds = useMemo(
-    () => selected.size > 0 ? Array.from(selected) : shownLeadIds,
-    [selected, shownLeadIds],
-  )
-  const shownSelectionOnly = useMemo(
-    () => shownLeadIds.length > 0 && selected.size === shownLeadIds.length && shownLeadIds.every(id => selected.has(id)),
-    [shownLeadIds, selected],
-  )
+  const shownLeadIds = metaAdsQueueLeadIds(filteredLeads)
+  const selectedShownLeadIds = matchingSelectedMetaAdsQueueLeadIds(filteredLeads, selected)
+  const splitLeadIds = selectedShownLeadIds.length > 0 ? selectedShownLeadIds : shownLeadIds
+  const shownSelectionOnly = shownLeadIds.length > 0
+    && selectedShownLeadIds.length === shownLeadIds.length
+    && shownLeadIds.every(id => selected.has(id))
+
+  function clearFilters() {
+    setSearch("")
+    setSourceFilter("")
+    setPlatformFilter("")
+    setCampaignFilter("")
+    setExecutiveFilter("")
+    setCallStatusFilter("")
+    setReceivedDateFromFilter("")
+    setReceivedDateToFilter("")
+  }
 
   function selectShownLeads() {
     if (!selectable) return
@@ -1090,7 +1091,7 @@ export default function MetaAdsPage() {
                       onClick={() => setSplitOpen(true)}
                     >
                       <Shuffle className="w-3.5 h-3.5" />
-                      {selected.size > 0 ? `Split selected (${selected.size})` : `Split shown (${shownLeadIds.length})`}
+                      {selectedShownLeadIds.length > 0 ? `Split selected (${selectedShownLeadIds.length})` : `Split shown (${shownLeadIds.length})`}
                     </Button>
                   )}
                 </>
@@ -1100,7 +1101,7 @@ export default function MetaAdsPage() {
                   variant="ghost"
                   size="sm"
                   className="gap-1 h-9 text-xs shrink-0"
-                  onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setExecutiveFilter(""); setCallStatusFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
+                  onClick={clearFilters}
                 >
                   <X className="w-3.5 h-3.5" /> Clear
                 </Button>
@@ -1115,12 +1116,12 @@ export default function MetaAdsPage() {
             )}
 
             {/* Bulk assign bar — shown on selectable tabs when rows are checked */}
-            {selectable && selected.size > 0 && (
+            {selectable && selectedShownLeadIds.length > 0 && (
               <div className="mb-4 flex flex-col gap-2 rounded-xl px-3 py-3 sm:flex-row sm:items-center sm:gap-3 sm:px-4 sm:py-2.5"
                 style={{ background: "rgb(194 65 12 / 0.08)", border: "1px solid var(--color-primary)" }}>
                 <div className="flex w-full items-center justify-between sm:w-auto">
                   <span className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>
-                    {selected.size} selected
+                    {selectedShownLeadIds.length} selected
                   </span>
                   <Button
                     variant="ghost"
@@ -1156,7 +1157,7 @@ export default function MetaAdsPage() {
                     >
                       {bulkAssigning
                         ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <><UserPlus className="w-3.5 h-3.5" />Assign {selected.size}</>}
+                        : <><UserPlus className="w-3.5 h-3.5" />Assign {selectedShownLeadIds.length}</>}
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -1192,7 +1193,7 @@ export default function MetaAdsPage() {
                   >
                     {bulkUnassigning
                       ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      : <><Undo2 className="w-3.5 h-3.5" />Unassign {selected.size}</>}
+                      : <><Undo2 className="w-3.5 h-3.5" />Unassign {selectedShownLeadIds.length}</>}
                   </Button>
                 )}
                 <Button
@@ -1224,7 +1225,7 @@ export default function MetaAdsPage() {
                         size="sm"
                         variant="outline"
                         className="gap-2 mx-auto"
-                        onClick={() => { setSearch(""); setSourceFilter(""); setPlatformFilter(""); setCampaignFilter(""); setExecutiveFilter(""); setReceivedDateFromFilter(""); setReceivedDateToFilter("") }}
+                        onClick={clearFilters}
                       >
                         <X className="w-3.5 h-3.5" />
                         Clear filters
@@ -1301,7 +1302,7 @@ export default function MetaAdsPage() {
       <AlertDialog open={deleteConfirmOpen} onOpenChange={open => !bulkDeleting && setDeleteConfirmOpen(open)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selected.size} unassigned lead{selected.size === 1 ? "" : "s"} permanently?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {selectedShownLeadIds.length} unassigned lead{selectedShownLeadIds.length === 1 ? "" : "s"} permanently?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the selected leads and their related CRM history. This action cannot be undone.
             </AlertDialogDescription>

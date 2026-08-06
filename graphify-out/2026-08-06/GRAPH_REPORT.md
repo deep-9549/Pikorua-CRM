@@ -1,11 +1,11 @@
 # Graph Report - Pikorua-CRM  (2026-08-06)
 
 ## Corpus Check
-- 338 files · ~217,124 words
+- 338 files · ~217,088 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3070 nodes · 5841 edges · 262 communities (166 shown, 96 thin omitted)
+- 3070 nodes · 5841 edges · 265 communities (169 shown, 96 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 53 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
@@ -34,7 +34,7 @@
 - hooks/use-toast.ts
 - [id]/page.tsx
 - employee-performance-pdf.ts
-- leads.service.ts
+- CreateLeadDto
 - MicrositeLeadSyncService
 - settings/page.tsx
 - supabase-setup.sql
@@ -52,7 +52,7 @@
 - .ingestMeta
 - db/package.json
 - Roles
-- meta-leads.service.ts
+- CurrentUser
 - MetaLeadSyncService
 - item.tsx
 - compilerOptions
@@ -235,7 +235,7 @@
 - analytics_daily_snapshots Table
 - clients Table
 - voice_sync_audit_log Table
-- CurrentUser
+- cache-manager
 - public.lead_activity_events
 - Q: also the sql relations are based on the sql migrations available in the git or all the sql migrations available locally??
 - @pikorua/shared
@@ -243,13 +243,16 @@
 - public.lead_crm_details
 - public.lead_crm_details
 - pagination.tsx
-- cache-manager-redis-store
+- UpdateLeadDto
 - empty.tsx
 - voice-integration.module.ts
 - Q: also make sure that those freshly assigned leads get moved to normal leads section after they are visited once
+- CompleteFollowUpDto
 - public.meta_leads
+- CreateFollowUpDto
 - dashboard-lead-growth.ts
-- LeadsPage
+- lead-display-order.ts
+- CreateLeadNoteDto
 - useMetaLeads
 - meta-page-config.ts
 - accordion.tsx
@@ -288,7 +291,7 @@
 - **Production Release Delivery** — cloudbuild_production_api_image, cloudbuild_production_web_image, cloudbuild_production_release_manifest, cloudbuild_production_release_bucket, cloudbuild_production_deployment_vm [EXTRACTED 1.00]
 - **Lead Operations Schema** — test_leads, test_lead_crm_details, test_lead_interactions, test_lead_notes, test_lead_assignment_history, test_lead_activity_events [INFERRED 0.85]
 
-## Communities (262 total, 96 thin omitted)
+## Communities (265 total, 96 thin omitted)
 
 ### Community 0 - "dashboard.service.ts"
 Cohesion: 0.05
@@ -319,8 +322,8 @@ Cohesion: 0.16
 Nodes (19): buildMonthBuckets(), callWasToday(), CrmDetails, DashboardPage(), displayStatus(), EMPTY_LEADS, EMPTY_VISITS, formatNumber() (+11 more)
 
 ### Community 7 - "DatabaseService"
-Cohesion: 0.08
-Nodes (29): ProfileLike, SerializedProfile, serializeProfile(), DatabaseService, Injectable, BookingUser, serializeBooking(), ClientsService (+21 more)
+Cohesion: 0.06
+Nodes (41): ProfileLike, SerializedProfile, serializeProfile(), DatabaseService, Injectable, BookingUser, serializeBooking(), ClientsService (+33 more)
 
 ### Community 8 - "ImportController"
 Cohesion: 0.13
@@ -366,9 +369,9 @@ Nodes (37): ActivityCard(), BUDGET_OPTIONS, BUYING_STATUS_OPTIONAL_CLIENT_STATUS
 Cohesion: 0.10
 Nodes (31): BLUE, buildEmployeePerformancePdf(), buildPages(), Canvas, Color, comparisonChart(), createPdf(), delta() (+23 more)
 
-### Community 19 - "leads.service.ts"
-Cohesion: 0.05
-Nodes (42): CompleteFollowUpDto, ApiPropertyOptional, IsIn, IsOptional, IsString, MaxLength, CreateFollowUpDto, ApiPropertyOptional (+34 more)
+### Community 19 - "CreateLeadDto"
+Cohesion: 0.25
+Nodes (6): CreateLeadDto, ApiPropertyOptional, IsEmail, IsOptional, IsString, Transform
 
 ### Community 20 - "MicrositeLeadSyncService"
 Cohesion: 0.21
@@ -431,12 +434,12 @@ Cohesion: 0.07
 Nodes (28): drizzle-kit, dependencies, drizzle-orm, @pikorua/shared, postgres, devDependencies, drizzle-kit, @types/node (+20 more)
 
 ### Community 36 - "Roles"
-Cohesion: 0.17
-Nodes (15): USER_ROLES, UserRole, Roles(), ROLES_KEY, JwtAuthGuard, Injectable, RolesGuard, Injectable (+7 more)
+Cohesion: 0.16
+Nodes (16): USER_ROLES, UserRole, Roles(), ROLES_KEY, JwtAuthGuard, Injectable, RolesGuard, Injectable (+8 more)
 
-### Community 37 - "meta-leads.service.ts"
-Cohesion: 0.08
-Nodes (26): BulkLeadIdsDto, ArrayMinSize, ArrayUnique, IsArray, IsUUID, isNonTransferableMetaLeadPoolStatus(), META_LEAD_QUEUE_MANAGED_STATUSES, NON_TRANSFERABLE_META_LEAD_POOL_STATUSES (+18 more)
+### Community 37 - "CurrentUser"
+Cohesion: 0.07
+Nodes (40): CurrentUser, BulkLeadIdsDto, ArrayMinSize, ArrayUnique, IsArray, IsUUID, isMetaLeadPoolStatus(), isNonTransferableMetaLeadPoolStatus() (+32 more)
 
 ### Community 38 - "MetaLeadSyncService"
 Cohesion: 0.30
@@ -468,7 +471,7 @@ Nodes (18): AuthModule, Module, BookingsModule, Module, ClientsModule, Module, L
 
 ### Community 45 - "dependencies"
 Cohesion: 0.09
-Nodes (23): dependencies, bcryptjs, cache-manager, dotenv, express, multer, @nestjs/common, @nestjs/core (+15 more)
+Nodes (23): dependencies, bcryptjs, cache-manager-redis-store, dotenv, express, multer, @nestjs/common, @nestjs/core (+15 more)
 
 ### Community 46 - "PropertiesController"
 Cohesion: 0.12
@@ -599,7 +602,7 @@ Nodes (18): container, formatPropertyType(), formatStatus(), getAIRecommendation
 
 ### Community 77 - "crm-workflow.test.cjs"
 Cohesion: 0.09
-Nodes (27): EMPTY_LEAD_FILTERS, FilterableLead, filterLeadList(), LeadListFilters, DEFAULT_LEAD_LIST_VIEW_STATE, FILTER_KEYS, LEAD_LIST_VIEW_STATE_KEY, LEAD_QUEUE_SNAPSHOT_KEY (+19 more)
+Nodes (31): LeadsPage(), isFreshlyAssignedLead(), campaignOptions(), EMPTY_LEAD_FILTERS, FilterableLead, filterLeadList(), LeadListFilters, DEFAULT_LEAD_LIST_VIEW_STATE (+23 more)
 
 ### Community 78 - "react"
 Cohesion: 0.09
@@ -845,10 +848,6 @@ Nodes (3): integration_sync_locks Table, meta_lead_sync_state Table, meta_leads 
 Cohesion: 0.25
 Nodes (9): ChartConfig, ChartContainer(), ChartContext, ChartContextProps, ChartLegendContent(), ChartTooltipContent(), getPayloadConfigFromPayload(), THEMES (+1 more)
 
-### Community 234 - "CurrentUser"
-Cohesion: 0.19
-Nodes (15): CurrentUser, isMetaLeadPoolStatus(), MetaLeadsController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body (+7 more)
-
 ### Community 235 - "public.lead_activity_events"
 Cohesion: 0.50
 Nodes (4): public.lead_activity_events, public.mirror_lead_assignment_history_to_activity(), public.meta_leads, public.user_profiles
@@ -860,6 +859,10 @@ Nodes (4): Answer, Outcome, Q: also the sql relations are based on the sql migra
 ### Community 248 - "pagination.tsx"
 Cohesion: 0.22
 Nodes (7): Pagination(), PaginationContent(), PaginationEllipsis(), PaginationLink(), PaginationLinkProps, PaginationNext(), PaginationPrevious()
+
+### Community 249 - "UpdateLeadDto"
+Cohesion: 0.25
+Nodes (7): ApiPropertyOptional, IsArray, IsBoolean, IsEnum, IsOptional, IsString, UpdateLeadDto
 
 ### Community 250 - "empty.tsx"
 Cohesion: 0.29
@@ -873,13 +876,25 @@ Nodes (5): DatabaseModule, Module, Module, VoiceIntegrationModule, Global
 Cohesion: 0.40
 Nodes (4): Answer, Outcome, Q: also make sure that those freshly assigned leads get moved to normal leads section after they are visited once, Source Nodes
 
+### Community 253 - "CompleteFollowUpDto"
+Cohesion: 0.29
+Nodes (6): CompleteFollowUpDto, ApiPropertyOptional, IsIn, IsOptional, IsString, MaxLength
+
+### Community 256 - "CreateFollowUpDto"
+Cohesion: 0.29
+Nodes (6): CreateFollowUpDto, ApiPropertyOptional, IsDateString, IsOptional, IsString, MaxLength
+
 ### Community 257 - "dashboard-lead-growth.ts"
 Cohesion: 0.48
 Nodes (6): calculateComparableLeadGrowth(), ComparableLeadGrowth, comparableMonthRanges(), daysInMonth(), istParts(), istStartUtc()
 
-### Community 258 - "LeadsPage"
-Cohesion: 0.25
-Nodes (10): LeadsPage(), dateKey(), followUpTimestamp(), getLeadDisplaySections(), isFreshlyAssignedLead(), LeadDisplaySections, LeadForDisplayOrder, LeadOrderCrm (+2 more)
+### Community 258 - "lead-display-order.ts"
+Cohesion: 0.38
+Nodes (6): dateKey(), followUpTimestamp(), getLeadDisplaySections(), LeadDisplaySections, LeadForDisplayOrder, LeadOrderCrm
+
+### Community 259 - "CreateLeadNoteDto"
+Cohesion: 0.33
+Nodes (5): CreateLeadNoteDto, ApiPropertyOptional, IsEnum, IsOptional, IsString
 
 ### Community 260 - "useMetaLeads"
 Cohesion: 0.47
@@ -901,7 +916,7 @@ Nodes (3): AccordionContent(), AccordionItem(), AccordionTrigger()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiProperty` connect `auth.controller.ts` to `Roles`, `meta-leads.service.ts`, `CreateSiteVisitDto`, `CreateBookingDto`, `properties/page.tsx`, `leads.service.ts`, `SendMessageDto`?**
+- **Why does `ApiProperty` connect `auth.controller.ts` to `CreateFollowUpDto`, `CreateLeadNoteDto`, `Roles`, `CurrentUser`, `CreateSiteVisitDto`, `CreateBookingDto`, `properties/page.tsx`, `CreateLeadDto`, `SendMessageDto`, `CompleteFollowUpDto`?**
   _High betweenness centrality (0.252) - this node is a cross-community bridge._
 - **Why does `cn()` connect `cn` to `employee-performance-analysis/page.tsx`, `meta-ads/page.tsx`, `hni-clients/page.tsx`, `dashboard/page.tsx`, `accordion.tsx`, `resizable.tsx`, `leads/page.tsx`, `hooks/use-toast.ts`, `settings/page.tsx`, `documents/page.tsx`, `item.tsx`, `bookings/page.tsx`, `hover-card.tsx`, `utils.ts`, `chart.tsx`, `menubar.tsx`, `input.tsx`, `field.tsx`, `carousel.tsx`, `context-menu.tsx`, `form.tsx`, `properties/page.tsx`, `react`, `drawer.tsx`, `navigation-menu.tsx`, `app-sidebar.tsx`, `pagination.tsx`, `command-palette.tsx`, `toggle-group.tsx`, `WhatsAppHubPage`, `alert.tsx`, `empty.tsx`?**
   _High betweenness centrality (0.097) - this node is a cross-community bridge._
