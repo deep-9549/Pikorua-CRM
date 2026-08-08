@@ -131,7 +131,7 @@
   "129": "Placeholder Profile Avatar",
   "130": "Pikorua CRM API Image",
   "131": "voice_call_logs Table",
-  "132": "auth.service.ts",
+  "132": "LoginDto",
   "133": "hni/route.ts",
   "134": "detail/route.ts",
   "135": "auth.module.ts",
@@ -177,7 +177,7 @@
   "175": "jose",
   "176": "lucide-react",
   "177": "next",
-  "178": "ResetPasswordDto",
+  "178": "auth.service.ts",
   "179": "@radix-ui/react-accordion",
   "180": "@radix-ui/react-alert-dialog",
   "181": "@radix-ui/react-aspect-ratio",
@@ -259,7 +259,7 @@
   "257": "dashboard-lead-growth.ts",
   "258": "lead-display-order.ts",
   "259": "unassign/route.ts",
-  "260": "cache-manager",
+  "260": "cache-manager-redis-store",
   "261": "meta-page-config.ts",
   "262": "multer",
   "263": "@nestjs/jwt",
@@ -270,5 +270,5 @@
   "268": "forgot-password/route.ts",
   "269": "bookings/[id]/route.ts",
   "270": "properties/route.ts",
-  "271": "clsx"
+  "271": "@pikorua/shared"
 }

@@ -1,9 +1,12 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
+const { sql } = require('drizzle-orm')
+const { PgDialect } = require('drizzle-orm/pg-core')
 
 const {
   MAX_HRM_ACTIVITY_RANGE_DAYS,
   buildHrmActivityRows,
+  istActivityDate,
   parseHrmActivityRange,
 } = require('../dist/modules/hrm/hrm-activity.service.js')
 const { HrmApiKeyGuard } = require('../dist/common/guards/hrm-api-key.guard.js')
@@ -13,6 +16,15 @@ function guardContext(headers) {
     switchToHttp: () => ({ getRequest: () => ({ headers }) }),
   }
 }
+
+test('keeps the grouped IST timezone out of bind parameters', () => {
+  const query = new PgDialect().sqlToQuery(
+    istActivityDate(sql.identifier('created_at')),
+  )
+
+  assert.match(query.sql, /timezone\('Asia\/Kolkata', "created_at"\)/)
+  assert.deepEqual(query.params, [])
+})
 
 test('requires the independent CRM API key and enforces the optional IP list', () => {
   const config = {

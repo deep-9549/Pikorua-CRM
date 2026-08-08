@@ -1,9 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
-import { and, count, eq, gte, isNull, lt, sql } from 'drizzle-orm'
+import { and, count, eq, gte, isNull, lt, sql, type SQLWrapper } from 'drizzle-orm'
 import { bookings, leadActivityEvents, siteVisits, userProfiles } from '@pikorua/db'
 import { DatabaseService } from '../../database/database.service'
 
-const ACTIVITY_TIME_ZONE = 'Asia/Kolkata'
 const IST_OFFSET = '+05:30'
 export const MAX_HRM_ACTIVITY_RANGE_DAYS = 31
 
@@ -26,6 +25,13 @@ export type HrmActivityRow = {
   callsMade: number
   siteVisits: number
   bookingsConfirmed: number
+}
+
+export function istActivityDate(timestamp: SQLWrapper) {
+  // Keep the trusted timezone as a SQL literal. If it is interpolated, Drizzle
+  // emits a different bind placeholder in SELECT and GROUP BY ($1 vs $5), and
+  // PostgreSQL rejects the aggregate because the expressions are not identical.
+  return sql<string>`to_char(timezone('Asia/Kolkata', ${timestamp}), 'YYYY-MM-DD')`
 }
 
 function strictDate(value: string | undefined, field: string): string {
@@ -110,9 +116,9 @@ export class HrmActivityService {
 
   async getActivity(fromValue?: string, toValue?: string) {
     const { start, endExclusive, dates } = parseHrmActivityRange(fromValue, toValue)
-    const callDate = sql<string>`to_char(timezone(${ACTIVITY_TIME_ZONE}, ${leadActivityEvents.createdAt}), 'YYYY-MM-DD')`
-    const visitDate = sql<string>`to_char(timezone(${ACTIVITY_TIME_ZONE}, ${siteVisits.scheduledDate}), 'YYYY-MM-DD')`
-    const bookingConfirmationDate = sql<string>`to_char(timezone(${ACTIVITY_TIME_ZONE}, ${leadActivityEvents.createdAt}), 'YYYY-MM-DD')`
+    const callDate = istActivityDate(leadActivityEvents.createdAt)
+    const visitDate = istActivityDate(siteVisits.scheduledDate)
+    const bookingConfirmationDate = istActivityDate(leadActivityEvents.createdAt)
 
     const [reps, calls, visits, confirmedBookings] = await Promise.all([
       this.db.select({
