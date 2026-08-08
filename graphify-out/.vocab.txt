@@ -26,6 +26,7 @@ alignment
 all
 allow
 allowed
+also
 amenities
 analysis
 analytics
@@ -33,6 +34,8 @@ analyze
 anchor
 and
 animate
+answer
+anti
 any
 apartment
 api
@@ -42,6 +45,7 @@ application
 apply
 appreciation
 appreciations
+are
 area
 array
 artifact
@@ -49,6 +53,7 @@ aspect
 assert
 assign
 assignable
+assigned
 assignment
 attributed
 audit
@@ -56,16 +61,20 @@ auth
 authority
 authorized
 autoprefixer
+available
 avatar
 aware
 backend
+backfill
 background
 badge
 bar
 base
+based
 bcrypt
 bcryptjs
 bearer
+before
 between
 black
 block
@@ -91,6 +100,7 @@ bundles
 button
 buying
 cache
+calculate
 calculated
 calendar
 call
@@ -139,7 +149,9 @@ command
 comments
 common
 communications
+comparable
 comparison
+compatible
 compiler
 complete
 components
@@ -167,6 +179,7 @@ copy
 core
 count
 create
+created
 crm
 css
 csv
@@ -248,6 +261,7 @@ enabled
 engine
 engines
 ensure
+entry
 enum
 env
 environment
@@ -287,6 +301,7 @@ filterable
 filters
 find
 first
+fix
 flat
 fmt
 fns
@@ -303,6 +318,7 @@ formatter
 forms
 framer
 fresh
+freshly
 from
 frontend
 full
@@ -313,6 +329,7 @@ generate
 generic
 geometric
 get
+git
 global
 goal
 goals
@@ -321,6 +338,7 @@ golden
 good
 google
 graph
+graphif
 graphify
 gray
 great
@@ -328,6 +346,7 @@ green
 grid
 group
 groups
+growth
 guard
 guards
 guide
@@ -373,6 +392,7 @@ importer
 imports
 inc
 include
+included
 incremental
 index
 indexing
@@ -396,6 +416,7 @@ int
 integer
 integration
 integrations
+intelligence
 interaction
 interactions
 interceptors
@@ -441,10 +462,12 @@ list
 listeners
 live
 load
+loaded
 loading
 local
 locale
 locales
+locally
 location
 locations
 lock
@@ -459,6 +482,7 @@ lucide
 machine
 mailer
 main
+make
 managed
 manager
 manifest
@@ -485,8 +509,12 @@ meta
 metadata
 metric
 microsite
+migrat
 migrate
+migrations
 min
+mirror
+missing
 mjs
 mobile
 mock
@@ -501,6 +529,7 @@ monorepo
 month
 months
 motion
+moved
 multer
 muted
 name
@@ -514,7 +543,9 @@ neutral
 new
 next
 node
+nodes
 non
+normal
 normalize
 normalized
 not
@@ -527,6 +558,7 @@ nullable
 number
 objection
 omnichannel
+once
 one
 only
 operation
@@ -574,12 +606,13 @@ paths
 payload
 pdf
 people
-percent
 performance
 period
 periods
 persistent
+phase
 phone
+pick
 picker
 pictogram
 pii
@@ -629,6 +662,7 @@ property
 props
 protected
 protection
+provided
 provider
 proxy
 public
@@ -653,7 +687,9 @@ react
 read
 readable
 readiness
+real
 reason
+reassign
 recent
 recharts
 recommendation
@@ -671,6 +707,7 @@ reflect
 registry
 reject
 relations
+relationship
 release
 reminder
 reminders
@@ -737,6 +774,7 @@ secure
 security
 seed
 select
+selected
 send
 sender
 sentiment
@@ -762,6 +800,7 @@ signal
 signature
 silhouette
 site
+sitevisits
 size
 skeleton
 skip
@@ -785,6 +824,7 @@ square
 src
 stack
 stage
+stale
 start
 started
 startup
@@ -807,7 +847,9 @@ sub
 suggested
 summarize
 summary
+supabase
 super
+sure
 swagger
 switch
 symbol
@@ -826,14 +868,19 @@ target
 tasks
 template
 tenant
+terminal
 tertiary
 test
 testing
 text
 textarea
+that
+the
 theme
 themes
+they
 this
+those
 throttle
 throttler
 time
@@ -906,8 +953,11 @@ vercel
 verify
 version
 versioned
+view
+viewed
 viewport
 visit
+visited
 visits
 voice
 wait
@@ -919,6 +969,7 @@ week
 weekday
 whats
 whatsapp
+which
 white
 window
 windows

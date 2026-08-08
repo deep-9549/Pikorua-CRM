@@ -1,7 +1,7 @@
 # Graph Report - Pikorua-CRM  (2026-08-08)
 
 ## Corpus Check
-- 344 files · ~218,563 words
+- 344 files · ~218,554 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -145,7 +145,7 @@
 - Placeholder Profile Avatar
 - Pikorua CRM API Image
 - voice_call_logs Table
-- LoginDto
+- auth.service.ts
 - hni/route.ts
 - detail/route.ts
 - auth.module.ts
@@ -187,7 +187,7 @@
 - jose
 - lucide-react
 - next
-- auth.service.ts
+- ResetPasswordDto
 - @radix-ui/react-accordion
 - @radix-ui/react-alert-dialog
 - @radix-ui/react-aspect-ratio
@@ -253,7 +253,7 @@
 - dashboard-lead-growth.ts
 - lead-display-order.ts
 - unassign/route.ts
-- cache-manager-redis-store
+- cache-manager
 - meta-page-config.ts
 - multer
 - @nestjs/jwt
@@ -264,7 +264,7 @@
 - forgot-password/route.ts
 - bookings/[id]/route.ts
 - properties/route.ts
-- @pikorua/shared
+- clsx
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 305 edges
@@ -478,7 +478,7 @@ Nodes (19): DatabaseModule, Module, BookingsModule, Module, ClientsModule, Modul
 
 ### Community 45 - "dependencies"
 Cohesion: 0.09
-Nodes (23): dependencies, bcryptjs, cache-manager, dotenv, express, @nestjs/cache-manager, @nestjs/common, @nestjs/core (+15 more)
+Nodes (23): dependencies, bcryptjs, cache-manager-redis-store, dotenv, express, @nestjs/cache-manager, @nestjs/common, @nestjs/core (+15 more)
 
 ### Community 46 - "PropertiesController"
 Cohesion: 0.11
@@ -582,7 +582,7 @@ Nodes (9): ContextMenuCheckboxItem(), ContextMenuContent(), ContextMenuItem(), C
 
 ### Community 72 - "dependencies"
 Cohesion: 0.15
-Nodes (13): dependencies, clsx, input-otp, next-themes, @radix-ui/react-collapsible, @radix-ui/react-slot, @radix-ui/react-tooltip, clsx (+5 more)
+Nodes (13): dependencies, input-otp, next-themes, @pikorua/shared, @radix-ui/react-collapsible, @radix-ui/react-slot, @radix-ui/react-tooltip, @pikorua/shared (+5 more)
 
 ### Community 73 - "microsite-lead-sync.test.cjs"
 Cohesion: 0.17
@@ -847,9 +847,9 @@ Nodes (4): Pikorua CRM API Image, Google Artifact Registry, Manual Container Ima
 Cohesion: 0.50
 Nodes (4): voice_call_logs Table, voice_events Table, voice_lead_scores Table, voice_transcript_turns Table
 
-### Community 132 - "LoginDto"
-Cohesion: 0.33
-Nodes (4): LoginDto, IsEmail, IsString, MinLength
+### Community 132 - "auth.service.ts"
+Cohesion: 0.22
+Nodes (7): ForgotPasswordDto, IsEmail, MaxLength, LoginDto, IsEmail, IsString, MinLength
 
 ### Community 135 - "auth.module.ts"
 Cohesion: 0.36
@@ -879,9 +879,9 @@ Nodes (5): ChangePasswordDto, IsString, Matches, MaxLength, MinLength
 Cohesion: 0.43
 Nodes (5): InputGroupAddon(), inputGroupAddonVariants, InputGroupButton(), inputGroupButtonVariants, Textarea()
 
-### Community 178 - "auth.service.ts"
-Cohesion: 0.22
-Nodes (8): ForgotPasswordDto, IsEmail, MaxLength, ResetPasswordDto, IsString, Matches, MaxLength, MinLength
+### Community 178 - "ResetPasswordDto"
+Cohesion: 0.33
+Nodes (5): ResetPasswordDto, IsString, Matches, MaxLength, MinLength
 
 ### Community 234 - "CurrentUser"
 Cohesion: 0.16
@@ -935,7 +935,7 @@ Nodes (4): asNonEmptyString(), findMetaPageConfig(), parseMetaPageConfigs(), Raw
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiProperty` connect `MetaLeadsService` to `LoginDto`, `meta-leads.controller.ts`, `CreateSiteVisitDto`, `leads/page.tsx`, `UpdateProfileDto`, `CreateBookingDto`, `auth.service.ts`, `leads.controller.ts`, `ChangePasswordDto`, `SendMessageDto`?**
+- **Why does `ApiProperty` connect `MetaLeadsService` to `auth.service.ts`, `meta-leads.controller.ts`, `CreateSiteVisitDto`, `leads/page.tsx`, `UpdateProfileDto`, `CreateBookingDto`, `ResetPasswordDto`, `leads.controller.ts`, `ChangePasswordDto`, `SendMessageDto`?**
   _High betweenness centrality (0.252) - this node is a cross-community bridge._
 - **Why does `react` connect `react` to `app-sidebar.tsx`, `utils.ts`, `carousel.tsx`, `dashboard/page.tsx`, `dependencies`, `(dashboard)/layout.tsx`, `leads/page.tsx`, `PropertyCard`, `sidebar.tsx`, `toggle-group.tsx`, `hooks/use-toast.ts`, `reports/page.tsx`, `WhatsAppHubPage`?**
   _High betweenness centrality (0.093) - this node is a cross-community bridge._

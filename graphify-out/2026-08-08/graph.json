@@ -631,8 +631,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "apps_api_package_dependencies_cache_manager",
-      "community": 45,
-      "community_name": "dependencies",
+      "community": 260,
+      "community_name": "cache-manager",
       "norm_label": "cache-manager"
     },
     {
@@ -642,8 +642,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "cache_manager",
-      "community": 45,
-      "community_name": "dependencies",
+      "community": 260,
+      "community_name": "cache-manager",
       "norm_label": "cache-manager"
     },
     {
@@ -653,8 +653,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "apps_api_package_dependencies_cache_manager_redis_store",
-      "community": 260,
-      "community_name": "cache-manager-redis-store",
+      "community": 45,
+      "community_name": "dependencies",
       "norm_label": "cache-manager-redis-store"
     },
     {
@@ -664,8 +664,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "cache_manager_redis_store",
-      "community": 260,
-      "community_name": "cache-manager-redis-store",
+      "community": 45,
+      "community_name": "dependencies",
       "norm_label": "cache-manager-redis-store"
     },
     {
@@ -2512,7 +2512,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_auth_service",
-      "community": 178,
+      "community": 132,
       "community_name": "auth.service.ts",
       "norm_label": "auth.service.ts"
     },
@@ -2568,7 +2568,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_auth_service_authservice_login",
       "community": 132,
-      "community_name": "LoginDto",
+      "community_name": "auth.service.ts",
       "norm_label": ".login()"
     },
     {
@@ -2721,7 +2721,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_forgot_password_dto",
-      "community": 178,
+      "community": 132,
       "community_name": "auth.service.ts",
       "norm_label": "forgot-password.dto.ts"
     },
@@ -2732,7 +2732,7 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_forgot_password_dto_forgotpassworddto",
-      "community": 178,
+      "community": 132,
       "community_name": "auth.service.ts",
       "norm_label": "forgotpassworddto"
     },
@@ -2743,7 +2743,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_forgot_password_dto_ts_isemail",
-      "community": 178,
+      "community": 132,
       "community_name": "auth.service.ts",
       "norm_label": "isemail"
     },
@@ -2754,7 +2754,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_forgot_password_dto_ts_maxlength",
-      "community": 178,
+      "community": 132,
       "community_name": "auth.service.ts",
       "norm_label": "maxlength"
     },
@@ -2766,7 +2766,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_login_dto",
       "community": 132,
-      "community_name": "LoginDto",
+      "community_name": "auth.service.ts",
       "norm_label": "login.dto.ts"
     },
     {
@@ -2777,7 +2777,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_login_dto_logindto",
       "community": 132,
-      "community_name": "LoginDto",
+      "community_name": "auth.service.ts",
       "norm_label": "logindto"
     },
     {
@@ -2788,7 +2788,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_login_dto_ts_isemail",
       "community": 132,
-      "community_name": "LoginDto",
+      "community_name": "auth.service.ts",
       "norm_label": "isemail"
     },
     {
@@ -2799,7 +2799,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_login_dto_ts_isstring",
       "community": 132,
-      "community_name": "LoginDto",
+      "community_name": "auth.service.ts",
       "norm_label": "isstring"
     },
     {
@@ -2810,7 +2810,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_login_dto_ts_minlength",
       "community": 132,
-      "community_name": "LoginDto",
+      "community_name": "auth.service.ts",
       "norm_label": "minlength"
     },
     {
@@ -2821,7 +2821,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_reset_password_dto",
       "community": 178,
-      "community_name": "auth.service.ts",
+      "community_name": "ResetPasswordDto",
       "norm_label": "reset-password.dto.ts"
     },
     {
@@ -2832,7 +2832,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_reset_password_dto_resetpassworddto",
       "community": 178,
-      "community_name": "auth.service.ts",
+      "community_name": "ResetPasswordDto",
       "norm_label": "resetpassworddto"
     },
     {
@@ -2843,7 +2843,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_reset_password_dto_ts_isstring",
       "community": 178,
-      "community_name": "auth.service.ts",
+      "community_name": "ResetPasswordDto",
       "norm_label": "isstring"
     },
     {
@@ -2854,7 +2854,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_reset_password_dto_ts_minlength",
       "community": 178,
-      "community_name": "auth.service.ts",
+      "community_name": "ResetPasswordDto",
       "norm_label": "minlength"
     },
     {
@@ -2865,7 +2865,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_reset_password_dto_ts_maxlength",
       "community": 178,
-      "community_name": "auth.service.ts",
+      "community_name": "ResetPasswordDto",
       "norm_label": "maxlength"
     },
     {
@@ -2876,7 +2876,7 @@
       "_origin": "ast",
       "id": "apps_api_src_modules_auth_dto_reset_password_dto_ts_matches",
       "community": 178,
-      "community_name": "auth.service.ts",
+      "community_name": "ResetPasswordDto",
       "norm_label": "matches"
     },
     {
@@ -26712,8 +26712,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "apps_web_package_dependencies_pikorua_shared",
-      "community": 271,
-      "community_name": "@pikorua/shared",
+      "community": 72,
+      "community_name": "dependencies",
       "norm_label": "@pikorua/shared"
     },
     {
@@ -26723,8 +26723,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "apps_web_package_json_pikorua_shared",
-      "community": 271,
-      "community_name": "@pikorua/shared",
+      "community": 72,
+      "community_name": "dependencies",
       "norm_label": "@pikorua/shared"
     },
     {
@@ -27416,8 +27416,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "apps_web_package_dependencies_clsx",
-      "community": 72,
-      "community_name": "dependencies",
+      "community": 271,
+      "community_name": "clsx",
       "norm_label": "clsx"
     },
     {
@@ -27427,8 +27427,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "clsx",
-      "community": 72,
-      "community_name": "dependencies",
+      "community": 271,
+      "community_name": "clsx",
       "norm_label": "clsx"
     },
     {
@@ -47903,7 +47903,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "apps/api/src/modules/hrm/hrm-activity.service.ts",
-      "source_location": "L176",
+      "source_location": "L171",
       "weight": 1.0,
       "_origin": "ast",
       "source": "apps_api_src_modules_hrm_hrm_activity_service_hrmactivityservice_getactivity",

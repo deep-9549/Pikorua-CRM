@@ -5,6 +5,21 @@ import { getApiBaseUrl } from './base-url'
 type ProxyOptions = {
   authorization?: 'session' | 'request'
   forwardHeaders?: string[]
+  forwardClientIp?: boolean
+}
+
+function trustedClientIp(request: NextRequest): string | null {
+  const forwardedFor = request.headers.get('x-forwarded-for')
+    ?.split(',')
+    .map((value) => value.trim())
+    .filter(Boolean) ?? []
+
+  // Google Cloud's external Application Load Balancer appends the real client
+  // and load-balancer addresses. Reading from the right ignores spoofed prefix
+  // values supplied by a caller.
+  if (forwardedFor.length >= 2) return forwardedFor[forwardedFor.length - 2] ?? null
+  if (forwardedFor.length === 1) return forwardedFor[0]
+  return request.headers.get('x-real-ip')
 }
 
 export async function proxyToApi(
@@ -28,6 +43,11 @@ export async function proxyToApi(
   for (const name of options.forwardHeaders ?? []) {
     const value = request.headers.get(name)
     if (value) headers[name] = value
+  }
+
+  if (options.forwardClientIp) {
+    const clientIp = trustedClientIp(request)
+    if (clientIp) headers['X-HRM-Client-IP'] = clientIp
   }
 
   const metaSignature = request.headers.get('x-hub-signature-256')

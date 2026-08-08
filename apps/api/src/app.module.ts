@@ -24,6 +24,7 @@ import { MetaLeadSyncModule } from './modules/meta-lead-sync/meta-lead-sync.modu
 import { VoiceIntegrationModule } from './modules/voice-integration/voice-integration.module'
 import { validateEnv } from './common/config/env.validation'
 import { HniModule } from './modules/hni/hni.module'
+import { HrmModule } from './modules/hrm/hrm.module'
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { HniModule } from './modules/hni/hni.module'
     MetaLeadSyncModule,
     VoiceIntegrationModule,
     HniModule,
+    HrmModule,
   ],
   controllers: [AppController],
   providers: [
