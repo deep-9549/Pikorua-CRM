@@ -40,14 +40,15 @@ function lead(id, overrides = {}) {
     status: 'assigned',
     received_at: '2026-08-01T10:00:00Z',
     assigned_to_profile: { id: 'exec-1' },
+    client_status: null,
     crm: null,
     ...overrides,
   }
 }
 
 const leads = [
-  lead('spoken', { crm: { call_status: 'spoken' } }),
-  lead('not-spoken', { crm: { call_status: 'not_spoken' } }),
+  lead('spoken', { client_status: 'hot', crm: { call_status: 'spoken' } }),
+  lead('not-spoken', { client_status: 'warm', crm: { call_status: 'not_spoken' } }),
   lead('callback', { crm: { call_status: 'call_back_later' } }),
   lead('unset-crm'),
   lead('unset-status', { crm: { call_status: null } }),
@@ -85,6 +86,24 @@ test('Not Spoken excludes callbacks and unset call statuses', () => {
   const filtered = filterMetaAdsQueueLeads(leads, {
     ...assignedFilters,
     callStatus: 'not_spoken',
+  })
+
+  assert.deepEqual(metaAdsQueueLeadIds(filtered), ['not-spoken'])
+})
+
+test('Client status includes only exactly matching assigned leads', () => {
+  const filtered = filterMetaAdsQueueLeads(leads, {
+    ...assignedFilters,
+    clientStatus: 'hot',
+  })
+
+  assert.deepEqual(metaAdsQueueLeadIds(filtered), ['spoken'])
+})
+
+test('Client status excludes leads with no client status', () => {
+  const filtered = filterMetaAdsQueueLeads(leads, {
+    ...assignedFilters,
+    clientStatus: 'warm',
   })
 
   assert.deepEqual(metaAdsQueueLeadIds(filtered), ['not-spoken'])

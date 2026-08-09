@@ -65,6 +65,7 @@ interface MetaLead {
   received_at: string
   assigned_at: string | null
   assigned_to_profile: { id: string; full_name: string; role: string } | null
+  client_status: string | null
   crm: { call_status: "spoken" | "not_spoken" | "call_back_later" | null } | null
 }
 
@@ -73,6 +74,18 @@ interface Employee {
   full_name: string
   phone: string | null
 }
+
+const CLIENT_STATUS_OPTIONS = [
+  { value: "hot", label: "Hot" },
+  { value: "warm", label: "Warm" },
+  { value: "cold", label: "Cold" },
+  { value: "postponed", label: "Postponed" },
+  { value: "lost", label: "Lost" },
+  { value: "low_budget", label: "Low Budget" },
+  { value: "not_interested", label: "Not Interested" },
+  { value: "broker", label: "Broker" },
+  { value: "construction_biz_owner", label: "Construction Owner" },
+]
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
@@ -611,6 +624,7 @@ export default function MetaAdsPage() {
   const [platformFilter, setPlatformFilter] = useState("")
   const [campaignFilter, setCampaignFilter] = useState("")
   const [executiveFilter, setExecutiveFilter] = useState("")
+  const [clientStatusFilter, setClientStatusFilter] = useState("")
   const [callStatusFilter, setCallStatusFilter] = useState("")
   const [receivedDateFromFilter, setReceivedDateFromFilter] = useState("")
   const [receivedDateToFilter, setReceivedDateToFilter] = useState("")
@@ -783,6 +797,7 @@ export default function MetaAdsPage() {
     setActiveTab(tab)
     setSelected(new Set())
     setExecutiveFilter("")
+    setClientStatusFilter("")
     setCallStatusFilter("")
     fetchLeads(tab === "all" ? undefined : tab)
   }
@@ -817,11 +832,12 @@ export default function MetaAdsPage() {
     platform: platformFilter,
     campaign: campaignFilter,
     executive: executiveFilter,
+    clientStatus: clientStatusFilter,
     callStatus: callStatusFilter,
     receivedDateFrom: receivedDateFromFilter,
     receivedDateTo: receivedDateToFilter,
     queueStatus: activeTab === "assigned" || activeTab === "unassigned" ? activeTab : "",
-  }), [activeTab, search, sourceFilter, platformFilter, campaignFilter, executiveFilter, callStatusFilter, receivedDateFromFilter, receivedDateToFilter])
+  }), [activeTab, search, sourceFilter, platformFilter, campaignFilter, executiveFilter, clientStatusFilter, callStatusFilter, receivedDateFromFilter, receivedDateToFilter])
 
   // Apply search + filters to the loaded queue through a pure, regression-tested helper.
   const filteredLeads = useMemo(
@@ -829,7 +845,7 @@ export default function MetaAdsPage() {
     [leads, queueFilters],
   )
 
-  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || executiveFilter || callStatusFilter || receivedDateFromFilter || receivedDateToFilter)
+  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || executiveFilter || clientStatusFilter || callStatusFilter || receivedDateFromFilter || receivedDateToFilter)
   const shownLeadIds = metaAdsQueueLeadIds(filteredLeads)
   const selectedShownLeadIds = matchingSelectedMetaAdsQueueLeadIds(filteredLeads, selected)
   const splitLeadIds = selectedShownLeadIds.length > 0 ? selectedShownLeadIds : shownLeadIds
@@ -843,6 +859,7 @@ export default function MetaAdsPage() {
     setPlatformFilter("")
     setCampaignFilter("")
     setExecutiveFilter("")
+    setClientStatusFilter("")
     setCallStatusFilter("")
     setReceivedDateFromFilter("")
     setReceivedDateToFilter("")
@@ -1031,6 +1048,20 @@ export default function MetaAdsPage() {
                   <option value="">All Sales Executives</option>
                   {employees.map(employee => (
                     <option key={employee.id} value={employee.id}>{employee.full_name}</option>
+                  ))}
+                </select>
+              )}
+              {activeTab === "assigned" && (
+                <select
+                  value={clientStatusFilter}
+                  onChange={e => setClientStatusFilter(e.target.value)}
+                  aria-label="Filter by client status"
+                  className="h-9 w-full rounded-lg px-2.5 text-xs bg-transparent cursor-pointer sm:max-w-[180px]"
+                  style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                >
+                  <option value="">All Client Statuses</option>
+                  {CLIENT_STATUS_OPTIONS.map(status => (
+                    <option key={status.value} value={status.value}>{status.label}</option>
                   ))}
                 </select>
               )}
