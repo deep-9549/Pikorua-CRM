@@ -1,5 +1,86 @@
 {
-  "generated_at": "2026-07-31T17:53:56.477179+00:00",
-  "nodes": {},
+  "generated_at": "2026-08-10T17:50:26.781675+00:00",
+  "nodes": {
+    "apps_api_src_modules_leads_lead_serializer_serializemetalead": {
+      "code_fingerprint": "46d57a50b230c7ee1af7001ee11e09b4cbb1f0ee3be9fe50ca6d363c41e78213",
+      "label": "serializeMetaLead()",
+      "last": "2026-08-05T07:49:47.828174+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-05T07:49:47.828174+00:00",
+          "outcome": "useful",
+          "q": "also make sure that those freshly assigned leads get moved to normal leads section after they are visited once"
+        }
+      ],
+      "score": 0.882353957,
+      "source_file": "apps/api/src/modules/leads/lead.serializer.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "apps_web_lib_lead_display_order_isfreshlyassignedlead": {
+      "code_fingerprint": "ae1c1c7f5b8e159c5ef2cde22023e1c1533ec62251e395450efae0c5c2979f37",
+      "label": "isFreshlyAssignedLead()",
+      "last": "2026-08-05T07:49:47.828174+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-05T07:49:47.828174+00:00",
+          "outcome": "useful",
+          "q": "also make sure that those freshly assigned leads get moved to normal leads section after they are visited once"
+        }
+      ],
+      "score": 0.882353957,
+      "source_file": "apps/web/lib/lead-display-order.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "db_migrations_20260720_meta_lead_platform": {
+      "code_fingerprint": "63fc6c39688b75548bc84ca7ce4c1ae11b617f9ef48aec005f30be3f974db120",
+      "label": "20260720_meta_lead_platform.sql",
+      "last": "2026-07-31T17:55:46.156977+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-31T17:55:46.156977+00:00",
+          "outcome": "useful",
+          "q": "also the sql relations are based on the sql migrations available in the git or all the sql migrations available locally??"
+        }
+      ],
+      "score": 0.793768316,
+      "source_file": "db_migrations/20260720_meta_lead_platform.sql",
+      "status": "tentative",
+      "uses": 1
+    },
+    "test_database_schema_catalog": {
+      "code_fingerprint": "fc5fe729f5e962ec1135cf623e5e27e1e06c6fa2d6618b8b7657e199e988106c",
+      "label": "Database Schema Catalog",
+      "last": "2026-07-31T17:55:46.156977+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-31T17:55:46.156977+00:00",
+          "outcome": "useful",
+          "q": "also the sql relations are based on the sql migrations available in the git or all the sql migrations available locally??"
+        }
+      ],
+      "score": 0.793768316,
+      "source_file": "test.md",
+      "status": "tentative",
+      "uses": 1
+    },
+    "test_meta_leads": {
+      "code_fingerprint": "fc5fe729f5e962ec1135cf623e5e27e1e06c6fa2d6618b8b7657e199e988106c",
+      "label": "meta_leads Table",
+      "last": "2026-08-05T07:49:47.828174+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-05T07:49:47.828174+00:00",
+          "outcome": "useful",
+          "q": "also make sure that those freshly assigned leads get moved to normal leads section after they are visited once"
+        }
+      ],
+      "score": 0.882353957,
+      "source_file": "test.md",
+      "status": "tentative",
+      "uses": 1
+    }
+  },
   "version": 1
 }

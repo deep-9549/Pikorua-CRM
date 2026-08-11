@@ -337,24 +337,23 @@ export function TopNav({
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
-        className="sticky top-0 z-30 flex h-[60px] items-center justify-between gap-2 px-2.5 sm:gap-3 sm:px-4 lg:px-6"
+        className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-border px-2.5 sm:gap-3 sm:px-5 lg:px-7"
         style={{
-          background: "color-mix(in srgb, var(--color-background) 88%, transparent)",
-          backdropFilter: "blur(20px) saturate(180%)",
-          borderBottom: "1px solid color-mix(in srgb, var(--color-border) 70%, transparent)",
+          background: "color-mix(in srgb, var(--color-background) 94%, transparent)",
+          backdropFilter: "blur(16px)",
         }}
       >
         {/* Breadcrumbs */}
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 md:hidden" onClick={onMenuClick} aria-label="Open navigation">
-            <Menu className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="shrink-0 md:hidden" onClick={onMenuClick} aria-label="Open navigation">
+            <Menu className="h-[18px] w-[18px]" strokeWidth={1.8} />
           </Button>
           {breadcrumbs.map((crumb, i) => (
             <React.Fragment key={crumb.path}>
               {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
               {i === breadcrumbs.length - 1 ? (
                 <span className={cn(
-                  "min-w-0 truncate text-[13px] font-semibold text-foreground sm:text-sm",
+                  "min-w-0 truncate text-[13px] font-semibold tracking-[-0.01em] text-foreground sm:text-sm",
                   i < breadcrumbs.length - 2 && "hidden sm:inline"
                 )}>
                   {crumb.name}
@@ -379,31 +378,26 @@ export function TopNav({
           {/* Search */}
           <button
             onClick={onCommandPaletteOpen}
-            className="hidden sm:flex items-center gap-2 h-8 w-64 px-3 rounded-lg text-sm transition-all duration-150"
-            style={{
-              background: "var(--color-muted)",
-              border: "1px solid var(--color-border)",
-              color: "var(--color-muted-foreground)",
-            }}
+            aria-label="Open global search"
+            className="hidden h-9 w-[min(18rem,28vw)] items-center gap-2 rounded-lg border border-input bg-card px-3 text-sm text-muted-foreground shadow-xs transition-colors hover:border-separator-strong hover:bg-accent sm:flex"
           >
             <Search className="w-3.5 h-3.5 shrink-0" />
             <span className="min-w-0 flex-1 truncate whitespace-nowrap text-left text-[13px] leading-none">Search anything...</span>
-            <kbd className="shrink-0 whitespace-nowrap text-[10px] font-mono px-1.5 py-0.5 rounded"
-              style={{ background: "var(--color-card)", color: "var(--color-muted-foreground)", border: "1px solid var(--color-border)" }}>
+            <kbd className="shrink-0 whitespace-nowrap rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
               Ctrl + K
             </kbd>
           </button>
 
           {/* Reminders */}
-          <Button variant="ghost" size="icon" className="hidden h-9 w-9 sm:inline-flex" onClick={() => setShowReminders(true)} aria-label="Open reminders">
-            <ListTodo className="w-4 h-4" />
+          <Button variant="ghost" size="icon" className="hidden sm:inline-flex" onClick={() => setShowReminders(true)} aria-label="Open reminders">
+            <ListTodo className="h-4 w-4" strokeWidth={1.8} />
           </Button>
 
           {/* Quick Add */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" className="h-9 w-9 gap-1.5 border-0 p-0 text-[13px] font-medium text-primary-foreground shadow-gold-sm gold-gradient hover:shadow-gold sm:w-auto sm:px-3">
-                <Plus className="w-3.5 h-3.5" />
+              <Button size="sm" aria-label="Open quick add menu" className="h-11 w-11 gap-1.5 p-0 text-[13px] sm:h-9 sm:w-auto sm:px-3">
+                <Plus className="h-4 w-4" strokeWidth={1.8} />
                 <span className="hidden sm:inline">Quick Add</span>
               </Button>
             </DropdownMenuTrigger>
@@ -414,9 +408,8 @@ export function TopNav({
               <DropdownMenuSeparator />
               {[
                 { icon: Sparkles, label: "New Lead", color: "text-primary", onClick: () => router.push(`/leads?quickAdd=lead&t=${Date.now()}`) },
-                { icon: Calendar, label: "Schedule Visit", color: "text-emerald-600", onClick: () => router.push(`/site-visits?quickAdd=visit&t=${Date.now()}`) },
-                { icon: MessageSquare, label: "Send Message", color: "text-blue-600" },
-                { icon: Clock, label: "Add Reminder", color: "text-primary", onClick: () => setShowReminders(true) },
+                { icon: Calendar, label: "Schedule Visit", color: "text-success", onClick: () => router.push(`/site-visits?quickAdd=visit&t=${Date.now()}`) },
+                { icon: Clock, label: "Add Reminder", color: "text-warning", onClick: () => setShowReminders(true) },
               ].map(({ icon: Icon, label, color, onClick }) => (
                 <DropdownMenuItem key={label} className="gap-2 cursor-pointer text-sm" onClick={onClick}>
                   <Icon className={cn("w-3.5 h-3.5", color)} />{label}
@@ -428,7 +421,7 @@ export function TopNav({
           {/* Notifications */}
           <button
             onClick={() => setShowPanel(true)}
-            className="relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-muted"
+            className="relative flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:h-10 sm:w-10"
             aria-label="Open notifications"
           >
             <Bell className="w-4 h-4 text-muted-foreground" />
@@ -466,7 +459,7 @@ export function TopNav({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 40 }}
               transition={{ duration: 0.28, ease: "easeOut" }}
-              className="fixed right-0 top-0 z-50 h-screen flex w-full max-w-full sm:w-auto"
+              className="fixed right-0 top-0 z-50 flex h-[100dvh] w-full max-w-full sm:w-auto"
               style={{ width: selected ? "min(840px, 100vw)" : "min(420px, 100vw)" }}
             >
               {/* Left: Notification List */}

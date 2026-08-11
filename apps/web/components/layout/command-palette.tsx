@@ -20,10 +20,10 @@ import {
   Settings,
   ArrowRight,
   User,
-  Home
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { leads, properties, employees } from "@/lib/data"
+import { getAuthUser } from "@/lib/auth/cookies"
+import { useMetaLeads } from "@/hooks/use-meta-leads"
 
 interface CommandPaletteProps {
   open: boolean
@@ -38,6 +38,16 @@ interface CommandItem {
   type: "page" | "lead" | "property" | "employee" | "action"
   href?: string
   action?: () => void
+  adminOnly?: boolean
+}
+
+interface PaletteLead {
+  id: string
+  full_name: string | null
+  email: string | null
+  phone: string | null
+  city: string | null
+  client_status?: string | null
 }
 
 const pages: CommandItem[] = [
@@ -50,14 +60,16 @@ const pages: CommandItem[] = [
   { id: "meta-ads", title: "Meta Ads Analytics", subtitle: "Campaign performance", icon: BarChart3, type: "page", href: "/meta-ads" },
   { id: "ai", title: "AI Control Center", subtitle: "Configure AI settings", icon: Bot, type: "page", href: "/ai-control" },
   { id: "bookings", title: "Bookings & Revenue", subtitle: "Track deals & revenue", icon: CreditCard, type: "page", href: "/bookings" },
-  { id: "employees", title: "Employee Management", subtitle: "Team & performance", icon: UserCog, type: "page", href: "/employees" },
-  { id: "clients", title: "HNI Clients", subtitle: "High-value client profiles", icon: Crown, type: "page", href: "/hni-clients" },
+  { id: "employees", title: "Employee Management", subtitle: "Team & performance", icon: UserCog, type: "page", href: "/employees", adminOnly: true },
+  { id: "clients", title: "HNI Clients", subtitle: "High-value client profiles", icon: Crown, type: "page", href: "/hni-clients", adminOnly: true },
   { id: "scripts", title: "Calling Scripts", subtitle: "Sales scripts library", icon: FileText, type: "page", href: "/scripts" },
   { id: "settings", title: "Settings", subtitle: "System configuration", icon: Settings, type: "page", href: "/settings" },
 ]
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const router = useRouter()
+  const { data: liveLeads = [] } = useMetaLeads<PaletteLead>()
+  const isSuperAdmin = getAuthUser()?.role === "super_admin"
   const [search, setSearch] = React.useState("")
   const [selectedIndex, setSelectedIndex] = React.useState(0)
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -65,12 +77,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   // Build search results
   const results = React.useMemo(() => {
     const query = search.toLowerCase().trim()
-    if (!query) return pages
+    const visiblePages = pages.filter(page => !page.adminOnly || isSuperAdmin)
+    if (!query) return visiblePages
 
     const items: CommandItem[] = []
 
     // Search pages
-    pages.forEach((page) => {
+    visiblePages.forEach((page) => {
       if (
         page.title.toLowerCase().includes(query) ||
         page.subtitle?.toLowerCase().includes(query)
@@ -80,16 +93,17 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     })
 
     // Search leads
-    leads.forEach((lead) => {
+    liveLeads.forEach((lead) => {
       if (
-        lead.name.toLowerCase().includes(query) ||
-        lead.email.toLowerCase().includes(query) ||
-        lead.phone.includes(query)
+        lead.full_name?.toLowerCase().includes(query) ||
+        lead.email?.toLowerCase().includes(query) ||
+        lead.phone?.includes(query) ||
+        lead.city?.toLowerCase().includes(query)
       ) {
         items.push({
           id: `lead-${lead.id}`,
-          title: lead.name,
-          subtitle: `Lead - ${lead.status} - ${lead.location}`,
+          title: lead.full_name ?? "Unnamed lead",
+          subtitle: ["Lead", lead.client_status?.replaceAll("_", " "), lead.city].filter(Boolean).join(" · "),
           icon: User,
           type: "lead",
           href: `/leads/${lead.id}`
@@ -97,42 +111,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       }
     })
 
-    // Search properties
-    properties.forEach((property) => {
-      if (
-        property.name.toLowerCase().includes(query) ||
-        property.location.toLowerCase().includes(query)
-      ) {
-        items.push({
-          id: `property-${property.id}`,
-          title: property.name,
-          subtitle: `Property - ${property.type} - ${property.location}`,
-          icon: Home,
-          type: "property",
-          href: `/properties/${property.id}`
-        })
-      }
-    })
-
-    // Search employees
-    employees.forEach((employee) => {
-      if (
-        employee.name.toLowerCase().includes(query) ||
-        employee.email.toLowerCase().includes(query)
-      ) {
-        items.push({
-          id: `employee-${employee.id}`,
-          title: employee.name,
-          subtitle: `Employee - ${employee.role.replace("_", " ")}`,
-          icon: UserCog,
-          type: "employee",
-          href: `/employees/${employee.id}`
-        })
-      }
-    })
-
     return items.slice(0, 10)
-  }, [search])
+  }, [isSuperAdmin, liveLeads, search])
 
   // Keyboard navigation
   React.useEffect(() => {
@@ -156,11 +136,11 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault()
-          setSelectedIndex((i) => (i + 1) % results.length)
+          if (results.length > 0) setSelectedIndex((i) => (i + 1) % results.length)
           break
         case "ArrowUp":
           e.preventDefault()
-          setSelectedIndex((i) => (i - 1 + results.length) % results.length)
+          if (results.length > 0) setSelectedIndex((i) => (i - 1 + results.length) % results.length)
           break
         case "Enter":
           e.preventDefault()
@@ -209,6 +189,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         <>
           {/* Backdrop */}
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workspace-search-title"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -223,13 +206,14 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className={cn(
-              "fixed left-1/2 top-[20%] z-50 -translate-x-1/2",
-              "w-full max-w-xl",
+              "fixed left-3 right-3 top-[12%] z-50 sm:left-1/2 sm:right-auto sm:top-[20%] sm:-translate-x-1/2",
+              "w-auto sm:w-full sm:max-w-xl",
               "bg-card/95 backdrop-blur-2xl",
-              "rounded-2xl border border-border",
+              "rounded-lg border border-border",
               "shadow-luxury-lg overflow-hidden"
             )}
           >
+            <h2 id="workspace-search-title" className="sr-only">Workspace search</h2>
             {/* Search Input */}
             <div className="flex items-center gap-3 px-4 border-b border-border">
               <Search className="w-5 h-5 text-muted-foreground" />
@@ -238,7 +222,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search pages, leads, properties..."
+                placeholder="Search pages and live leads..."
+                aria-label="Search pages and live leads"
                 className={cn(
                   "flex-1 h-14 bg-transparent",
                   "text-foreground placeholder:text-muted-foreground",
@@ -269,7 +254,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         onClick={() => handleSelect(item)}
                         onMouseEnter={() => setSelectedIndex(index)}
                         className={cn(
-                          "w-full flex items-center gap-3 px-3 py-3 rounded-xl",
+                          "w-full flex items-center gap-3 px-3 py-3 rounded-md",
                           "text-left transition-all duration-150",
                           isSelected
                             ? "bg-primary/10 border border-primary/20"
@@ -277,7 +262,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         )}
                       >
                         <div className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center",
+                          "w-10 h-10 rounded-md flex items-center justify-center",
                           isSelected
                             ? "bg-primary/20 text-primary"
                             : "bg-muted text-muted-foreground"
@@ -312,8 +297,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/30">
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-3">
+              <div className="hidden items-center gap-4 text-xs text-muted-foreground sm:flex">
                 <span className="flex items-center gap-1">
                   <kbd className="font-mono bg-muted/50 px-1.5 py-0.5 rounded border border-border/50">↑</kbd>
                   <kbd className="font-mono bg-muted/50 px-1.5 py-0.5 rounded border border-border/50">↓</kbd>
@@ -325,8 +310,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Sparkles className="w-3 h-3 text-primary" />
-                <span className="text-xs text-muted-foreground">AI-powered search</span>
+                <Search className="w-3 h-3 text-primary" />
+                <span className="text-xs text-muted-foreground">Workspace search</span>
               </div>
             </div>
           </motion.div>

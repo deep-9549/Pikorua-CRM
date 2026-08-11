@@ -9,7 +9,6 @@ import {
   BarChart3,
   Building2,
   Calendar,
-  CheckCircle2,
   Clock,
   Flame,
   Loader2,
@@ -36,6 +35,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { MetricGroup, MetricItem, PageHeader, SectionHeader, SectionPanel, WorkspacePage } from "@/components/ui/workspace"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { useMetaLeads } from "@/hooks/use-meta-leads"
 import { cn, formatPhone } from "@/lib/utils"
@@ -85,23 +85,8 @@ interface VisitRow {
   scheduled_by_profile?: { id: string; full_name: string } | null
 }
 
-interface StatCardProps {
-  title: string
-  value: string | number
-  detail: string
-  icon: React.ElementType
-  tone: "primary" | "success" | "warning" | "destructive"
-}
-
 const EMPTY_LEADS: MetaLead[] = []
 const EMPTY_VISITS: VisitRow[] = []
-
-const toneStyles: Record<StatCardProps["tone"], string> = {
-  primary: "text-primary bg-primary/10",
-  success: "text-success bg-success/10",
-  warning: "text-warning bg-warning/10",
-  destructive: "text-destructive bg-destructive/10",
-}
 
 function initials(name: string | null | undefined) {
   if (!name) return "?"
@@ -154,25 +139,6 @@ function displayStatus(lead: MetaLead) {
   if (lead.client_status) return lead.client_status.replaceAll("_", " ")
   if (lead.crm?.call_status) return lead.crm.call_status.replaceAll("_", " ")
   return isFreshLead(lead) ? "fresh" : "active"
-}
-
-function StatCard({ title, value, detail, icon: Icon, tone }: StatCardProps) {
-  return (
-    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
-      <Card className="shadow-card">
-        <CardContent className="p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</p>
-            <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", toneStyles[tone])}>
-              <Icon className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
 }
 
 function EmptyBlock({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
@@ -358,37 +324,27 @@ export default function DashboardPage() {
   }
 
   return (
-    <motion.div
-      variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }}
-      initial="hidden"
-      animate="show"
-      className="space-y-6"
-    >
+    <WorkspacePage>
       <motion.div
-        variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
-        className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
       >
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Live CRM snapshot from leads, calls, follow-ups, and site visits.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" asChild className="gap-2">
-            <Link href="/leads">
-              <Users className="h-4 w-4" />
-              Leads
-            </Link>
-          </Button>
-          <Button size="sm" onClick={() => void refreshDashboard()} disabled={refreshing} className="gap-2 gold-gradient font-semibold">
-            {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Refresh
-          </Button>
-        </div>
+        <PageHeader
+          eyebrow={now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          title="Today’s sales workspace"
+          description="Priorities, pipeline health, calls, and visits—using the live CRM record."
+          actions={
+            <>
+              <Button variant="outline" size="sm" asChild className="gap-2">
+                <Link href="/leads"><Users className="h-4 w-4" />Work leads</Link>
+              </Button>
+              <Button size="sm" onClick={() => void refreshDashboard()} disabled={refreshing} className="gap-2">
+                {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Refresh
+              </Button>
+            </>
+          }
+        />
       </motion.div>
 
       {(leadError || visitsError) && (
@@ -398,36 +354,33 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Total Leads"
-          value={formatNumber(leads.length)}
-          detail={comparableLeadGrowthLabel(dashboard.leadGrowth)}
-          icon={Users}
-          tone="primary"
-        />
-        <StatCard
-          title="Warm Leads"
-          value={formatNumber(dashboard.warm)}
-          detail={`${dashboard.warmRate.toFixed(1)}% of total leads`}
-          icon={Thermometer}
-          tone="warning"
-        />
-        <StatCard
-          title="Site Visits"
-          value={formatNumber(visits.length)}
-          detail={`${formatNumber(upcomingVisitRows.length)} upcoming visits`}
-          icon={Building2}
-          tone="success"
-        />
-        <StatCard
-          title="Hot Leads"
-          value={formatNumber(dashboard.hot)}
-          detail={`${dashboard.conversionRate.toFixed(1)}% spoken rate`}
-          icon={Flame}
-          tone="warning"
-        />
-      </div>
+      <SectionPanel className="overflow-hidden">
+        <SectionHeader title="Needs attention" description="Start here before reviewing the wider pipeline." />
+        <div className="grid grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Overdue follow-ups", value: dashboard.overdue, icon: AlertCircle, tone: "text-destructive bg-destructive/10" },
+            { label: "Due today", value: dashboard.followUpToday, icon: Clock, tone: "text-warning bg-warning/10" },
+            { label: "Fresh leads", value: dashboard.fresh, icon: Target, tone: "text-primary bg-primary/10" },
+            { label: "Upcoming visits", value: upcomingVisitRows.length, icon: Calendar, tone: "text-success bg-success/10" },
+          ].map((item, index) => (
+            <Link key={item.label} href={item.label === "Upcoming visits" ? "/site-visits" : "/leads"} className={cn("group flex min-w-0 items-center gap-3 border-border p-3.5 transition-colors hover:bg-muted/60 sm:p-4", index % 2 === 0 && "border-r", index < 2 && "border-b lg:border-b-0", index < 3 && "lg:border-r")}>
+              <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", item.tone)}><item.icon className="h-4 w-4" strokeWidth={1.8} /></span>
+              <span className="min-w-0">
+                <span className="block tabular-nums text-xl font-semibold tracking-[-0.03em] text-foreground">{loading ? "—" : formatNumber(item.value)}</span>
+                <span className="block truncate text-xs text-muted-foreground group-hover:text-foreground">{item.label}</span>
+              </span>
+              <ArrowUpRight className="ml-auto hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
+            </Link>
+          ))}
+        </div>
+      </SectionPanel>
+
+      <MetricGroup aria-label="Pipeline snapshot">
+        <MetricItem label="Total leads" value={loading ? "—" : formatNumber(leads.length)} detail={comparableLeadGrowthLabel(dashboard.leadGrowth)} icon={Users} tone="primary" />
+        <MetricItem label="Warm leads" value={loading ? "—" : formatNumber(dashboard.warm)} detail={`${dashboard.warmRate.toFixed(1)}% of total leads`} icon={Thermometer} tone="warning" />
+        <MetricItem label="Hot leads" value={loading ? "—" : formatNumber(dashboard.hot)} detail={`${dashboard.conversionRate.toFixed(1)}% spoken rate`} icon={Flame} tone="destructive" />
+        <MetricItem label="Site visits" value={visitsLoading ? "—" : formatNumber(visits.length)} detail={`${formatNumber(upcomingVisitRows.length)} scheduled ahead`} icon={Building2} tone="success" />
+      </MetricGroup>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.8fr)]">
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
@@ -440,7 +393,7 @@ export default function DashboardPage() {
               <BarChart3 className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent className="pt-2">
-              <div className="h-[270px]">
+              <div className="h-[230px] sm:h-[270px]">
                 {loading ? (
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -487,7 +440,7 @@ export default function DashboardPage() {
               <p className="mt-1 text-xs text-muted-foreground">Latest recorded outcome by call date</p>
             </CardHeader>
             <CardContent className="pt-2">
-              <div className="h-[270px]">
+              <div className="h-[230px] sm:h-[270px]">
                 {loading ? (
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -514,7 +467,7 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
         <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}>
           <Card className="flex min-h-[360px] flex-col overflow-hidden shadow-card sm:h-[430px]">
             <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
@@ -549,7 +502,7 @@ export default function DashboardPage() {
                       <p className="truncate text-sm font-medium">{lead.full_name ?? "Unknown"}</p>
                       <p className="truncate text-xs text-muted-foreground">{lead.city ?? lead.campaign_name ?? "No location"}</p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary">
+                    <span className="shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary">
                       {displayStatus(lead)}
                     </span>
                   </Link>
@@ -664,41 +617,6 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="shadow-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Target className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xl font-bold">{formatNumber(dashboard.fresh)}</p>
-              <p className="text-xs text-muted-foreground">Fresh leads to call</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xl font-bold">{formatNumber(dashboard.callback)}</p>
-              <p className="text-xs text-muted-foreground">Callback leads</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="shadow-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xl font-bold">{formatNumber(visits.length)}</p>
-              <p className="text-xs text-muted-foreground">Upcoming site visits</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </motion.div>
+    </WorkspacePage>
   )
 }

@@ -19,17 +19,17 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false)
   const pathname = usePathname()
-  const sidebarOffset = sidebarCollapsed ? 68 : 256
+  const sidebarOffset = sidebarCollapsed ? 76 : 272
 
   React.useEffect(() => {
     if (!pathname.startsWith("/leads")) clearLeadSectionState()
   }, [pathname])
 
   return (
-    <AppPreferencesProvider className="min-h-screen bg-background text-foreground">
+    <AppPreferencesProvider className="min-h-dvh bg-background text-foreground">
       <QueryProvider>
         <div
-          className="min-h-screen bg-background"
+          className="min-h-dvh bg-background"
           style={{ "--sidebar-offset": `${sidebarOffset}px` } as React.CSSProperties}
         >
           <AppSidebar
@@ -39,7 +39,7 @@ export default function DashboardLayout({
             onMobileOpenChange={setMobileSidebarOpen}
           />
           <div
-            className="min-h-screen min-w-0 transition-all duration-[280ms] ease-[cubic-bezier(0.4,0,0.2,1)] md:ml-[var(--sidebar-offset)]"
+            className="min-h-dvh min-w-0 transition-[margin] duration-[var(--motion-standard)] ease-[var(--ease-product)] md:ml-[var(--sidebar-offset)]"
           >
             <TopNav
               onCommandPaletteOpen={() => setCommandPaletteOpen(true)}
@@ -48,8 +48,8 @@ export default function DashboardLayout({
                 setMobileSidebarOpen(true)
               }}
             />
-            <main className="page-enter min-w-0 overflow-x-clip px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:p-5 lg:p-6">
-              <div className="mx-auto min-w-0 max-w-[1600px]">
+            <main id="main-content" tabIndex={-1} className="page-enter min-w-0 overflow-x-clip px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 outline-none sm:px-5 sm:pb-6 lg:px-7 lg:pt-6">
+              <div className="mx-auto min-w-0 max-w-[1520px]">
                 {children}
               </div>
             </main>

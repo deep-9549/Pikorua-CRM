@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { MetricGroup, MetricItem, PageHeader, SectionHeader, SectionPanel, WorkspacePage } from "@/components/ui/workspace"
 import {
   Dialog,
   DialogContent,
@@ -105,16 +107,16 @@ function isFresh(lead: MetaLead) {
   return isFreshLead(lead)
 }
 
-const CLIENT_STATUS_MAP: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  hot:                    { label: "Hot",               icon: Flame,        color: "oklch(0.75 0.18 35)"  },
-  warm:                   { label: "Warm",              icon: Thermometer,  color: "oklch(0.78 0.15 65)"  },
-  cold:                   { label: "Cold",              icon: Snowflake,    color: "oklch(0.65 0.15 250)" },
-  postponed:              { label: "Postponed",         icon: Calendar,     color: "oklch(0.68 0.12 285)" },
-  lost:                   { label: "Lost",              icon: Star,         color: "oklch(0.60 0.12 20)"  },
-  low_budget:             { label: "Low Budget",        icon: Filter,       color: "oklch(0.72 0.15 85)"  },
-  not_interested:         { label: "Not Interested",    icon: X,            color: "oklch(0.55 0.08 260)" },
-  broker:                 { label: "Broker",            icon: Users,        color: "oklch(0.65 0.15 145)" },
-  construction_biz_owner: { label: "Const. Owner",      icon: Users,        color: "oklch(0.65 0.12 200)" },
+const CLIENT_STATUS_MAP: Record<string, { label: string; icon: React.ElementType; className: string }> = {
+  hot:                    { label: "Hot",            icon: Flame,       className: "bg-lead-hot/10 text-lead-hot" },
+  warm:                   { label: "Warm",           icon: Thermometer, className: "bg-lead-warm/10 text-lead-warm" },
+  cold:                   { label: "Cold",           icon: Snowflake,   className: "bg-lead-cold/10 text-lead-cold" },
+  postponed:              { label: "Postponed",      icon: Calendar,    className: "bg-info/10 text-info" },
+  lost:                   { label: "Lost",           icon: Star,        className: "bg-destructive/10 text-destructive" },
+  low_budget:             { label: "Low budget",     icon: Filter,      className: "bg-warning/10 text-warning" },
+  not_interested:         { label: "Not interested", icon: X,           className: "bg-muted text-muted-foreground" },
+  broker:                 { label: "Broker",         icon: Users,       className: "bg-primary/10 text-primary" },
+  construction_biz_owner: { label: "Const. owner",   icon: Users,       className: "bg-secondary text-secondary-foreground" },
 }
 
 function ClientStatusBadge({ status, antiBroker }: { status: string | null | undefined; antiBroker?: boolean }) {
@@ -123,13 +125,12 @@ function ClientStatusBadge({ status, antiBroker }: { status: string | null | und
   return (
     <>
       {m && Icon && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0"
-          style={{ background: m.color, color: "#fff" }}>
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold ${m.className}`}>
           <Icon className="w-2.5 h-2.5" />{m.label}
         </span>
       )}
       {antiBroker && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 bg-violet-600 text-white">
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-info/10 px-2 py-0.5 text-[10px] font-semibold text-info">
           <ShieldOff className="w-2.5 h-2.5" />Anti-Broker
         </span>
       )}
@@ -157,7 +158,7 @@ function FilterSelect({ value, onChange, children }: {
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="h-9 rounded-lg px-2.5 text-xs bg-transparent cursor-pointer"
+      className="h-11 cursor-pointer rounded-lg bg-card px-2.5 text-xs sm:h-9"
       style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
     >
       {children}
@@ -193,9 +194,11 @@ export default function LeadsPage() {
   const [now, setNow] = useState(() => Date.now())
   const [addOpen, setAddOpen] = useState(false)
   const [callListStatus, setCallListStatus] = useState<CallListStatus | null>(null)
-  const isSuperAdmin = getAuthUser()?.role === "super_admin"
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const displayRefreshing = !viewStateHydrated || refreshing
 
   useEffect(() => {
+    setIsSuperAdmin(getAuthUser()?.role === "super_admin")
     const restored = readLeadListViewState()
     setSearch(restored.search)
     setFilters(restored.filters)
@@ -358,129 +361,94 @@ export default function LeadsPage() {
   }, [visibleLeads])
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--color-primary)" }}>
-            Leads
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
-            {filtered.length} of {leads.length} lead{leads.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          <Button
-            size="sm"
-            className="gap-2 gold-gradient font-semibold shadow-gold-sm"
-            style={{ color: "var(--color-primary-foreground)" }}
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus className="w-4 h-4" />
-            Add Lead
-          </Button>
-          {isSuperAdmin && (
-            <Button variant="outline" size="sm" className="gap-2"
-              onClick={handleExport}
-              disabled={filtered.length === 0}>
-              <Download className="w-4 h-4" />
-              Export
+    <WorkspacePage>
+      <PageHeader
+        eyebrow="Lead operations"
+        title="Leads"
+        description={`${filtered.length} of ${leads.length} lead${leads.length !== 1 ? "s" : ""}. Find the next conversation, follow-up, or assignment without losing your place.`}
+        actions={
+          <>
+            <Button size="sm" className="gap-2" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" />Add lead
             </Button>
-          )}
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => void refetch()} disabled={refreshing}>
-            {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            {refreshing ? "Refreshing" : "Refresh"}
-          </Button>
-        </div>
-      </div>
+            {isSuperAdmin && (
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExport} disabled={filtered.length === 0}>
+                <Download className="h-4 w-4" />Export
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => void refetch()} disabled={displayRefreshing}>
+              {displayRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {displayRefreshing ? "Refreshing" : "Refresh"}
+            </Button>
+          </>
+        }
+      />
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {[
-          { label: "Total", value: leads.length, color: "var(--color-primary)" },
-          { label: "Follow-up Today", value: dueToday.length, color: "var(--color-warning)" },
-          { label: "Overdue", value: overdue.length, color: "var(--color-destructive)" },
-        ].map(({ label, value, color }) => (
-          <Card key={label} className="shadow-card">
-            <CardContent className="p-3 sm:p-4">
-              <p className="mb-1 text-[11px] font-medium leading-tight sm:text-xs" style={{ color: "var(--color-muted-foreground)" }}>{label}</p>
-              <p className="text-xl font-bold sm:text-2xl" style={{ color }}>{value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <MetricGroup className="sm:grid-cols-3 lg:grid-cols-3" aria-label="Lead queue summary">
+        <MetricItem label="Visible leads" value={loading ? "—" : filtered.length} detail={`${leads.length} total in your accessible queue`} icon={Users} tone="primary" />
+        <MetricItem label="Follow-ups today" value={loading ? "—" : dueToday.length} detail="Scheduled for the current day" icon={Calendar} tone="warning" />
+        <MetricItem label="Overdue" value={loading ? "—" : overdue.length} detail="Needs review or rescheduling" icon={AlertCircle} tone="destructive" />
+      </MetricGroup>
 
       {/* Today's Call Stats */}
       {!callStatsLoading && (todayCallStats.totalCalls > 0 || isSuperAdmin) && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold tracking-wider uppercase px-1" style={{ color: "var(--color-muted-foreground)" }}>
-            Today&apos;s Call Activity
-          </p>
+        <SectionPanel className="overflow-hidden">
+          <SectionHeader title="Today’s call activity" description={isSuperAdmin ? "Team outcomes recorded today." : "Open an outcome to continue working those leads."} />
           {isSuperAdmin ? (
-            <Card className="shadow-card">
-              <CardContent className="overflow-x-auto p-0">
-                <div className="grid gap-3 px-4 py-2 text-[11px] font-semibold"
-                  style={{ gridTemplateColumns: "minmax(120px, 1fr) 72px 88px 80px 64px", borderBottom: "1px solid var(--color-border)", color: "var(--color-muted-foreground)" }}>
-                  <span>Executive</span>
-                  <span className="text-center">Spoken</span>
-                  <span className="text-center">Not Spoken</span>
-                  <span className="text-center">Call Back</span>
-                  <span className="text-center">Total</span>
+            todayCallStats.execList.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">No calls logged today.</p>
+            ) : (
+              <>
+                <div className="hidden sm:block">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Executive</TableHead><TableHead className="text-right">Spoken</TableHead><TableHead className="text-right">Not spoken</TableHead><TableHead className="text-right">Call back</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {todayCallStats.execList.map(exec => (
+                        <TableRow key={exec.id}>
+                          <TableCell className="font-medium">{exec.name}</TableCell>
+                          <TableCell className="text-right font-semibold text-success">{exec.spoken}</TableCell>
+                          <TableCell className="text-right font-semibold text-destructive">{exec.notSpoken}</TableCell>
+                          <TableCell className="text-right font-semibold text-warning">{exec.callBack}</TableCell>
+                          <TableCell className="text-right font-semibold">{exec.spoken + exec.notSpoken + exec.callBack}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-                {todayCallStats.execList.length === 0 ? (
-                  <p className="text-xs text-center py-4" style={{ color: "var(--color-muted-foreground)" }}>No calls logged today</p>
-                ) : (
-                  <>
-                    {todayCallStats.execList.map(exec => (
-                      <div key={exec.id}
-                        className="grid gap-3 px-4 py-2.5 items-center"
-                        style={{ gridTemplateColumns: "minmax(120px, 1fr) 72px 88px 80px 64px", borderBottom: "1px solid var(--color-border)" }}>
-                        <span className="text-xs font-medium truncate" style={{ color: "var(--color-foreground)" }}>{exec.name}</span>
-                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-success, oklch(0.65 0.18 145))" }}>{exec.spoken}</span>
-                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-destructive)" }}>{exec.notSpoken}</span>
-                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-primary)" }}>{exec.callBack}</span>
-                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-foreground)" }}>{exec.spoken + exec.notSpoken + exec.callBack}</span>
+                <div className="divide-y divide-border sm:hidden">
+                  {todayCallStats.execList.map(exec => (
+                    <div key={exec.id} className="p-4">
+                      <p className="truncate text-sm font-semibold">{exec.name}</p>
+                      <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                        <div><p className="tabular-nums text-base font-semibold text-success">{exec.spoken}</p><p className="text-[10px] text-muted-foreground">Spoken</p></div>
+                        <div><p className="tabular-nums text-base font-semibold text-destructive">{exec.notSpoken}</p><p className="text-[10px] text-muted-foreground">Missed</p></div>
+                        <div><p className="tabular-nums text-base font-semibold text-warning">{exec.callBack}</p><p className="text-[10px] text-muted-foreground">Call back</p></div>
+                        <div><p className="tabular-nums text-base font-semibold">{exec.spoken + exec.notSpoken + exec.callBack}</p><p className="text-[10px] text-muted-foreground">Total</p></div>
                       </div>
-                    ))}
-                    {todayCallStats.execList.length > 1 && (
-                      <div className="grid gap-3 px-4 py-2.5 items-center rounded-b-xl"
-                        style={{ gridTemplateColumns: "minmax(120px, 1fr) 72px 88px 80px 64px", background: "var(--color-muted, oklch(0.96 0 0))" }}>
-                        <span className="text-xs font-semibold" style={{ color: "var(--color-foreground)" }}>Total</span>
-                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-success, oklch(0.65 0.18 145))" }}>{todayCallStats.totalSpoken}</span>
-                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-destructive)" }}>{todayCallStats.totalNotSpoken}</span>
-                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-primary)" }}>{todayCallStats.totalCallBack}</span>
-                        <span className="text-sm font-bold text-center" style={{ color: "var(--color-foreground)" }}>{todayCallStats.totalCalls}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4">
               {([
-                { status: "spoken", label: "Spoken Today", value: todayCallStats.totalSpoken, color: "oklch(0.65 0.18 145)" },
-                { status: "not_spoken", label: "Not Spoken Today", value: todayCallStats.totalNotSpoken, color: "var(--color-destructive)" },
-                { status: "call_back_later", label: "Call Back Today", value: todayCallStats.totalCallBack, color: "var(--color-primary)" },
+                { status: "spoken", label: "Spoken", value: todayCallStats.totalSpoken, color: "text-success" },
+                { status: "not_spoken", label: "Not spoken", value: todayCallStats.totalNotSpoken, color: "text-destructive" },
+                { status: "call_back_later", label: "Call back", value: todayCallStats.totalCallBack, color: "text-warning" },
               ] as const).map(item => (
-                <button key={item.status} type="button" className="rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setCallListStatus(item.status)}>
-                  <Card className="h-full shadow-card transition-colors hover:border-primary/50">
-                    <CardContent className="p-4">
-                      <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>{item.label}</p>
-                      <p className="text-2xl font-bold" style={{ color: item.color }}>{item.value}</p>
-                    </CardContent>
-                  </Card>
+                <button key={item.status} type="button" className="min-h-24 border-b border-r border-border p-4 text-left transition-colors hover:bg-muted/60 focus-visible:z-10" onClick={() => setCallListStatus(item.status)}>
+                  <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
+                  <p className={`mt-2 tabular-nums text-2xl font-semibold ${item.color}`}>{item.value}</p>
                 </button>
               ))}
-              <Card className="shadow-card">
-                <CardContent className="p-4">
-                  <p className="text-xs font-medium mb-1" style={{ color: "var(--color-muted-foreground)" }}>Leads Called Today</p>
-                  <p className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>{todayCallStats.totalCalls}</p>
-                </CardContent>
-              </Card>
+              <div className="min-h-24 border-b border-border p-4 lg:border-b-0">
+                <p className="text-xs font-medium text-muted-foreground">Called today</p>
+                <p className="mt-2 tabular-nums text-2xl font-semibold">{todayCallStats.totalCalls}</p>
+              </div>
             </div>
           )}
-        </div>
+        </SectionPanel>
       )}
 
       <CallListDialog
@@ -490,12 +458,12 @@ export default function LeadsPage() {
       />
 
       {/* Search + filter toggle */}
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-2 shadow-xs sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--color-muted-foreground)" }} />
-          <Input placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input aria-label="Search leads" placeholder="Search name, phone, email, or campaign" value={search} onChange={e => setSearch(e.target.value)} className="border-transparent bg-transparent pl-9 shadow-none focus-visible:bg-background" />
         </div>
-        <Button variant="outline" size="sm" className="w-full gap-2 sm:w-auto sm:shrink-0" onClick={() => setShowFilters(p => !p)}>
+        <Button aria-expanded={showFilters} aria-controls="lead-filters" variant="outline" size="sm" className="w-full gap-2 sm:w-auto sm:shrink-0" onClick={() => setShowFilters(p => !p)}>
           <Filter className="w-4 h-4" /> Filters
           {activeFilterCount > 0 && (
             <span className="text-[10px] font-bold px-1.5 rounded-full"
@@ -506,11 +474,19 @@ export default function LeadsPage() {
         </Button>
       </div>
 
+      {activeFilterCount > 0 && !showFilters && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground" aria-live="polite">
+          <span className="rounded-md bg-surface-selected px-2 py-1 font-medium text-primary">{activeFilterCount} active filter{activeFilterCount === 1 ? "" : "s"}</span>
+          <button type="button" className="font-medium text-foreground underline-offset-4 hover:underline" onClick={() => setShowFilters(true)}>Review filters</button>
+          <button type="button" className="ml-auto font-medium text-destructive underline-offset-4 hover:underline" onClick={() => setFilters({ ...EMPTY_LEAD_FILTERS })}>Clear all</button>
+        </div>
+      )}
+
       {/* Filter bar */}
       <AnimatePresence>
         {showFilters && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-            <div className="grid grid-cols-1 gap-2 rounded-xl p-3 sm:flex sm:flex-wrap sm:items-center"
+            <div id="lead-filters" className="grid grid-cols-1 gap-2 rounded-xl p-3 sm:flex sm:flex-wrap sm:items-center"
               style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
               <FilterSelect value={filters.clientStatus} onChange={v => setFilter("clientStatus", v)}>
                 <option value="">All Client Status</option>
@@ -619,7 +595,7 @@ export default function LeadsPage() {
         onClose={() => setAddOpen(false)}
         onAdded={handleLeadAdded}
       />
-    </div>
+    </WorkspacePage>
   )
 }
 
@@ -728,87 +704,87 @@ function CallListDialog({ status, entries, onClose }: {
 
 function Section({ leads, onOpenLead }: { leads: MetaLead[]; onOpenLead: () => void }) {
   return (
-    <div className="space-y-2">
-      <AnimatePresence initial={false}>
-        {leads.map((lead, i) => (
-          <motion.div key={lead.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-            <Link href={`/leads/${lead.id}`} onClick={onOpenLead}>
-              <div className="flex flex-col gap-3 px-4 py-3.5 rounded-xl transition-all duration-150 hover:scale-[1.005] cursor-pointer sm:flex-row sm:items-center sm:gap-4"
-                style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
-                {/* Avatar */}
-                <Avatar className="h-10 w-10 shrink-0">
-                  <AvatarFallback className="text-xs gold-gradient" style={{ color: "var(--color-primary-foreground)" }}>
-                    {initials(lead.full_name)}
-                  </AvatarFallback>
-                </Avatar>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    {isFresh(lead) && (
-                      <Star className="w-3.5 h-3.5 shrink-0 fill-current" style={{ color: "var(--color-primary)" }} />
-                    )}
-                    <p className="text-sm font-semibold truncate" style={{ color: "var(--color-foreground)" }}>
-                      {lead.full_name ?? "Unknown"}
-                    </p>
-                    <ClientStatusBadge status={lead.client_status} antiBroker={lead.client_anti_broker} />
-                  </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                    {lead.phone && (
-                      <ProtectedPhone value={lead.phone} className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
-                        <Phone className="w-3 h-3" />{formatPhone(lead.phone)}
-                      </ProtectedPhone>
-                    )}
-                    {lead.city && (
-                      <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
-                        <MapPin className="w-3 h-3" />{lead.city}
-                      </span>
-                    )}
-                    {lead.campaign_name && (
-                      <span className="text-[11px] truncate" style={{ color: "var(--color-primary)" }}>
-                        {lead.campaign_name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right side */}
-                <div className="w-full shrink-0 space-y-1 min-w-0 sm:w-auto sm:text-right">
-                  {lead.assigned_to_profile && (
-                    <div className="flex items-center gap-1.5 sm:justify-end">
-                      <span className="text-[11px] truncate max-w-[100px]" style={{ color: "oklch(0.65 0.15 145)" }}>
-                        {lead.assigned_to_profile.full_name}
-                      </span>
-                      <Avatar className="h-5 w-5 shrink-0">
-                        <AvatarFallback className="text-[8px] font-bold"
-                          style={{ background: "oklch(0.65 0.15 145 / 0.2)", color: "oklch(0.65 0.15 145)" }}>
-                          {initials(lead.assigned_to_profile.full_name)}
-                        </AvatarFallback>
-                      </Avatar>
+    <>
+      <SectionPanel className="hidden overflow-hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-[210px]">Lead</TableHead>
+              <TableHead className="min-w-[170px]">Contact</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="min-w-[140px]">Assigned to</TableHead>
+              <TableHead className="min-w-[150px]">Next follow-up</TableHead>
+              <TableHead className="w-10"><span className="sr-only">Open lead</span></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {leads.map(lead => (
+              <TableRow key={lead.id}>
+                <TableCell>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar className="h-9 w-9 shrink-0 rounded-lg">
+                      <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-semibold text-primary">{initials(lead.full_name)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <Link href={`/leads/${lead.id}`} onClick={onOpenLead} className="flex items-center gap-1.5 truncate font-semibold text-foreground hover:text-primary hover:underline">
+                        {isFresh(lead) && <Star className="h-3.5 w-3.5 shrink-0 fill-current text-primary" />}
+                        <span className="truncate">{lead.full_name ?? "Unknown"}</span>
+                      </Link>
+                      <p className="mt-0.5 max-w-[210px] truncate text-xs text-muted-foreground">{lead.campaign_name ?? timeAgo(lead.received_at)}</p>
                     </div>
-                  )}
-                  <CallStatusBadge status={lead.crm?.call_status} />
-                  {lead.crm?.follow_up_date && (
-                    <p className="flex items-center gap-1 text-[10px] sm:justify-end" style={{ color: "var(--color-muted-foreground)" }}>
-                      <Calendar className="w-3 h-3" />
-                      {new Date(lead.crm.follow_up_date).toLocaleString("en-IN", {
-                        day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-                      })}
-                    </p>
-                  )}
-                  {!lead.assigned_to_profile && !lead.crm?.call_status && (
-                    <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>
-                      {timeAgo(lead.received_at)}
-                    </p>
-                  )}
-                </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {lead.phone ? <ProtectedPhone value={lead.phone} className="block text-xs font-medium text-foreground">{formatPhone(lead.phone)}</ProtectedPhone> : <span className="text-xs text-muted-foreground">No phone</span>}
+                  <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{lead.city ?? "No location"}</p>
+                </TableCell>
+                <TableCell><div className="flex flex-col items-start gap-1"><ClientStatusBadge status={lead.client_status} antiBroker={lead.client_anti_broker} /><CallStatusBadge status={lead.crm?.call_status} /></div></TableCell>
+                <TableCell>
+                  {lead.assigned_to_profile ? <span className="block max-w-[140px] truncate text-xs font-medium">{lead.assigned_to_profile.full_name}</span> : <span className="text-xs text-muted-foreground">Unassigned</span>}
+                </TableCell>
+                <TableCell>
+                  {lead.crm?.follow_up_date ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium"><Calendar className="h-3.5 w-3.5 text-warning" />{new Date(lead.crm.follow_up_date).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                  ) : <span className="text-xs text-muted-foreground">Not scheduled</span>}
+                </TableCell>
+                <TableCell>
+                  <Button asChild variant="ghost" size="icon-sm"><Link href={`/leads/${lead.id}`} onClick={onOpenLead} aria-label={`Open ${lead.full_name ?? "lead"}`}><ChevronRight className="h-4 w-4" /></Link></Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </SectionPanel>
 
-                <ChevronRight className="hidden w-4 h-4 shrink-0 sm:block" style={{ color: "var(--color-muted-foreground)" }} />
+      <div className="space-y-2 md:hidden">
+        <AnimatePresence initial={false}>
+          {leads.map((lead, index) => (
+            <motion.article key={lead.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 6) * 0.025 }} className="rounded-xl border border-border bg-card p-3.5 shadow-xs">
+              <div className="flex min-w-0 items-start gap-3">
+                <Avatar className="h-10 w-10 shrink-0 rounded-lg"><AvatarFallback className="rounded-lg bg-primary/10 text-xs font-semibold text-primary">{initials(lead.full_name)}</AvatarFallback></Avatar>
+                <div className="min-w-0 flex-1">
+                  <Link href={`/leads/${lead.id}`} onClick={onOpenLead} className="flex min-w-0 items-center gap-1.5 font-semibold text-foreground">
+                    {isFresh(lead) && <Star className="h-3.5 w-3.5 shrink-0 fill-current text-primary" />}
+                    <span className="truncate">{lead.full_name ?? "Unknown"}</span>
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {lead.phone && <ProtectedPhone value={lead.phone} className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{formatPhone(lead.phone)}</ProtectedPhone>}
+                    <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{lead.city ?? "No location"}</span>
+                  </div>
+                </div>
               </div>
-            </Link>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5"><ClientStatusBadge status={lead.client_status} antiBroker={lead.client_anti_broker} /><CallStatusBadge status={lead.crm?.call_status} /></div>
+              <div className="mt-3 flex min-w-0 items-center justify-between gap-3 border-t border-border pt-3">
+                <div className="min-w-0 text-xs text-muted-foreground">
+                  <p className="truncate">{lead.assigned_to_profile?.full_name ?? "Unassigned"}</p>
+                  {lead.crm?.follow_up_date && <p className="mt-0.5 inline-flex items-center gap-1 text-warning"><Calendar className="h-3 w-3" />{new Date(lead.crm.follow_up_date).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>}
+                </div>
+                <Button asChild size="sm" variant="outline"><Link href={`/leads/${lead.id}`} onClick={onOpenLead}>Open<ChevronRight className="h-3.5 w-3.5" /></Link></Button>
+              </div>
+            </motion.article>
+          ))}
+        </AnimatePresence>
+      </div>
+    </>
   )
 }

@@ -26,7 +26,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
-import { formatPhone, phoneHref } from "@/lib/utils"
+import { cn, formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { getLeadDisplaySections } from "@/lib/lead-display-order"
@@ -188,15 +188,15 @@ const BUYING_STATUS_OPTIONS = [
 ]
 
 const CLIENT_STATUSES = [
-  { value: "hot",   label: "Hot",   icon: Flame,         color: "oklch(0.75 0.18 35)",  bg: "oklch(0.75 0.18 35 / 0.15)"  },
-  { value: "warm",  label: "Warm",  icon: Thermometer,   color: "oklch(0.78 0.15 65)",  bg: "oklch(0.78 0.15 65 / 0.15)"  },
-  { value: "cold",  label: "Cold",  icon: Snowflake,     color: "oklch(0.65 0.15 250)", bg: "oklch(0.65 0.15 250 / 0.15)" },
-  { value: "postponed", label: "Postponed", icon: Clock, color: "oklch(0.68 0.12 285)", bg: "oklch(0.68 0.12 285 / 0.15)" },
-  { value: "lost",  label: "Lost",  icon: TrendingDown,  color: "oklch(0.60 0.12 20)",  bg: "oklch(0.60 0.12 20 / 0.15)"  },
-  { value: "low_budget",           label: "Low Budget",          icon: AlertTriangle, color: "oklch(0.72 0.15 85)",  bg: "oklch(0.72 0.15 85 / 0.15)"  },
-  { value: "not_interested",       label: "Not Interested",       icon: PhoneOff,      color: "oklch(0.55 0.08 260)", bg: "oklch(0.55 0.08 260 / 0.15)" },
-  { value: "broker",               label: "Broker",               icon: Briefcase,     color: "oklch(0.65 0.15 145)", bg: "oklch(0.65 0.15 145 / 0.15)" },
-  { value: "construction_biz_owner", label: "Construction Owner", icon: Building,      color: "oklch(0.65 0.12 200)", bg: "oklch(0.65 0.12 200 / 0.15)" },
+  { value: "hot", label: "Hot", icon: Flame, className: "bg-lead-hot/10 text-lead-hot border-lead-hot/30" },
+  { value: "warm", label: "Warm", icon: Thermometer, className: "bg-lead-warm/10 text-lead-warm border-lead-warm/30" },
+  { value: "cold", label: "Cold", icon: Snowflake, className: "bg-lead-cold/10 text-lead-cold border-lead-cold/30" },
+  { value: "postponed", label: "Postponed", icon: Clock, className: "bg-info/10 text-info border-info/30" },
+  { value: "lost", label: "Lost", icon: TrendingDown, className: "bg-destructive/10 text-destructive border-destructive/30" },
+  { value: "low_budget", label: "Low budget", icon: AlertTriangle, className: "bg-warning/10 text-warning border-warning/30" },
+  { value: "not_interested", label: "Not interested", icon: PhoneOff, className: "bg-muted text-muted-foreground border-border" },
+  { value: "broker", label: "Broker", icon: Briefcase, className: "bg-primary/10 text-primary border-primary/30" },
+  { value: "construction_biz_owner", label: "Construction owner", icon: Building, className: "bg-secondary text-secondary-foreground border-border" },
 ]
 const CLIENT_STATUS_VALUES = new Set(CLIENT_STATUSES.map(status => status.value))
 const BUYING_STATUS_OPTIONAL_CLIENT_STATUSES = new Set(["broker", "construction_biz_owner"])
@@ -356,8 +356,7 @@ function StatusPill({ status }: { status: string | null }) {
   if (!s) return null
   const Icon = s.icon
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-      style={{ background: s.color, color: "#fff", border: `1px solid ${s.color}` }}>
+    <span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold ${s.className}`}>
       <Icon className="w-3 h-3" />{s.label}
     </span>
   )
@@ -427,13 +426,11 @@ function LeadInfoCard({ label, value, icon: Icon, href, protectedValue }: {
 }) {
   const content = (
     <>
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-        style={{ background: "oklch(0.700 0.130 75 / 0.12)", color: "oklch(0.700 0.130 75)" }}>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
         <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0">
-        <span className="block text-[10px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: "oklch(0.54 0.10 45)" }}>
+        <span className="block text-[10px] font-semibold tracking-[0.08em] text-muted-foreground">
           {label}
         </span>
         {protectedValue ? (
@@ -449,19 +446,18 @@ function LeadInfoCard({ label, value, icon: Icon, href, protectedValue }: {
     </>
   )
 
-  const className = "flex min-h-[62px] items-center gap-3 rounded-xl px-3.5 py-2.5 transition-colors"
-  const style = { border: "1px solid var(--color-border)", background: "color-mix(in oklab, var(--color-card), var(--color-muted) 18%)" }
+  const className = "flex min-h-[62px] items-center gap-3 rounded-lg border border-border bg-surface-inset/45 px-3.5 py-2.5 transition-colors"
 
   if (href) {
     return (
-      <a href={href} className={`${className} hover:bg-white/60`} style={style}>
+      <a href={href} className={`${className} hover:bg-accent`}>
         {content}
       </a>
     )
   }
 
   return (
-    <div className={className} style={style}>
+    <div className={className}>
       {content}
     </div>
   )
@@ -509,7 +505,7 @@ function RecommendationCard({
   const matchedUnits = recommendation.matched_units ?? []
 
   return (
-    <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: "var(--color-border)", background: "color-mix(in oklab, var(--color-card), var(--color-muted) 12%)" }}>
+    <div className="space-y-3 rounded-lg border bg-surface-inset/45 p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -528,14 +524,14 @@ function RecommendationCard({
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-sm font-bold" style={{ color: "oklch(0.700 0.130 75)" }}>{toCurrency(property.price)}</p>
+          <p className="text-sm font-bold text-primary">{toCurrency(property.price)}</p>
           <p className="text-[10px]" style={{ color: "var(--color-muted-foreground)" }}>{recommendation.score}% fit</p>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
         {matchedUnits.slice(0, 3).map((unit, index) => (
-          <span key={`${unit.configuration}-${index}`} className="rounded-md px-2 py-1 text-[11px]" style={{ background: "oklch(0.65 0.15 145 / 0.12)", color: "oklch(0.65 0.15 145)" }}>
+          <span key={`${unit.configuration}-${index}`} className="rounded-md bg-success/10 px-2 py-1 text-[11px] text-success">
             {[unit.configuration, unit.price].filter(Boolean).join(" • ")}
           </span>
         ))}
@@ -549,12 +545,12 @@ function RecommendationCard({
       <div className="space-y-1.5">
         {recommendation.match_reasons.slice(0, 3).map((reason, index) => (
           <p key={`${reason}-${index}`} className="flex items-start gap-2 text-xs" style={{ color: "var(--color-foreground)" }}>
-            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: "oklch(0.65 0.15 145)" }} />
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
             {reason}
           </p>
         ))}
         {recommendation.warnings.slice(0, 1).map((warning, index) => (
-          <p key={`${warning}-${index}`} className="flex items-start gap-2 text-xs" style={{ color: "oklch(0.72 0.15 85)" }}>
+          <p key={`${warning}-${index}`} className="flex items-start gap-2 text-xs text-warning">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             {warning}
           </p>
@@ -588,16 +584,12 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
   )
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{
-      border: `1px solid ${isCurrent ? "oklch(0.700 0.130 75 / 0.5)" : "var(--color-border)"}`,
-      background: isCurrent ? "oklch(0.700 0.130 75 / 0.04)" : "var(--color-card)"
-    }}>
+    <div className={cn("overflow-hidden rounded-lg border bg-card", isCurrent && "border-primary/50 bg-primary/[0.04]")}>
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {isCurrent && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                style={{ background: "oklch(0.700 0.130 75 / 0.2)", color: "oklch(0.700 0.130 75)" }}>
+              <span className="rounded-md bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold text-primary">
                 THIS LEAD
               </span>
             )}
@@ -614,7 +606,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
               </span>
             )}
             {entry.crm?.call_status && (
-              <span className="text-[11px]" style={{ color: "oklch(0.65 0.15 145)" }}>
+              <span className="text-[11px] text-success">
                 {{ spoken: "Spoken", not_spoken: "Not Spoken", call_back_later: "Call Back" }[entry.crm.call_status] ?? entry.crm.call_status}
               </span>
             )}
@@ -675,8 +667,7 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
                 )}
               </div>
               {entry.crm?.remarks && (
-                <p className="text-xs italic px-3 py-2 rounded-lg"
-                  style={{ background: "oklch(0.18 0.012 260)", color: "oklch(0.90 0.004 260)" }}>
+                <p className="rounded-md bg-muted px-3 py-2 text-xs italic text-foreground">
                   &quot;{entry.crm.remarks}&quot;
                 </p>
               )}
@@ -693,13 +684,9 @@ function ActivityCard({ event }: { event: LeadActivity }) {
   const hasTransfer = event.from_user_name || event.to_user_name
 
   return (
-    <div className="rounded-xl px-4 py-3" style={{
-      border: "1px solid var(--color-border)",
-      background: "var(--color-card)",
-    }}>
+    <div className="rounded-lg border bg-card px-4 py-3">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: "oklch(0.700 0.130 75 / 0.12)", color: "oklch(0.700 0.130 75)" }}>
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <Activity className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
@@ -784,12 +771,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [clientAntiBroker, setClientAntiBroker] = useState(false)
   const [clientNote, setClientNote] = useState("")
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [activeTab, setActiveTab] = useState<"crm" | "activity" | "history">("crm")
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [previousLeadId, setPreviousLeadId] = useState<string | null>(null)
   const [nextLeadId, setNextLeadId] = useState<string | null>(null)
   const [atPageTop, setAtPageTop] = useState(true)
@@ -827,10 +817,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     async function load() {
       setLoading(true)
+      setLoadError(null)
       try {
         // One request fetches the lead, its CRM, the client profile and history.
         const res = await fetch(`/api/leads/meta/${id}/detail`)
         const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json.message ?? json.error ?? "Unable to load this lead")
 
         if (json.lead) setLead(json.lead)
         if (json.crm) setCrm(prev => ({ ...prev, ...json.crm }))
@@ -848,12 +840,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         if (json.history) setHistory(json.history)
         if (json.activity) setActivity(json.activity)
         if (json.follow_ups) setFollowUps(json.follow_ups)
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : "Unable to load this lead")
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [id])
+  }, [id, loadAttempt])
 
   useEffect(() => {
     if (openedFromTrash) {
@@ -1151,11 +1145,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     try {
       await navigator.clipboard.writeText(text)
     } catch {
-      window.prompt("Copy pitch points", text)
+      setRecommendationsError("Could not copy the pitch. Select the pitch text and copy it manually.")
     }
   }
 
   async function handleDelete() {
+    setDeleteError(null)
     setDeleting(true)
     try {
       const res = await fetch(`/api/leads/meta/${id}`, { method: "DELETE" })
@@ -1166,16 +1161,34 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       router.push("/leads")
       router.refresh()
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete lead")
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete lead")
       setDeleting(false)
-      setConfirmDelete(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: "oklch(0.700 0.130 75)" }} />
+      <div className="mx-auto grid min-h-[60vh] max-w-[1440px] animate-pulse gap-5 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.55fr)]" aria-label="Loading lead workspace">
+        <div className="h-72 rounded-lg border bg-card" />
+        <div className="space-y-4">
+          <div className="h-12 rounded-lg bg-muted" />
+          <div className="h-[34rem] rounded-lg border bg-card" />
+        </div>
+      </div>
+    )
+  }
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-lg py-20 text-center">
+        <div className="rounded-lg border border-destructive/20 bg-card p-6 shadow-card">
+          <AlertTriangle className="mx-auto h-6 w-6 text-destructive" />
+          <h1 className="mt-3 text-base font-semibold">Lead workspace unavailable</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+          <div className="mt-5 flex justify-center gap-2">
+            <Button variant="outline" onClick={() => router.push("/leads")}><ArrowLeft className="mr-2 h-4 w-4" />Back to leads</Button>
+            <Button onClick={() => setLoadAttempt(attempt => attempt + 1)}>Try again</Button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -1206,6 +1219,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     ...preferredLocationOptions,
     ...(crm.preferred_locations ?? []),
   ].filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  const nextScheduledFollowUp = [...followUps]
+    .filter(item => item.status === "scheduled")
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0] ?? null
   const clientStatusSection = (
     <div className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-foreground)" }}>
@@ -1223,9 +1239,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 setClientStatus(nextStatus)
                 if (!isAntiBrokerCompatibleStatus(nextStatus)) setClientAntiBroker(false)
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
-              style={active ? { background: s.bg, color: s.color, border: `1px solid ${s.color}60` }
-                : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
+              className={cn(
+                "flex min-h-9 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                active ? s.className : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}>
               <Icon className="w-3 h-3" />{s.label}
             </button>
           )
@@ -1235,10 +1252,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         type="button"
         disabled={!isAntiBrokerEnabled}
         onClick={() => setClientAntiBroker(current => !current)}
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40"
-        style={clientAntiBroker
-          ? { background: "rgb(124 58 237 / 0.15)", color: "rgb(167 139 250)", border: "1px solid rgb(139 92 246 / 0.6)" }
-          : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}
+        className={cn(
+          "flex min-h-9 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+          clientAntiBroker
+            ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+            : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+        )}
       >
         <ShieldOff className="h-3 w-3" />Anti-Broker
       </button>
@@ -1260,7 +1279,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   )
 
   return (
-    <div className="relative max-w-2xl mx-auto space-y-5 pb-24">
+    <div className="relative mx-auto max-w-[1440px] space-y-5 pb-24">
       <div className="absolute inset-y-0 -right-16 z-40 hidden xl:block">
         <div className="sticky top-[calc(50vh-3.25rem)] flex flex-col gap-2">
           <Button
@@ -1313,7 +1332,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             variant="ghost"
             size="sm"
             className="gap-2 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-            onClick={() => setConfirmDelete(true)}
+            onClick={() => { setDeleteError(null); setConfirmDelete(true) }}
           >
             <Trash2 className="w-4 h-4" /> <span className="hidden sm:inline">Delete Lead</span>
           </Button>
@@ -1321,15 +1340,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.55fr)]">
+      <aside className="space-y-4 xl:sticky xl:top-20">
       {/* Client identity card */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="shadow-card" style={{
-          borderColor: repeatClient ? "oklch(0.75 0.18 35 / 0.4)" : "oklch(0.700 0.130 75 / 0.3)"
-        }}>
+        <Card className={cn("overflow-hidden shadow-card", repeatClient && "border-warning/40")}>
           <CardHeader className="pb-3">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl gold-gradient flex items-center justify-center text-base font-bold shrink-0"
-                style={{ color: "oklch(0.10 0.010 260)" }}>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-base font-bold text-primary-foreground">
                 {(lead.full_name ?? "?").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)}
               </div>
               <div className="flex-1 min-w-0">
@@ -1339,8 +1357,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </h2>
                   <StatusPill status={clientStatus} />
                   {repeatClient && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: "oklch(0.75 0.18 35 / 0.15)", color: "oklch(0.75 0.18 35)", border: "1px solid oklch(0.75 0.18 35 / 0.3)" }}>
+                    <span className="flex items-center gap-1 rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 text-[10px] font-bold text-warning">
                       <History className="w-2.5 h-2.5" />
                       {client.total_inquiries}× REPEAT
                     </span>
@@ -1364,7 +1381,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </div>
 
             {(crm.profession || crm.company_name || crm.current_city || crm.budget_range || lead.city) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {crm.profession && (
                   <LeadInfoCard label="Profession" value={crm.profession} icon={Briefcase} />
                 )}
@@ -1377,7 +1394,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 {lead.city && (
                   <LeadInfoCard label="City" value={lead.city} icon={MapPin} />
                 )}
-                {crm.current_city && (
+                {crm.current_city && crm.current_city !== lead.city && (
                   <LeadInfoCard label="Current City" value={crm.current_city} icon={MapPin} />
                 )}
               </div>
@@ -1403,19 +1420,45 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         </Card>
       </motion.div>
 
+      <Card className="shadow-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Next action</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="rounded-md bg-surface-inset p-3">
+            <p className="text-xs font-medium text-muted-foreground">Scheduled follow-up</p>
+            <p className="mt-1 font-semibold">
+              {nextScheduledFollowUp ? formatDateTime(nextScheduledFollowUp.scheduled_at) : "Nothing scheduled"}
+            </p>
+            {nextScheduledFollowUp?.notes && <p className="mt-1 text-xs text-muted-foreground">{nextScheduledFollowUp.notes}</p>}
+          </div>
+          {lead.phone && (
+            <Button asChild className="w-full">
+              <a href={phoneHref(lead.phone)}><Phone className="mr-2 h-4 w-4" />Call client</a>
+            </Button>
+          )}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div><p className="text-muted-foreground">Call status</p><p className="mt-0.5 font-medium capitalize">{crm.call_status?.replaceAll("_", " ") ?? "Not set"}</p></div>
+            <div><p className="text-muted-foreground">Assigned to</p><p className="mt-0.5 font-medium">{lead.assigned_to_profile?.full_name ?? "Unassigned"}</p></div>
+          </div>
+        </CardContent>
+      </Card>
+      </aside>
+
+      <section className="min-w-0 space-y-4">
+
       {/* Tab switcher */}
-      <div className="flex gap-1 p-1 rounded-xl"
-        style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
+      <div className="flex gap-1 overflow-x-auto rounded-lg border bg-card p-1" role="tablist" aria-label="Lead workspace sections">
         {([
           { key: "crm",     label: "CRM Details" },
           { key: "activity", label: `History (${activity.length})` },
           { key: "history", label: `Enquiries (${history.length})` },
         ] as const).map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className="flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-150"
-            style={activeTab === tab.key
-              ? { background: "oklch(0.700 0.130 75 / 0.15)", color: "oklch(0.700 0.130 75)" }
-              : { background: "transparent", color: "var(--color-muted-foreground)" }}>
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)} role="tab" aria-selected={activeTab === tab.key}
+            className={cn(
+              "min-h-10 flex-1 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              activeTab === tab.key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}>
             {tab.label}
           </button>
         ))}
@@ -1427,7 +1470,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           <motion.div key="crm" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <Card className="shadow-card">
               <CardHeader className="pb-4">
-                <CardTitle className="text-base">CRM Details — This Lead</CardTitle>
+                <CardTitle className="text-base">Qualification &amp; next steps</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="space-y-3">
@@ -1438,7 +1481,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     <ClientProvidedField label="Profession" value={crm.profession ?? ""} placeholder="e.g. Founder, Doctor"
                       required={crm.call_status === "spoken"}
                       onChange={v => setCrm(p => ({ ...p, profession: v || null }))} />
-                    <TextField label="Company" value={crm.company_name ?? ""} placeholder="e.g. Acme Corp"
+                    <TextField label="Company" value={crm.company_name ?? ""} placeholder="e.g. company name"
                       onChange={v => setCrm(p => ({ ...p, company_name: v || null }))} />
                     <ClientProvidedField label="Current City" value={crm.current_city ?? ""} placeholder="e.g. Pune"
                       required={crm.call_status === "spoken"}
@@ -1583,10 +1626,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       const selected = (crm.configuration ?? []).includes(cfg)
                       return (
                         <button key={cfg} type="button" onClick={() => toggleConfig(cfg)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                          style={selected
-                            ? { background: "oklch(0.65 0.15 145 / 0.15)", color: "oklch(0.65 0.15 145)", border: "1px solid oklch(0.65 0.15 145 / 0.4)" }
-                            : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}>
+                          className={cn(
+                            "min-h-9 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                            selected
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}>
                           {cfg}
                         </button>
                       )
@@ -1598,7 +1643,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4" style={{ color: "oklch(0.700 0.130 75)" }} />
+                        <Sparkles className="h-4 w-4 text-primary" />
                         <p className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>Smart Recommendations</p>
                       </div>
                       <p className="mt-0.5 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
@@ -1614,7 +1659,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
 
                   {recommendationsError && (
-                    <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "oklch(0.60 0.12 20 / 0.35)", color: "oklch(0.60 0.12 20)" }}>
+                    <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                       {recommendationsError}
                     </div>
                   )}
@@ -1773,8 +1818,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 <Button onClick={handleSaveAll} disabled={saving}
-                  className="w-full h-10 font-semibold gold-gradient shadow-gold-sm"
-                  style={{ color: "oklch(0.10 0.010 260)" }}>
+                  className="h-11 w-full font-semibold">
                   {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
                     : saved ? <><Check className="w-4 h-4 mr-2" />Saved</>
                     : <><Save className="w-4 h-4 mr-2" />Save All Changes</>}
@@ -1790,7 +1834,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <Card className="shadow-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Activity className="w-4 h-4" style={{ color: "oklch(0.700 0.130 75)" }} />
+                  <Activity className="w-4 h-4 text-primary" />
                   Lead History
                 </CardTitle>
                 <p className="text-xs mt-1" style={{ color: "var(--color-foreground)" }}>
@@ -1816,7 +1860,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <Card className="shadow-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <History className="w-4 h-4" style={{ color: "oklch(0.700 0.130 75)" }} />
+                  <History className="w-4 h-4 text-primary" />
                   All Enquiries — {lead.full_name}
                 </CardTitle>
                 {client && (
@@ -1840,6 +1884,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </motion.div>
         )}
       </AnimatePresence>
+      </section>
+      </div>
 
       <Dialog open={!!selectedRecommendation} onOpenChange={open => !open && setSelectedRecommendation(null)}>
         <DialogContent className="max-w-3xl">
@@ -1968,6 +2014,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <AlertDialogDescription>
               This removes {lead.full_name ?? "this lead"} and all of its CRM details, notes,
               interactions and site visits from the database. This cannot be undone.
+              {deleteError && <span className="mt-2 block text-destructive">{deleteError}</span>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
