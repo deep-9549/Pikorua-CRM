@@ -49,11 +49,9 @@ export class MetaLeadsController {
       'assigned',
       'converted',
       'rejected',
-      'cold_pool',
       'lost_pool',
       'not_interested_pool',
       'broker_pool',
-      'construction_biz_owner_pool',
     ],
   })
   findAll(

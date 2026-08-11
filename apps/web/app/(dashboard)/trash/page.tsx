@@ -5,11 +5,9 @@ import Link from "next/link"
 import {
   ArchiveRestore,
   Briefcase,
-  Building2,
   Loader2,
   Phone,
   Search,
-  Snowflake,
   Trash2,
   TrendingDown,
   UserX,
@@ -40,11 +38,9 @@ interface TrashLead {
 const EMPTY_LEADS: TrashLead[] = []
 
 const TRASH_STATUS_META: Record<string, { label: string; icon: ElementType; color: string }> = {
-  cold_pool: { label: "Cold", icon: Snowflake, color: "oklch(0.65 0.15 250)" },
   lost_pool: { label: "Lost", icon: TrendingDown, color: "oklch(0.60 0.12 20)" },
   not_interested_pool: { label: "Not Interested", icon: UserX, color: "oklch(0.55 0.08 260)" },
   broker_pool: { label: "Broker", icon: Briefcase, color: "oklch(0.65 0.15 145)" },
-  construction_biz_owner_pool: { label: "Construction Owner", icon: Building2, color: "oklch(0.65 0.12 200)" },
 }
 
 function sourceLabel(source: string) {
@@ -170,7 +166,7 @@ export default function TrashPage() {
       ) : (
         <div className="space-y-2">
           {filtered.map(lead => {
-            const meta = TRASH_STATUS_META[lead.status] ?? TRASH_STATUS_META.cold_pool
+            const meta = TRASH_STATUS_META[lead.status] ?? TRASH_STATUS_META.lost_pool
             const Icon = meta.icon
             return (
               <Link key={lead.id} href={`/leads/${lead.id}?from=trash`}>

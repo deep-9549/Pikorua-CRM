@@ -7,20 +7,25 @@ import { serializeMetaLead } from '../leads/lead.serializer'
 import { serializeProfile } from '../../common/serializers/profile.serializer'
 import { LeadActivityService } from '../lead-activity/lead-activity.service'
 import {
+  LEGACY_ACTIVE_META_LEAD_POOL_STATUSES,
   META_LEAD_POOL_STATUSES,
   META_LEAD_QUEUE_MANAGED_STATUSES,
   poolStatusForClientStatus,
 } from '../leads/lead-pools'
 
 function serializeClient(client: any) {
+  const legacyConstructionOwner = client.status === 'construction_biz_owner'
   return {
     id: client.id,
     full_name: client.fullName ?? null,
     phone: client.phone ?? null,
     email: client.email ?? null,
     city: client.city ?? null,
-    status: client.status ?? null,
+    status: legacyConstructionOwner ? null : client.status ?? null,
     anti_broker: Boolean(client.antiBroker),
+    construction_business_owner: Boolean(
+      client.constructionBusinessOwner ?? client.construction_business_owner ?? legacyConstructionOwner,
+    ),
     status_note: client.statusNote ?? null,
     status_updated_by: client.statusUpdatedBy ?? null,
     status_updated_by_profile: serializeProfile(client.statusUpdatedByProfile),
@@ -81,6 +86,9 @@ export class ClientsService {
         clientStatus: client.status,
         clientStatusNote: client.statusNote,
         clientAntiBroker: client.antiBroker,
+        clientConstructionBusinessOwner: Boolean(
+          client.constructionBusinessOwner ?? client.status === 'construction_biz_owner',
+        ),
       })),
     }
   }
@@ -88,7 +96,12 @@ export class ClientsService {
   async updateStatus(
     id: string,
     updatedBy: string,
-    input: { status?: string | null; status_note?: string; anti_broker?: boolean },
+    input: {
+      status?: string | null
+      status_note?: string
+      anti_broker?: boolean
+      construction_business_owner?: boolean
+    },
   ) {
     const client = await this.db.query.clients.findFirst({
       where: eq(clients.id, id),
@@ -96,7 +109,14 @@ export class ClientsService {
     })
     if (!client) throw new NotFoundException(`Client ${id} not found`)
 
-    const status = input.status === undefined ? client.status ?? null : input.status
+    const legacyConstructionOwner = client.status === 'construction_biz_owner'
+      || input.status === 'construction_biz_owner'
+    const currentStatus = client.status === 'construction_biz_owner' ? null : client.status ?? null
+    const status = input.status === 'construction_biz_owner'
+      ? currentStatus
+      : input.status === undefined
+        ? currentStatus
+        : input.status
     const statusNote = input.status_note === undefined ? client.statusNote ?? null : input.status_note
     if (input.anti_broker === true && !isAntiBrokerCompatibleStatus(status)) {
       throw new BadRequestException('Anti-Broker can only be combined with Hot, Warm, or Cold')
@@ -104,6 +124,8 @@ export class ClientsService {
     const antiBroker = isAntiBrokerCompatibleStatus(status)
       ? input.anti_broker ?? Boolean(client.antiBroker)
       : false
+    const constructionBusinessOwner = input.construction_business_owner
+      ?? (Boolean(client.constructionBusinessOwner) || legacyConstructionOwner)
 
     await this.db
       .update(clients)
@@ -111,6 +133,7 @@ export class ClientsService {
         status: status ?? null,
         statusNote: statusNote ?? null,
         antiBroker,
+        constructionBusinessOwner,
         statusUpdatedBy: updatedBy,
         statusUpdatedAt: new Date(),
         updatedAt: new Date(),
@@ -118,9 +141,24 @@ export class ClientsService {
       .where(eq(clients.id, id))
 
     const changes = this.leadActivityService.diff(
-      { status: client.status ?? null, status_note: client.statusNote ?? null, anti_broker: Boolean(client.antiBroker) },
-      { status: status ?? null, status_note: statusNote ?? null, anti_broker: antiBroker },
-      { status: 'Client Status', status_note: 'Client Status Note', anti_broker: 'Anti-Broker' },
+      {
+        status: currentStatus,
+        status_note: client.statusNote ?? null,
+        anti_broker: Boolean(client.antiBroker),
+        construction_business_owner: Boolean(client.constructionBusinessOwner) || legacyConstructionOwner,
+      },
+      {
+        status: status ?? null,
+        status_note: statusNote ?? null,
+        anti_broker: antiBroker,
+        construction_business_owner: constructionBusinessOwner,
+      },
+      {
+        status: 'Client Status',
+        status_note: 'Client Status Note',
+        anti_broker: 'Anti-Broker',
+        construction_business_owner: 'Construction Business Owner',
+      },
     )
 
     const previousPoolStatus = poolStatusForClientStatus(client.status)
@@ -136,13 +174,17 @@ export class ClientsService {
           eq(metaLeads.clientId, id),
           inArray(metaLeads.status, META_LEAD_QUEUE_MANAGED_STATUSES as never),
         ))
-    } else if (previousPoolStatus) {
+    } else if (previousPoolStatus || input.status !== undefined) {
+      const statusesToRestore = [
+        ...META_LEAD_POOL_STATUSES,
+        ...LEGACY_ACTIVE_META_LEAD_POOL_STATUSES,
+      ]
       await this.db
         .update(metaLeads)
         .set({ status: 'assigned' as never, updatedAt: new Date() })
         .where(and(
           eq(metaLeads.clientId, id),
-          inArray(metaLeads.status, META_LEAD_POOL_STATUSES as never),
+          inArray(metaLeads.status, statusesToRestore as never),
           isNotNull(metaLeads.assignedTo),
         ))
 
@@ -151,7 +193,7 @@ export class ClientsService {
         .set({ status: 'unassigned' as never, updatedAt: new Date() })
         .where(and(
           eq(metaLeads.clientId, id),
-          inArray(metaLeads.status, META_LEAD_POOL_STATUSES as never),
+          inArray(metaLeads.status, statusesToRestore as never),
           isNull(metaLeads.assignedTo),
         ))
     }

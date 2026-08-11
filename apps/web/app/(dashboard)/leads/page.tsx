@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   Search, Users, Phone, MapPin, Flame,
   Thermometer, Snowflake, ChevronRight, Loader2, AlertCircle,
-  RefreshCw, Calendar, Star, Download, Filter, X, Plus, ShieldOff
+  RefreshCw, Calendar, Star, Download, Filter, X, Plus, ShieldOff, Building
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
@@ -77,6 +77,7 @@ interface MetaLead {
   client_status?: string | null
   client_status_note?: string | null
   client_anti_broker?: boolean
+  client_construction_business_owner?: boolean
   today_follow_up_calls?: Array<{
     id: string
     call_status: "spoken" | "not_spoken"
@@ -114,10 +115,17 @@ const CLIENT_STATUS_MAP: Record<string, { label: string; icon: React.ElementType
   low_budget:             { label: "Low Budget",        icon: Filter,       color: "oklch(0.72 0.15 85)"  },
   not_interested:         { label: "Not Interested",    icon: X,            color: "oklch(0.55 0.08 260)" },
   broker:                 { label: "Broker",            icon: Users,        color: "oklch(0.65 0.15 145)" },
-  construction_biz_owner: { label: "Const. Owner",      icon: Users,        color: "oklch(0.65 0.12 200)" },
 }
 
-function ClientStatusBadge({ status, antiBroker }: { status: string | null | undefined; antiBroker?: boolean }) {
+function ClientStatusBadge({
+  status,
+  antiBroker,
+  constructionBusinessOwner,
+}: {
+  status: string | null | undefined
+  antiBroker?: boolean
+  constructionBusinessOwner?: boolean
+}) {
   const m = status ? CLIENT_STATUS_MAP[status] : undefined
   const Icon = m?.icon
   return (
@@ -131,6 +139,11 @@ function ClientStatusBadge({ status, antiBroker }: { status: string | null | und
       {antiBroker && (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 bg-violet-600 text-white">
           <ShieldOff className="w-2.5 h-2.5" />Anti-Broker
+        </span>
+      )}
+      {constructionBusinessOwner && (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 bg-cyan-700 text-white">
+          <Building className="w-2.5 h-2.5" />Construction Owner
         </span>
       )}
     </>
@@ -518,6 +531,7 @@ export default function LeadsPage() {
                 <option value="warm">Warm</option>
                 <option value="cold">Cold</option>
                 <option value="anti_broker">Anti-Broker</option>
+                <option value="construction_business_owner">Construction Business Owner</option>
                 <option value="postponed">Postponed</option>
                 <option value="lost">Lost</option>
               </FilterSelect>
@@ -751,7 +765,11 @@ function Section({ leads, onOpenLead }: { leads: MetaLead[]; onOpenLead: () => v
                     <p className="text-sm font-semibold truncate" style={{ color: "var(--color-foreground)" }}>
                       {lead.full_name ?? "Unknown"}
                     </p>
-                    <ClientStatusBadge status={lead.client_status} antiBroker={lead.client_anti_broker} />
+                    <ClientStatusBadge
+                      status={lead.client_status}
+                      antiBroker={lead.client_anti_broker}
+                      constructionBusinessOwner={lead.client_construction_business_owner}
+                    />
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     {lead.phone && (

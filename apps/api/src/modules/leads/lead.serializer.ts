@@ -21,7 +21,6 @@ const CLIENT_DETAIL_STATUSES = new Set([
   'low_budget',
   'not_interested',
   'broker',
-  'construction_biz_owner',
 ])
 
 function normalizeClientStatus(status: string | null | undefined, crm: any) {
@@ -100,5 +99,6 @@ export function serializeMetaLead(lead: any) {
     client_status: normalizeClientStatus(lead.clientStatus, lead.crmDetails),
     client_status_note: lead.clientStatusNote ?? null,
     client_anti_broker: Boolean(lead.clientAntiBroker),
+    client_construction_business_owner: Boolean(lead.clientConstructionBusinessOwner),
   }
 }

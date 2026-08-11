@@ -72,28 +72,16 @@ declare
   r        record;
   next_exec uuid;
 begin
-  -- ① Cold leads → cold pool (unassign, super-admin handles)
+  -- ① Unspoken or cold > 48h → round-robin. Cold leads stay in the
+  -- normal queue and follow the same movement rule as not-spoken leads.
   for r in
     select ml.id, ml.assigned_to
     from public.meta_leads ml
-    join public.lead_crm_details c on c.meta_lead_id = ml.id
-    where ml.status = 'assigned' and c.hwc = 'cold'
-  loop
-    update public.meta_leads
-      set status = 'cold_pool', assigned_to = null, assigned_at = null
-      where id = r.id;
-    insert into public.lead_assignment_history (lead_id, from_user, to_user, reason)
-      values (r.id, r.assigned_to, null, 'cold_pool');
-  end loop;
-
-  -- ② Unspoken > 48h → round-robin
-  for r in
-    select ml.id, ml.assigned_to
-    from public.meta_leads ml
-    left join public.lead_crm_details c on c.meta_lead_id = ml.id
+    left join public.lead_crm_details c
+      on coalesce(to_jsonb(c)->>'lead_id', to_jsonb(c)->>'meta_lead_id')::uuid = ml.id
     where ml.status = 'assigned'
       and ml.assigned_at < now() - interval '48 hours'
-      and (c.call_status is distinct from 'spoken')
+      and (c.call_status is distinct from 'spoken' or c.hwc = 'cold')
   loop
     next_exec := public.pick_least_loaded_executive(r.assigned_to);
     if next_exec is not null then
@@ -105,11 +93,12 @@ begin
     end if;
   end loop;
 
-  -- ③ Hot > 30 days → round-robin
+  -- ② Hot > 30 days → round-robin
   for r in
     select ml.id, ml.assigned_to
     from public.meta_leads ml
-    join public.lead_crm_details c on c.meta_lead_id = ml.id
+    join public.lead_crm_details c
+      on coalesce(to_jsonb(c)->>'lead_id', to_jsonb(c)->>'meta_lead_id')::uuid = ml.id
     where ml.status = 'assigned'
       and c.hwc = 'hot'
       and ml.assigned_at < now() - interval '30 days'
@@ -124,11 +113,12 @@ begin
     end if;
   end loop;
 
-  -- ④ Warm > 7 days → round-robin
+  -- ③ Warm > 7 days → round-robin
   for r in
     select ml.id, ml.assigned_to
     from public.meta_leads ml
-    join public.lead_crm_details c on c.meta_lead_id = ml.id
+    join public.lead_crm_details c
+      on coalesce(to_jsonb(c)->>'lead_id', to_jsonb(c)->>'meta_lead_id')::uuid = ml.id
     where ml.status = 'assigned'
       and c.hwc = 'warm'
       and ml.assigned_at < now() - interval '7 days'

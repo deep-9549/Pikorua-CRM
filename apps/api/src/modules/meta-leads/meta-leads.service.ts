@@ -23,6 +23,18 @@ import {
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
 
+function normalizedClientStatus(client: any) {
+  return client?.status === 'construction_biz_owner' ? null : client?.status ?? null
+}
+
+function isConstructionBusinessOwner(client: any) {
+  return Boolean(
+    client?.constructionBusinessOwner
+      ?? client?.construction_business_owner
+      ?? client?.status === 'construction_biz_owner',
+  )
+}
+
 function todayIstUtcRange(now = new Date()) {
   const istOffsetMs = 5.5 * 60 * 60 * 1000
   const shifted = new Date(now.getTime() + istOffsetMs)
@@ -118,16 +130,22 @@ export class MetaLeadsService {
 
     // Build phone list for client status lookup (works even when clientId is not yet set)
     const phones = [...new Set(leads.map(l => l.phone).filter(Boolean))] as string[]
-    const phoneClientMap = new Map<string, { status: string | null; statusNote: string | null; antiBroker: boolean }>()
+    const phoneClientMap = new Map<string, {
+      status: string | null
+      statusNote: string | null
+      antiBroker: boolean
+      constructionBusinessOwner: boolean
+    }>()
     if (phones.length > 0) {
       const rows = await this.db.query.clients.findMany({
         where: inArray(clients.phone, phones),
       })
       for (const row of rows) {
         if (row.phone) phoneClientMap.set(row.phone, {
-          status: row.status,
+          status: normalizedClientStatus(row),
           statusNote: row.statusNote,
           antiBroker: Boolean(row.antiBroker),
+          constructionBusinessOwner: isConstructionBusinessOwner(row),
         })
       }
     }
@@ -169,6 +187,9 @@ export class MetaLeadsService {
           clientStatus: l.phone ? (phoneClientMap.get(l.phone)?.status ?? null) : null,
           clientStatusNote: l.phone ? (phoneClientMap.get(l.phone)?.statusNote ?? null) : null,
           clientAntiBroker: l.phone ? (phoneClientMap.get(l.phone)?.antiBroker ?? false) : false,
+          clientConstructionBusinessOwner: l.phone
+            ? (phoneClientMap.get(l.phone)?.constructionBusinessOwner ?? false)
+            : false,
         }),
         today_follow_up_calls: followUpCallsByLead.get(l.id) ?? [],
       })),
@@ -199,16 +220,27 @@ export class MetaLeadsService {
     let clientStatus: string | null = null
     let clientStatusNote: string | null = null
     let clientAntiBroker = false
+    let clientConstructionBusinessOwner = false
     if (clientId) {
       const client = await this.db.query.clients.findFirst({
         where: eq(clients.id, clientId),
       })
-      clientStatus = client?.status ?? null
+      clientStatus = normalizedClientStatus(client)
       clientStatusNote = client?.statusNote ?? null
       clientAntiBroker = Boolean(client?.antiBroker)
+      clientConstructionBusinessOwner = isConstructionBusinessOwner(client)
     }
 
-    return { lead: serializeMetaLead({ ...lead, clientId, clientStatus, clientStatusNote, clientAntiBroker }) }
+    return {
+      lead: serializeMetaLead({
+        ...lead,
+        clientId,
+        clientStatus,
+        clientStatusNote,
+        clientAntiBroker,
+        clientConstructionBusinessOwner,
+      }),
+    }
   }
 
   /**
@@ -242,6 +274,7 @@ export class MetaLeadsService {
     let clientStatus: string | null = null
     let clientStatusNote: string | null = null
     let clientAntiBroker = false
+    let clientConstructionBusinessOwner = false
     if (clientId) {
       // A missing client shouldn't take down the whole lead page — degrade to
       // showing the lead without its profile/history (matches the old behaviour).
@@ -252,6 +285,7 @@ export class MetaLeadsService {
         clientStatus = profile.client?.status ?? null
         clientStatusNote = profile.client?.status_note ?? null
         clientAntiBroker = Boolean(profile.client?.anti_broker)
+        clientConstructionBusinessOwner = Boolean(profile.client?.construction_business_owner)
       } catch (error) {
         // Degrade gracefully, but record why so a DB/network failure is
         // distinguishable from a genuinely missing client.
@@ -263,7 +297,14 @@ export class MetaLeadsService {
     }
 
     return {
-      lead: serializeMetaLead({ ...lead, clientId, clientStatus, clientStatusNote, clientAntiBroker }),
+      lead: serializeMetaLead({
+        ...lead,
+        clientId,
+        clientStatus,
+        clientStatusNote,
+        clientAntiBroker,
+        clientConstructionBusinessOwner,
+      }),
       crm: serializeCrmDetails(lead.crmDetails),
       client,
       history,

@@ -14,6 +14,7 @@ export interface MetaAdsQueueFilterableLead {
   received_at: string
   assigned_to_profile: { id: string } | null
   client_status: string | null
+  client_construction_business_owner?: boolean
   crm: { call_status: MetaAdsCallStatus | null } | null
 }
 
@@ -75,7 +76,11 @@ export function filterMetaAdsQueueLeads<T extends MetaAdsQueueFilterableLead>(
     if (filters.platform && lead.platform !== filters.platform) return false
     if (filters.campaign && lead.campaign_name !== filters.campaign) return false
     if (filters.executive && lead.assigned_to_profile?.id !== filters.executive) return false
-    if (filters.clientStatus && lead.client_status !== filters.clientStatus) return false
+    if (
+      filters.clientStatus === "construction_business_owner"
+        ? !lead.client_construction_business_owner
+        : filters.clientStatus && lead.client_status !== filters.clientStatus
+    ) return false
     if (filters.callStatus && lead.crm?.call_status !== filters.callStatus) return false
 
     const receivedDate = toDateInputValue(lead.received_at)

@@ -64,6 +64,7 @@ interface ClientProfile {
   city: string | null
   status: string | null
   anti_broker: boolean
+  construction_business_owner: boolean
   status_note: string | null
   status_updated_at: string | null
   first_seen_at: string
@@ -81,6 +82,7 @@ interface LeadHistory {
   assigned_to_profile: { id: string; full_name: string } | null
   client_status?: string | null
   client_anti_broker?: boolean
+  client_construction_business_owner?: boolean
   crm: {
     call_status: string | null
     site_visit_status: string | null
@@ -196,10 +198,9 @@ const CLIENT_STATUSES = [
   { value: "low_budget",           label: "Low Budget",          icon: AlertTriangle, color: "oklch(0.72 0.15 85)",  bg: "oklch(0.72 0.15 85 / 0.15)"  },
   { value: "not_interested",       label: "Not Interested",       icon: PhoneOff,      color: "oklch(0.55 0.08 260)", bg: "oklch(0.55 0.08 260 / 0.15)" },
   { value: "broker",               label: "Broker",               icon: Briefcase,     color: "oklch(0.65 0.15 145)", bg: "oklch(0.65 0.15 145 / 0.15)" },
-  { value: "construction_biz_owner", label: "Construction Owner", icon: Building,      color: "oklch(0.65 0.12 200)", bg: "oklch(0.65 0.12 200 / 0.15)" },
 ]
 const CLIENT_STATUS_VALUES = new Set(CLIENT_STATUSES.map(status => status.value))
-const BUYING_STATUS_OPTIONAL_CLIENT_STATUSES = new Set(["broker", "construction_biz_owner"])
+const BUYING_STATUS_OPTIONAL_CLIENT_STATUSES = new Set(["broker"])
 
 // Helpers
 
@@ -624,6 +625,11 @@ function HistoryCard({ entry, isCurrent }: { entry: LeadHistory; isCurrent: bool
                 <ShieldOff className="h-3 w-3" />Anti-Broker
               </span>
             )}
+            {entry.client_construction_business_owner && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-cyan-700 px-2.5 py-1 text-xs font-semibold text-white">
+                <Building className="h-3 w-3" />Construction Business Owner
+              </span>
+            )}
           </div>
         </div>
         {hasCrm && (
@@ -782,6 +788,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   })
   const [clientStatus, setClientStatus] = useState<string | null>(null)
   const [clientAntiBroker, setClientAntiBroker] = useState(false)
+  const [clientConstructionBusinessOwner, setClientConstructionBusinessOwner] = useState(false)
   const [clientNote, setClientNote] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -843,6 +850,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               : null
           setClientStatus(status)
           setClientAntiBroker(Boolean(json.client.anti_broker))
+          setClientConstructionBusinessOwner(Boolean(json.client.construction_business_owner))
           setClientNote(json.client.status_note ?? "")
         }
         if (json.history) setHistory(json.history)
@@ -1027,6 +1035,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 status: clientStatus,
                 status_note: clientNote,
                 anti_broker: clientAntiBroker,
+                construction_business_owner: clientConstructionBusinessOwner,
               }),
             })
           : Promise.resolve(null),
@@ -1052,6 +1061,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           setClient(statusJson.client)
           setClientStatus(CLIENT_STATUS_VALUES.has(statusJson.client.status) ? statusJson.client.status : null)
           setClientAntiBroker(Boolean(statusJson.client.anti_broker))
+          setClientConstructionBusinessOwner(Boolean(statusJson.client.construction_business_owner))
           setClientNote(statusJson.client.status_note ?? "")
         }
       }
@@ -1241,6 +1251,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}
       >
         <ShieldOff className="h-3 w-3" />Anti-Broker
+      </button>
+      <button
+        type="button"
+        onClick={() => setClientConstructionBusinessOwner(current => !current)}
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all"
+        style={clientConstructionBusinessOwner
+          ? { background: "rgb(14 116 144 / 0.18)", color: "rgb(103 232 249)", border: "1px solid rgb(8 145 178 / 0.65)" }
+          : { background: "oklch(0.185 0.015 260)", color: "oklch(0.90 0.004 260)", border: "1px solid oklch(0.320 0.014 260)" }}
+      >
+        <Building className="h-3 w-3" />Construction Business Owner
       </button>
       <p className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
         Anti-Broker can only be combined with Hot, Warm, or Cold.

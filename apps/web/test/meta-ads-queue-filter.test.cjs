@@ -47,7 +47,11 @@ function lead(id, overrides = {}) {
 }
 
 const leads = [
-  lead('spoken', { client_status: 'hot', crm: { call_status: 'spoken' } }),
+  lead('spoken', {
+    client_status: 'hot',
+    client_construction_business_owner: true,
+    crm: { call_status: 'spoken' },
+  }),
   lead('not-spoken', { client_status: 'warm', crm: { call_status: 'not_spoken' } }),
   lead('callback', { crm: { call_status: 'call_back_later' } }),
   lead('unset-crm'),
@@ -107,6 +111,15 @@ test('Client status excludes leads with no client status', () => {
   })
 
   assert.deepEqual(metaAdsQueueLeadIds(filtered), ['not-spoken'])
+})
+
+test('Construction Business Owner filters as an independent flag', () => {
+  const filtered = filterMetaAdsQueueLeads(leads, {
+    ...assignedFilters,
+    clientStatus: 'construction_business_owner',
+  })
+
+  assert.deepEqual(metaAdsQueueLeadIds(filtered), ['spoken'])
 })
 
 test('Split shown IDs contain only matching leads from the unassigned queue', () => {
