@@ -1,58 +1,58 @@
-# Graph Report - Pikorua-CRM  (2026-08-09)
+# Graph Report - Pikorua-CRM  (2026-08-11)
 
 ## Corpus Check
-- 344 files · ~218,833 words
+- 347 files · ~220,638 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3122 nodes · 5916 edges · 279 communities (180 shown, 99 thin omitted)
+- 3152 nodes · 5960 edges · 272 communities (177 shown, 95 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 54 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9b2dcccf`
+- Built from commit: `38e43be1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- dashboard.service.ts
+- DashboardService
 - VoiceIntegrationService
-- employee-performance-analysis/page.tsx
+- dashboard.service.ts
 - data.ts
 - meta-ads/page.tsx
 - hrm-activity.service.ts
 - dashboard/page.tsx
 - DatabaseService
 - meta-leads.service.ts
-- LeadsController
+- LeadsService
 - CreateSiteVisitDto
-- utils.ts
-- BookingsService
+- leads/page.tsx
+- CreateBookingDto
 - sidebar.tsx
 - types/index.ts
 - UpsertHniProfileDto
 - hooks/use-toast.ts
 - [id]/page.tsx
 - employee-performance-pdf.ts
-- CreateLeadDto
+- buildTrendBuckets
 - MicrositeLeadSyncService
-- properties/page.tsx
+- settings/page.tsx
 - supabase-setup.sql
 - devDependencies
 - proxyToApi
-- .sync
+- meta-lead-sync.module.ts
 - SendMessageDto
 - tasks
 - property-recommendation.matcher.ts
 - UsersController
-- ImportService
+- import.service.ts
 - documents/page.tsx
 - compilerOptions
 - meta-lead-sync.service.ts
-- meta-lead-sync.module.ts
+- .ingestMeta
 - db/package.json
 - meta-leads.controller.ts
-- ApiProperty
+- leads.controller.ts
 - MetaLeadSyncService
 - item.tsx
 - compilerOptions
@@ -68,44 +68,44 @@
 - devDependencies
 - EmployeesController
 - field.tsx
-- AuthController
-- menubar.tsx
+- utils.ts
+- ownedAt
 - components.json
 - users.ts
 - voice.ts
-- input.tsx
+- menubar.tsx
 - compilerOptions
 - shared/package.json
 - compilerOptions
 - client-smart-insights.service.ts
-- ClientsService
+- ClientsController
 - schemas/index.ts
 - cn
 - properties.ts
 - carousel.tsx
 - leads Table
 - AppController
-- ImportController
+- import-properties-from-excel.mjs
 - context-menu.tsx
 - dependencies
 - microsite-lead-sync.test.cjs
 - react
 - scripts
 - PropertyCard
-- crm-workflow.test.cjs
-- chart.tsx
-- LeadsService
+- lead-list-state.ts
+- dashboard.module.ts
+- .calculateEmployeePerformance
 - drawer.tsx
 - meta-ads-queue-filter.test.cjs
 - export-leads.ts
-- import-properties-from-excel.mjs
+- ImportController
 - meta-lead-sync.test.cjs
-- lead-crm.ts
+- crm-workflow.test.cjs
 - leads-filter-export.test.cjs
 - Pikorua CRM Database Design
 - setup-local-env.mjs
 - create-local-admin.mjs
-- WebsiteLeadSyncService
+- ImportService
 - password-reset.test.cjs
 - getApiBaseUrl
 - MetaGraphService
@@ -120,7 +120,7 @@
 - nest-cli.json
 - serverless.ts
 - meta-ads-queue-filter.ts
-- command-palette.tsx
+- (dashboard)/layout.tsx
 - toggle-group.tsx
 - Local Docker Full Stack
 - Linux Local Setup Guide
@@ -134,7 +134,7 @@
 - properties Table
 - Q: Which local SQL migrations are included in Graphify?
 - searchable-select.tsx
-- CreateUserDto
+- pagination.tsx
 - alert.tsx
 - phase1-update.sql
 - clients/[id]/route.ts
@@ -145,15 +145,15 @@
 - Placeholder Profile Avatar
 - Pikorua CRM API Image
 - voice_call_logs Table
-- auth.service.ts
+- auth.controller.ts
 - hni/route.ts
 - detail/route.ts
-- auth.module.ts
+- WebsiteLeadSyncService
 - property-recommendations/route.ts
 - leads/meta/route.ts
 - site-visits/route.ts
-- AuthService
-- UpdateProfileDto
+- chart.tsx
+- migrate-sheet.mjs
 - Pikorua Dark App Icon
 - Pikorua Brand Logo
 - meta_lead_sync_state Table
@@ -161,17 +161,17 @@
 - index.js
 - date-fns
 - class-transformer
-- class-validator
-- drizzle-orm
-- ChangePasswordDto
+- voice-integration.module.ts
+- input-group.tsx
+- employee-performance.test.cjs
 - public.clients
-- @nestjs/passport
-- @nestjs/swagger
+- app-preferences-provider.tsx
+- hover-card.tsx
 - @nestjs/config
-- meta-lead-importer.service.ts
+- breadcrumb.tsx
 - @pikorua/db
 - @pikorua/shared
-- PasswordResetMailerService
+- @nestjs/common
 - rxjs
 - activities/route.ts
 - site-visits/[id]/route.ts
@@ -180,14 +180,14 @@
 - autoprefixer
 - class-variance-authority
 - cmdk
-- CreateBookingDto
+- SplitAssignDto
 - embla-carousel-react
 - framer-motion
 - @hookform/resolvers
 - jose
 - lucide-react
 - next
-- ResetPasswordDto
+- @nestjs/throttler
 - @radix-ui/react-accordion
 - @radix-ui/react-alert-dialog
 - @radix-ui/react-aspect-ratio
@@ -216,7 +216,7 @@
 - react-dom
 - react-hook-form
 - react-resizable-panels
-- recharts
+- lead-routing.test.cjs
 - sonner
 - tailwind-merge
 - @tanstack/react-query
@@ -243,7 +243,7 @@
 - public.lead_crm_details
 - public.lead_crm_details
 - follow-ups/route.ts
-- .ingestMeta
+- WhatsAppHubPage
 - empty.tsx
 - navigation-menu.tsx
 - Q: also make sure that those freshly assigned leads get moved to normal leads section after they are visited once
@@ -251,26 +251,18 @@
 - public.meta_leads
 - assign/route.ts
 - dashboard-lead-growth.ts
-- lead-display-order.ts
+- class-validator
 - unassign/route.ts
-- import.service.ts
-- webhooks.service.ts
-- multer
+- reflect-metadata
+- @nestjs/swagger
+- recharts
 - @nestjs/jwt
 - passport
 - postgres
-- UpdateLeadDto
 - change-password/route.ts
 - forgot-password/route.ts
 - bookings/[id]/route.ts
 - properties/route.ts
-- migrate-sheet.mjs
-- SplitAssignDto
-- BulkLeadIdsDto
-- useMetaLeads
-- property-recommendations.test.cjs
-- WhatsAppHubPage
-- cache-manager
 - @pikorua/shared
 
 ## God Nodes (most connected - your core abstractions)
@@ -305,19 +297,19 @@
 - **Production Release Delivery** — cloudbuild_production_api_image, cloudbuild_production_web_image, cloudbuild_production_release_manifest, cloudbuild_production_release_bucket, cloudbuild_production_deployment_vm [EXTRACTED 1.00]
 - **Lead Operations Schema** — test_leads, test_lead_crm_details, test_lead_interactions, test_lead_notes, test_lead_assignment_history, test_lead_activity_events [INFERRED 0.85]
 
-## Communities (279 total, 99 thin omitted)
+## Communities (272 total, 95 thin omitted)
 
-### Community 0 - "dashboard.service.ts"
-Cohesion: 0.05
-Nodes (68): DashboardController, ApiBearerAuth, ApiOperation, ApiTags, Controller, Get, Query, UseGuards (+60 more)
+### Community 0 - "DashboardService"
+Cohesion: 0.15
+Nodes (10): DashboardController, ApiBearerAuth, ApiOperation, ApiTags, Controller, Get, Query, UseGuards (+2 more)
 
 ### Community 1 - "VoiceIntegrationService"
 Cohesion: 0.06
 Nodes (21): Body, Controller, Delete, Get, Param, Patch, Query, UseGuards (+13 more)
 
-### Community 2 - "employee-performance-analysis/page.tsx"
-Cohesion: 0.11
-Nodes (20): Employee, EmployeePerformanceAnalysisPage(), EMPTY_SUMMARY, formatDate(), formatNumber(), initials(), MetricCardProps, PerformanceResponse (+12 more)
+### Community 2 - "dashboard.service.ts"
+Cohesion: 0.13
+Nodes (21): buildLeadQualityMarks(), buildOwnershipIndex(), CallActivity, changedValue(), employeeOwnershipWindows(), LeadQualityMark, metadataValue(), ownedDuringPeriod() (+13 more)
 
 ### Community 3 - "data.ts"
 Cohesion: 0.03
@@ -325,43 +317,43 @@ Nodes (49): Booking, bookings, budgetRanges, callingScripts, DashboardStats, Emp
 
 ### Community 4 - "meta-ads/page.tsx"
 Cohesion: 0.06
-Nodes (52): AiVoicePage(), duration(), EMPTY_FILTERS, Filters, formatDateTime(), formatTranscriptForClipboard(), labelStyles, labelText() (+44 more)
+Nodes (40): AiVoicePage(), duration(), EMPTY_FILTERS, Filters, formatDateTime(), formatTranscriptForClipboard(), labelStyles, labelText() (+32 more)
 
 ### Community 5 - "hrm-activity.service.ts"
 Cohesion: 0.08
 Nodes (27): bearerToken(), HrmApiKeyGuard, normalizeIp(), secretsEqual(), Injectable, ActivityCountRow, buildHrmActivityRows(), countMap() (+19 more)
 
 ### Community 6 - "dashboard/page.tsx"
-Cohesion: 0.16
-Nodes (19): buildMonthBuckets(), callWasToday(), CrmDetails, DashboardPage(), displayStatus(), EMPTY_LEADS, EMPTY_VISITS, formatNumber() (+11 more)
+Cohesion: 0.12
+Nodes (25): buildMonthBuckets(), callWasToday(), CrmDetails, DashboardPage(), displayStatus(), EMPTY_LEADS, EMPTY_VISITS, formatNumber() (+17 more)
 
 ### Community 7 - "DatabaseService"
-Cohesion: 0.08
-Nodes (21): DatabaseService, Injectable, ActivityEventType, ChangeValue, LeadActivityChanges, LeadActivityService, normalizeValue(), ProfileSnapshot (+13 more)
+Cohesion: 0.07
+Nodes (22): DatabaseService, Injectable, ClientsService, Injectable, ActivityEventType, ChangeValue, LeadActivityChanges, LeadActivityService (+14 more)
 
 ### Community 8 - "meta-leads.service.ts"
-Cohesion: 0.11
-Nodes (22): ProfileLike, SerializedProfile, serializeProfile(), BookingUser, serializeBooking(), serializeClient(), CLIENT_STATUS_TO_META_LEAD_POOL_STATUS, isNonTransferableMetaLeadPoolStatus() (+14 more)
+Cohesion: 0.08
+Nodes (33): ProfileLike, SerializedProfile, serializeProfile(), BookingUser, serializeBooking(), serializeClient(), CLIENT_STATUS_TO_META_LEAD_POOL_STATUS, isNonTransferableMetaLeadPoolStatus() (+25 more)
 
-### Community 9 - "LeadsController"
-Cohesion: 0.13
-Nodes (16): LeadsController, toBoolean(), ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body, Controller (+8 more)
+### Community 9 - "LeadsService"
+Cohesion: 0.10
+Nodes (18): LeadsController, toBoolean(), ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body, Controller (+10 more)
 
 ### Community 10 - "CreateSiteVisitDto"
 Cohesion: 0.05
-Nodes (34): CreateSiteVisitDto, ApiPropertyOptional, IsDateString, IsEnum, IsOptional, IsString, IsUUID, Transform (+26 more)
+Nodes (32): CreateSiteVisitDto, ApiPropertyOptional, IsDateString, IsEnum, IsOptional, IsString, IsUUID, Transform (+24 more)
 
-### Community 11 - "utils.ts"
-Cohesion: 0.10
-Nodes (24): CallListDialog(), CallListEntry, CallListStatus, CLIENT_STATUS_MAP, Crm, EMPTY_LEADS, initials(), isFresh() (+16 more)
+### Community 11 - "leads/page.tsx"
+Cohesion: 0.06
+Nodes (43): CallListDialog(), CallListEntry, CallListStatus, CLIENT_STATUS_MAP, Crm, EMPTY_LEADS, initials(), isFresh() (+35 more)
 
-### Community 12 - "BookingsService"
-Cohesion: 0.09
-Nodes (19): BookingsController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body, Controller, Get (+11 more)
+### Community 12 - "CreateBookingDto"
+Cohesion: 0.06
+Nodes (28): BookingsController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Body, Controller, Get (+20 more)
 
 ### Community 13 - "sidebar.tsx"
 Cohesion: 0.06
-Nodes (35): Sheet(), SheetContent(), SheetDescription(), SheetFooter(), SheetHeader(), SheetOverlay(), SheetTitle(), Sidebar() (+27 more)
+Nodes (36): Sheet(), SheetContent(), SheetDescription(), SheetFooter(), SheetHeader(), SheetOverlay(), SheetTitle(), Sidebar() (+28 more)
 
 ### Community 14 - "types/index.ts"
 Cohesion: 0.07
@@ -383,17 +375,17 @@ Nodes (37): ActivityCard(), BUDGET_OPTIONS, BUYING_STATUS_OPTIONAL_CLIENT_STATUS
 Cohesion: 0.10
 Nodes (31): BLUE, buildEmployeePerformancePdf(), buildPages(), Canvas, Color, comparisonChart(), createPdf(), delta() (+23 more)
 
-### Community 19 - "CreateLeadDto"
-Cohesion: 0.25
-Nodes (6): CreateLeadDto, ApiPropertyOptional, IsEmail, IsOptional, IsString, Transform
+### Community 19 - "buildTrendBuckets"
+Cohesion: 0.27
+Nodes (14): addHours(), addMonths(), buildPeriodRanges(), buildTrendBuckets(), hourLabel(), istShift(), monthLabel(), monthsBetween() (+6 more)
 
 ### Community 20 - "MicrositeLeadSyncService"
-Cohesion: 0.11
-Nodes (22): parseMetaPages(), RECOMMENDED, REQUIRED, validateEnv(), stripPhonePrefix(), buildMicrositeLeadExternalId(), clean(), mapMicrositeLeadToCrm() (+14 more)
+Cohesion: 0.12
+Nodes (21): parseMetaPages(), RECOMMENDED, REQUIRED, validateEnv(), buildMicrositeLeadExternalId(), clean(), mapMicrositeLeadToCrm(), micrositeLeadFullName() (+13 more)
 
-### Community 21 - "properties/page.tsx"
-Cohesion: 0.07
-Nodes (35): aiModules, recentActions, container, item, parseApiProperty(), PropertyRecommendation, toNullableNumber(), toNumber() (+27 more)
+### Community 21 - "settings/page.tsx"
+Cohesion: 0.08
+Nodes (30): aiModules, recentActions, change(), CHART_COLORS, Employee, localDate(), ReportResponse, ReportsPage() (+22 more)
 
 ### Community 22 - "supabase-setup.sql"
 Cohesion: 0.11
@@ -407,13 +399,13 @@ Nodes (36): devDependencies, eslint, eslint-config-next, postcss, tailwindcss, @
 Cohesion: 0.10
 Nodes (22): DELETE(), GET(), POST(), GET(), PATCH(), POST(), GET(), POST() (+14 more)
 
-### Community 25 - ".sync"
-Cohesion: 0.18
-Nodes (8): MetaLeadSyncController, ApiOperation, ApiTags, Controller, Headers, HttpCode, Post, Query
+### Community 25 - "meta-lead-sync.module.ts"
+Cohesion: 0.15
+Nodes (10): MetaLeadSyncController, ApiOperation, ApiTags, Controller, Headers, HttpCode, Post, Query (+2 more)
 
 ### Community 26 - "SendMessageDto"
-Cohesion: 0.08
-Nodes (21): SendMessageDto, ApiPropertyOptional, IsEnum, IsOptional, IsString, IsUUID, ApiBearerAuth, ApiOperation (+13 more)
+Cohesion: 0.09
+Nodes (19): SendMessageDto, ApiPropertyOptional, IsEnum, IsOptional, IsString, IsUUID, ApiBearerAuth, ApiOperation (+11 more)
 
 ### Community 27 - "tasks"
 Cohesion: 0.06
@@ -427,37 +419,37 @@ Nodes (30): ApartmentSalesPriority, BudgetRange, buildPropertyRecommendations(),
 Cohesion: 0.12
 Nodes (14): ApiBearerAuth, ApiOperation, ApiTags, Body, Controller, Delete, Get, Param (+6 more)
 
-### Community 30 - "ImportService"
-Cohesion: 0.21
-Nodes (4): xlsx, ImportService, Injectable, xlsx
+### Community 30 - "import.service.ts"
+Cohesion: 0.16
+Nodes (15): BUDGET_VALUE_MAP, CAMPAIGN_NAME_RULES, normalizeCampaignName(), normalizeMetaBudget(), normalizeMetaPlatform(), stripPhonePrefix(), ImportResultDto, ImportRowError (+7 more)
 
 ### Community 31 - "documents/page.tsx"
-Cohesion: 0.09
-Nodes (35): categoryConfig, Document, DocumentsPage(), getFileColor(), getFileIcon(), initialDocuments, buildFollowUpNotifications(), dateKey() (+27 more)
+Cohesion: 0.12
+Nodes (28): categoryConfig, Document, DocumentsPage(), getFileColor(), getFileIcon(), initialDocuments, buildFollowUpNotifications(), dateKey() (+20 more)
 
 ### Community 32 - "compilerOptions"
 Cohesion: 0.07
 Nodes (29): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+21 more)
 
 ### Community 33 - "meta-lead-sync.service.ts"
-Cohesion: 0.17
-Nodes (14): MetaApiErrorBody, MetaGraphError, MetaGraphResult, FormSyncResult, MetaLeadSyncOptions, MetaLeadSyncResult, MetaUsageHighError, SyncRunHaltedError (+6 more)
+Cohesion: 0.16
+Nodes (14): MetaApiErrorBody, MetaGraphError, MetaGraphResult, sleep(), FormSyncResult, MetaLeadSyncOptions, MetaLeadSyncResult, MetaUsageHighError (+6 more)
 
-### Community 34 - "meta-lead-sync.module.ts"
-Cohesion: 0.17
-Nodes (9): MetaLeadSyncModule, Module, ApiTags, Controller, WebhooksController, Module, WebhooksModule, Injectable (+1 more)
+### Community 34 - ".ingestMeta"
+Cohesion: 0.10
+Nodes (18): asNonEmptyString(), findMetaPageConfig(), parseMetaPageConfigs(), RawMetaPageConfig, ApiOperation, ApiTags, Body, Controller (+10 more)
 
 ### Community 35 - "db/package.json"
 Cohesion: 0.07
 Nodes (28): drizzle-kit, dependencies, drizzle-orm, @pikorua/shared, postgres, devDependencies, drizzle-kit, @types/node (+20 more)
 
 ### Community 36 - "meta-leads.controller.ts"
-Cohesion: 0.26
-Nodes (6): Roles(), ROLES_KEY, JwtAuthGuard, Injectable, RolesGuard, Injectable
+Cohesion: 0.16
+Nodes (16): USER_ROLES, UserRole, Roles(), ROLES_KEY, JwtAuthGuard, Injectable, RolesGuard, Injectable (+8 more)
 
-### Community 37 - "ApiProperty"
-Cohesion: 0.07
-Nodes (24): CompleteFollowUpDto, ApiPropertyOptional, IsIn, IsOptional, IsString, MaxLength, CreateFollowUpDto, ApiPropertyOptional (+16 more)
+### Community 37 - "leads.controller.ts"
+Cohesion: 0.06
+Nodes (35): BulkLeadIdsDto, ArrayMinSize, ArrayUnique, IsArray, IsUUID, CompleteFollowUpDto, ApiPropertyOptional, IsIn (+27 more)
 
 ### Community 38 - "MetaLeadSyncService"
 Cohesion: 0.30
@@ -473,26 +465,26 @@ Nodes (25): compilerOptions, allowSyntheticDefaultImports, baseUrl, declaration,
 
 ### Community 41 - "hni-clients/page.tsx"
 Cohesion: 0.06
-Nodes (39): Booking, BookingDetailDialog(), BookingLead, BookingProperty, bookingReference(), BookingsPage(), BookingStatus, CreateBookingDialog() (+31 more)
+Nodes (41): Booking, BookingDetailDialog(), BookingLead, BookingProperty, bookingReference(), BookingsPage(), BookingStatus, CreateBookingDialog() (+33 more)
 
 ### Community 42 - "scripts"
 Cohesion: 0.08
 Nodes (25): devDependencies, turbo, typescript, engines, node, turbo, typescript, name (+17 more)
 
 ### Community 43 - "smart-matching/page.tsx"
-Cohesion: 0.12
-Nodes (21): AiProjectStrategy, AiSmartInsights, buildPreferences(), buildSummary(), ClientDetail, ClientOption, ClientProfile, CrmDetails (+13 more)
+Cohesion: 0.10
+Nodes (26): AiProjectStrategy, AiSmartInsights, buildPreferences(), buildSummary(), ClientDetail, ClientOption, ClientProfile, CrmDetails (+18 more)
 
 ### Community 44 - "app.module.ts"
-Cohesion: 0.10
-Nodes (23): DatabaseModule, Module, BookingsModule, Module, ClientsModule, Module, EmployeesModule, Module (+15 more)
+Cohesion: 0.09
+Nodes (24): AuthModule, Module, BookingsModule, Module, ClientsModule, Module, ImportModule, Module (+16 more)
 
 ### Community 45 - "dependencies"
-Cohesion: 0.09
-Nodes (23): dependencies, bcryptjs, cache-manager-redis-store, dotenv, express, @nestjs/cache-manager, @nestjs/common, @nestjs/core (+15 more)
+Cohesion: 0.08
+Nodes (25): dependencies, bcryptjs, cache-manager, cache-manager-redis-store, dotenv, drizzle-orm, express, multer (+17 more)
 
 ### Community 46 - "PropertiesController"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (14): PropertiesController, ApiBearerAuth, ApiOperation, ApiQuery, ApiTags, Controller, Get, Param (+6 more)
 
 ### Community 47 - "leads.ts"
@@ -504,28 +496,28 @@ Cohesion: 0.09
 Nodes (13): dynamic, GET(), POST(), POST(), POST(), Ctx, PATCH(), POST() (+5 more)
 
 ### Community 49 - "site-visits/page.tsx"
-Cohesion: 0.12
-Nodes (22): CALL_STATUS_COLORS, fmtDate(), fmtDateTime(), HWC_META, initials(), isOverdue(), isToday(), LeadOption (+14 more)
+Cohesion: 0.17
+Nodes (17): CALL_STATUS_COLORS, fmtDate(), fmtDateTime(), HWC_META, initials(), isOverdue(), isToday(), LeadOption (+9 more)
 
 ### Community 50 - "devDependencies"
 Cohesion: 0.11
 Nodes (19): devDependencies, @nestjs/cli, @nestjs/schematics, @nestjs/testing, @types/bcryptjs, @types/express, @types/multer, @types/node (+11 more)
 
 ### Community 51 - "EmployeesController"
-Cohesion: 0.15
-Nodes (10): EmployeesController, ApiBearerAuth, ApiOperation, ApiTags, Controller, Get, Param, UseGuards (+2 more)
+Cohesion: 0.12
+Nodes (12): EmployeesController, ApiBearerAuth, ApiOperation, ApiTags, Controller, Get, Param, UseGuards (+4 more)
 
 ### Community 52 - "field.tsx"
 Cohesion: 0.13
 Nodes (16): ButtonGroup(), ButtonGroupSeparator(), ButtonGroupText(), buttonGroupVariants, Field(), FieldContent(), FieldDescription(), FieldError() (+8 more)
 
-### Community 53 - "AuthController"
-Cohesion: 0.23
-Nodes (11): AuthController, ApiBearerAuth, ApiOperation, ApiTags, Body, Controller, Get, Patch (+3 more)
+### Community 53 - "utils.ts"
+Cohesion: 0.10
+Nodes (28): Employee, EmployeePerformanceAnalysisPage(), EMPTY_SUMMARY, formatDate(), formatNumber(), initials(), MetricCardProps, PerformanceResponse (+20 more)
 
-### Community 54 - "menubar.tsx"
-Cohesion: 0.12
-Nodes (11): Menubar(), MenubarCheckboxItem(), MenubarContent(), MenubarItem(), MenubarLabel(), MenubarRadioItem(), MenubarSeparator(), MenubarShortcut() (+3 more)
+### Community 54 - "ownedAt"
+Cohesion: 0.25
+Nodes (14): attributedCallDates(), buildCallActivities(), buildTrendRows(), callActivitiesInRange(), earliestTrendDate(), emptySummary(), inRange(), latestQualityMarksInRange() (+6 more)
 
 ### Community 55 - "components.json"
 Cohesion: 0.11
@@ -538,6 +530,10 @@ Nodes (14): clients, clientsRelations, hniActivities, hniActivitiesRelations, hn
 ### Community 57 - "voice.ts"
 Cohesion: 0.11
 Nodes (17): voiceAuditStatusEnum, voiceCallLogs, voiceCallLogsRelations, voiceDirectionEnum, voiceEvents, voiceEventsRelations, voiceEventTypeEnum, voiceLeadLabelEnum (+9 more)
+
+### Community 58 - "menubar.tsx"
+Cohesion: 0.12
+Nodes (11): Menubar(), MenubarCheckboxItem(), MenubarContent(), MenubarItem(), MenubarLabel(), MenubarRadioItem(), MenubarSeparator(), MenubarShortcut() (+3 more)
 
 ### Community 59 - "compilerOptions"
 Cohesion: 0.12
@@ -555,17 +551,17 @@ Nodes (16): compilerOptions, declaration, esModuleInterop, lib, module, outDir, 
 Cohesion: 0.22
 Nodes (16): calculatedFallback(), cleanAiResult(), ClientSmartInsights, ClientSmartInsightsService, extractJson(), fallbackWithReason(), isBrokerLead(), ObjectionResponse (+8 more)
 
-### Community 63 - "ClientsService"
-Cohesion: 0.14
-Nodes (12): ClientsController, ApiBearerAuth, ApiOperation, ApiTags, Body, Controller, Get, Param (+4 more)
+### Community 63 - "ClientsController"
+Cohesion: 0.16
+Nodes (10): ClientsController, ApiBearerAuth, ApiOperation, ApiTags, Body, Controller, Get, Param (+2 more)
 
 ### Community 64 - "schemas/index.ts"
 Cohesion: 0.13
 Nodes (14): assignLeadSchema, bulkAssignLeadSchema, createMetaLeadSchema, createSiteVisitSchema, employeeRoleSchema, leadSourceSchema, leadStatusSchema, leadTagSchema (+6 more)
 
 ### Community 65 - "cn"
-Cohesion: 0.04
-Nodes (56): MetricCard(), StatusBadge(), MetricCard(), StatCard(), Feedback(), ActionButton(), AccordionContent(), AccordionItem() (+48 more)
+Cohesion: 0.05
+Nodes (43): MetricCard(), StatusBadge(), MetricCard(), StatCard(), Feedback(), ActionButton(), AccordionContent(), AccordionItem() (+35 more)
 
 ### Community 66 - "properties.ts"
 Cohesion: 0.14
@@ -583,9 +579,9 @@ Nodes (14): Omnichannel Communications Data Model, conversations Table, Database
 Cohesion: 0.23
 Nodes (7): AppController, ApiOperation, ApiTags, Controller, Get, AppService, Injectable
 
-### Community 70 - "ImportController"
-Cohesion: 0.13
-Nodes (13): ApiBody, ApiConsumes, ImportController, ApiBearerAuth, ApiOperation, ApiTags, Controller, Get (+5 more)
+### Community 70 - "import-properties-from-excel.mjs"
+Cohesion: 0.15
+Nodes (20): buildAmenities(), clean(), __dirname, ensureImage(), main(), normalizePropertyType(), normalizeRows(), parseFirstNumber() (+12 more)
 
 ### Community 71 - "context-menu.tsx"
 Cohesion: 0.12
@@ -607,24 +603,28 @@ Nodes (10): assert, {
 }, sourceA (+2 more)
 
 ### Community 74 - "react"
-Cohesion: 0.07
-Nodes (29): DashboardLayout(), initials(), PasswordInput(), roleLabel(), SettingsPage(), SplashPage(), AppSidebar(), getTypeConfig() (+21 more)
+Cohesion: 0.20
+Nodes (9): initials(), PasswordInput(), roleLabel(), SettingsPage(), SplashPage(), useAppPreferences(), useIsMobile(), react (+1 more)
 
 ### Community 75 - "scripts"
-Cohesion: 0.17
-Nodes (12): scripts, build, dev, lint, seed:admin, start, start:debug, test:hrm-activity (+4 more)
+Cohesion: 0.14
+Nodes (14): scripts, build, dev, lint, seed:admin, start, start:debug, test:employee-performance (+6 more)
 
 ### Community 76 - "PropertyCard"
 Cohesion: 0.33
 Nodes (11): formatPropertyType(), formatStatus(), getAIRecommendations(), getConfigurationSummary(), getPitchReadiness(), getStatusClass(), getVisitNote(), PropertiesPage() (+3 more)
 
-### Community 77 - "crm-workflow.test.cjs"
-Cohesion: 0.09
-Nodes (31): LeadsPage(), isFreshlyAssignedLead(), campaignOptions(), EMPTY_LEAD_FILTERS, FilterableLead, filterLeadList(), LeadListFilters, DEFAULT_LEAD_LIST_VIEW_STATE (+23 more)
+### Community 77 - "lead-list-state.ts"
+Cohesion: 0.12
+Nodes (21): LeadsPage(), isFreshlyAssignedLead(), campaignOptions(), EMPTY_LEAD_FILTERS, FilterableLead, filterLeadList(), LeadListFilters, DEFAULT_LEAD_LIST_VIEW_STATE (+13 more)
 
-### Community 78 - "chart.tsx"
+### Community 78 - "dashboard.module.ts"
+Cohesion: 0.21
+Nodes (9): DashboardModule, Module, calculatedInsights(), cleanList(), EmployeeReportInsightInput, EmployeeReportInsights, EmployeeReportInsightsService, extractJson() (+1 more)
+
+### Community 79 - ".calculateEmployeePerformance"
 Cohesion: 0.25
-Nodes (9): ChartConfig, ChartContainer(), ChartContext, ChartContextProps, ChartLegendContent(), ChartTooltipContent(), getPayloadConfigFromPayload(), THEMES (+1 more)
+Nodes (8): addDays(), buildOwnershipWindows(), customTrendRows(), dayLabel(), fallbackAssignmentStart(), parseIstDate(), reportRatios(), serializeEmployee()
 
 ### Community 80 - "drawer.tsx"
 Cohesion: 0.18
@@ -643,9 +643,9 @@ Nodes (9): assert, assignedFilters, {
 Cohesion: 0.33
 Nodes (10): buildLeadsCsv(), CLIENT_DETAIL_STATUSES, escapeCsv(), ExportableLead, exportLeadsToExcel(), fmtDate(), fmtDateTime(), joinList() (+2 more)
 
-### Community 83 - "import-properties-from-excel.mjs"
-Cohesion: 0.26
-Nodes (14): buildAmenities(), clean(), __dirname, ensureImage(), main(), normalizePropertyType(), normalizeRows(), parseFirstNumber() (+6 more)
+### Community 83 - "ImportController"
+Cohesion: 0.13
+Nodes (13): ApiBody, ApiConsumes, ImportController, ApiBearerAuth, ApiOperation, ApiTags, Controller, Get (+5 more)
 
 ### Community 84 - "meta-lead-sync.test.cjs"
 Cohesion: 0.20
@@ -660,9 +660,23 @@ Nodes (8): { afterEach, test }, assert, {
   parseMetaPageConfigs,
 }
 
-### Community 85 - "lead-crm.ts"
-Cohesion: 0.20
-Nodes (9): ANTI_BROKER_COMPATIBLE_STATUSES, CLIENT_STATUS_VALUES, ClientStatus, isAntiBrokerCompatibleStatus(), missingSpokenLeadFields(), NOT_PROVIDED_BY_CLIENT, SPOKEN_REQUIRED_FIELD_LABELS, SpokenLeadDetails (+1 more)
+### Community 85 - "crm-workflow.test.cjs"
+Cohesion: 0.11
+Nodes (21): assert, {
+  calculateComparableLeadGrowth,
+  comparableLeadGrowthLabel,
+  comparableMonthRanges,
+}, {
+  DEFAULT_LEAD_LIST_VIEW_STATE,
+  parseLeadListViewState,
+  parseLeadQueueSnapshot,
+}, { EMPTY_LEAD_FILTERS, filterLeadList }, fs, { isFreshlyAssignedLead }, {
+  NOT_PROVIDED_BY_CLIENT,
+  CLIENT_STATUS_INPUT_VALUES,
+  CLIENT_STATUS_VALUES,
+  missingSpokenLeadFields,
+  isAntiBrokerCompatibleStatus,
+}, path (+13 more)
 
 ### Community 86 - "leads-filter-export.test.cjs"
 Cohesion: 0.18
@@ -684,9 +698,9 @@ Nodes (6): env, force, paths, rootDir, rootEnvContent, webEnvContent
 Cohesion: 0.25
 Nodes (7): apiDir, bcrypt, main(), postgres, repoRoot, require, scriptDir
 
-### Community 90 - "WebsiteLeadSyncService"
-Cohesion: 0.18
-Nodes (6): Module, WebsiteLeadSyncModule, humanize(), Injectable, WebsiteLead, WebsiteLeadSyncService
+### Community 90 - "ImportService"
+Cohesion: 0.21
+Nodes (4): xlsx, ImportService, Injectable, xlsx
 
 ### Community 91 - "password-reset.test.cjs"
 Cohesion: 0.22
@@ -699,8 +713,8 @@ Cohesion: 0.39
 Nodes (5): POST(), maxDuration, POST(), GET(), getApiBaseUrl()
 
 ### Community 93 - "MetaGraphService"
-Cohesion: 0.31
-Nodes (3): MetaGraphService, sleep(), Injectable
+Cohesion: 0.25
+Nodes (4): MetaGraphService, Injectable, MetaLeadImporterService, Injectable
 
 ### Community 94 - "deploy-release.sh"
 Cohesion: 0.47
@@ -711,8 +725,8 @@ Cohesion: 0.22
 Nodes (5): Database, db, queryClient, integrationSyncLocks, metaLeadSyncState
 
 ### Community 96 - "app-sidebar.tsx"
-Cohesion: 0.25
-Nodes (9): AppSidebarProps, NavGroup, navGroups, NavItem, UserProfile, Tooltip(), TooltipContent(), TooltipProvider() (+1 more)
+Cohesion: 0.23
+Nodes (10): AppSidebar(), AppSidebarProps, NavGroup, navGroups, NavItem, UserProfile, Tooltip(), TooltipContent() (+2 more)
 
 ### Community 97 - "exclude"
 Cohesion: 0.25
@@ -746,9 +760,9 @@ Nodes (5): AppModule, Module, bootstrap(), expressApp, handler()
 Cohesion: 0.25
 Nodes (10): MetaAdsPage(), EMPTY_META_ADS_QUEUE_FILTERS, filterMetaAdsQueueLeads(), matchingSelectedMetaAdsQueueLeadIds(), MetaAdsCallStatus, MetaAdsQueueFilterableLead, MetaAdsQueueFilters, metaAdsQueueLeadIds() (+2 more)
 
-### Community 105 - "command-palette.tsx"
-Cohesion: 0.33
-Nodes (6): CommandItem, CommandPalette(), CommandPaletteProps, pages, employees, properties
+### Community 105 - "(dashboard)/layout.tsx"
+Cohesion: 0.18
+Nodes (10): DashboardLayout(), CommandItem, CommandPalette(), CommandPaletteProps, pages, QueryProvider(), PrivacyGuard(), employees (+2 more)
 
 ### Community 106 - "toggle-group.tsx"
 Cohesion: 0.43
@@ -802,9 +816,9 @@ Nodes (4): Answer, Outcome, Q: Which local SQL migrations are included in Graphi
 Cohesion: 0.17
 Nodes (14): Command(), CommandDialog(), CommandEmpty(), CommandGroup(), CommandInput(), CommandItem(), CommandList(), CommandSeparator() (+6 more)
 
-### Community 119 - "CreateUserDto"
-Cohesion: 0.24
-Nodes (9): USER_ROLES, UserRole, CreateUserDto, ApiPropertyOptional, IsEmail, IsIn, IsOptional, IsString (+1 more)
+### Community 119 - "pagination.tsx"
+Cohesion: 0.22
+Nodes (7): Pagination(), PaginationContent(), PaginationEllipsis(), PaginationLink(), PaginationLinkProps, PaginationNext(), PaginationPrevious()
 
 ### Community 120 - "alert.tsx"
 Cohesion: 0.50
@@ -846,17 +860,21 @@ Nodes (4): Pikorua CRM API Image, Google Artifact Registry, Manual Container Ima
 Cohesion: 0.50
 Nodes (4): voice_call_logs Table, voice_events Table, voice_lead_scores Table, voice_transcript_turns Table
 
-### Community 132 - "auth.service.ts"
+### Community 132 - "auth.controller.ts"
+Cohesion: 0.05
+Nodes (43): getJwtSecret(), AuthController, ApiBearerAuth, ApiOperation, ApiTags, Body, Controller, Get (+35 more)
+
+### Community 135 - "WebsiteLeadSyncService"
 Cohesion: 0.22
-Nodes (7): ForgotPasswordDto, IsEmail, MaxLength, LoginDto, IsEmail, IsString, MinLength
+Nodes (4): humanize(), Injectable, WebsiteLead, WebsiteLeadSyncService
 
-### Community 135 - "auth.module.ts"
-Cohesion: 0.27
-Nodes (6): getJwtSecret(), AuthModule, Module, JwtPayload, JwtStrategy, Injectable
-
-### Community 140 - "UpdateProfileDto"
+### Community 139 - "chart.tsx"
 Cohesion: 0.25
-Nodes (6): ApiPropertyOptional, IsOptional, IsString, MaxLength, MinLength, UpdateProfileDto
+Nodes (9): ChartConfig, ChartContainer(), ChartContext, ChartContextProps, ChartLegendContent(), ChartTooltipContent(), getPayloadConfigFromPayload(), THEMES (+1 more)
+
+### Community 140 - "migrate-sheet.mjs"
+Cohesion: 0.39
+Nodes (7): cell(), DRY, main(), MAPPING, parseDate(), TRANSLATE_CALL_STATUS(), TRANSLATE_HWC()
 
 ### Community 141 - "Pikorua Dark App Icon"
 Cohesion: 0.67
@@ -870,21 +888,43 @@ Nodes (3): Pikorua Brand Logo, Gold Pikorua Wordmark, Good People, Great Propert
 Cohesion: 0.67
 Nodes (3): integration_sync_locks Table, meta_lead_sync_state Table, meta_leads Table
 
-### Community 150 - "ChangePasswordDto"
-Cohesion: 0.29
-Nodes (5): ChangePasswordDto, IsString, Matches, MaxLength, MinLength
-
-### Community 155 - "meta-lead-importer.service.ts"
-Cohesion: 0.21
-Nodes (8): BUDGET_VALUE_MAP, CAMPAIGN_NAME_RULES, normalizeCampaignName(), normalizeMetaBudget(), normalizeMetaPlatform(), MetaLeadImporterService, MetaLeadImportResult, Injectable
-
-### Community 171 - "CreateBookingDto"
-Cohesion: 0.20
-Nodes (9): CreateBookingDto, ApiPropertyOptional, IsDateString, IsEnum, IsNumber, IsOptional, IsUUID, Min (+1 more)
-
-### Community 178 - "ResetPasswordDto"
+### Community 148 - "voice-integration.module.ts"
 Cohesion: 0.33
-Nodes (5): ResetPasswordDto, IsString, Matches, MaxLength, MinLength
+Nodes (5): DatabaseModule, Module, Module, VoiceIntegrationModule, Global
+
+### Community 149 - "input-group.tsx"
+Cohesion: 0.28
+Nodes (8): InputGroup(), InputGroupAddon(), inputGroupAddonVariants, InputGroupButton(), inputGroupButtonVariants, InputGroupInput(), InputGroupText(), InputGroupTextarea()
+
+### Community 150 - "employee-performance.test.cjs"
+Cohesion: 0.40
+Nodes (3): assert, {
+  DashboardService,
+  buildOwnershipIndex,
+  buildOwnershipWindows,
+  buildTrendRows,
+  ownedAt,
+}, test
+
+### Community 152 - "app-preferences-provider.tsx"
+Cohesion: 0.29
+Nodes (7): applyMotionPreference(), AppPreferencesContext, AppPreferencesContextValue, AppPreferencesProvider(), AppTheme, PREFERENCES_CHANGED_EVENT, REDUCE_MOTION_KEY
+
+### Community 155 - "breadcrumb.tsx"
+Cohesion: 0.25
+Nodes (6): BreadcrumbEllipsis(), BreadcrumbItem(), BreadcrumbLink(), BreadcrumbList(), BreadcrumbPage(), BreadcrumbSeparator()
+
+### Community 171 - "SplitAssignDto"
+Cohesion: 0.29
+Nodes (5): SplitAssignDto, ArrayMinSize, ArrayUnique, IsArray, IsUUID
+
+### Community 207 - "lead-routing.test.cjs"
+Cohesion: 0.29
+Nodes (6): assert, fs, {
+  META_LEAD_POOL_STATUSES,
+  isNonTransferableMetaLeadPoolStatus,
+  poolStatusForClientStatus,
+}, path, { serializeMetaLead }, test
 
 ### Community 234 - "CurrentUser"
 Cohesion: 0.16
@@ -911,9 +951,9 @@ Nodes (6): assert, { HrmApiKeyGuard }, {
 Cohesion: 0.50
 Nodes (3): Ctx, GET(), POST()
 
-### Community 249 - ".ingestMeta"
-Cohesion: 0.17
-Nodes (9): ApiOperation, Body, Get, Headers, HttpCode, Post, Query, Req (+1 more)
+### Community 249 - "WhatsAppHubPage"
+Cohesion: 0.40
+Nodes (5): sentimentMeta(), trendMeta(), WhatsAppHubPage(), getEmployeeById(), getWhatsAppConversationByLeadId()
 
 ### Community 250 - "empty.tsx"
 Cohesion: 0.29
@@ -931,70 +971,25 @@ Nodes (4): Answer, Outcome, Q: also make sure that those freshly assigned leads 
 Cohesion: 0.48
 Nodes (6): calculateComparableLeadGrowth(), ComparableLeadGrowth, comparableMonthRanges(), daysInMonth(), istParts(), istStartUtc()
 
-### Community 258 - "lead-display-order.ts"
-Cohesion: 0.38
-Nodes (6): dateKey(), followUpTimestamp(), getLeadDisplaySections(), LeadDisplaySections, LeadForDisplayOrder, LeadOrderCrm
-
-### Community 260 - "import.service.ts"
-Cohesion: 0.25
-Nodes (7): ImportResultDto, ImportRowError, CALL_STATUS_MAP, HEADER_CONTAINS_MAP, HEADER_MAP, HWC_MAP, ParsedRow
-
-### Community 261 - "webhooks.service.ts"
-Cohesion: 0.53
-Nodes (4): asNonEmptyString(), findMetaPageConfig(), parseMetaPageConfigs(), RawMetaPageConfig
-
-### Community 266 - "UpdateLeadDto"
-Cohesion: 0.25
-Nodes (7): ApiPropertyOptional, IsArray, IsBoolean, IsEnum, IsOptional, IsString, UpdateLeadDto
-
-### Community 271 - "migrate-sheet.mjs"
-Cohesion: 0.39
-Nodes (7): cell(), DRY, main(), MAPPING, parseDate(), TRANSLATE_CALL_STATUS(), TRANSLATE_HWC()
-
-### Community 272 - "SplitAssignDto"
-Cohesion: 0.29
-Nodes (5): SplitAssignDto, ArrayMinSize, ArrayUnique, IsArray, IsUUID
-
-### Community 273 - "BulkLeadIdsDto"
-Cohesion: 0.33
-Nodes (5): BulkLeadIdsDto, ArrayMinSize, ArrayUnique, IsArray, IsUUID
-
-### Community 274 - "useMetaLeads"
-Cohesion: 0.47
-Nodes (5): metaLeadsQueryKey(), normalize(), RawMetaLead, useMetaLeads(), UseMetaLeadsOptions
-
-### Community 275 - "property-recommendations.test.cjs"
-Cohesion: 0.29
-Nodes (6): assert, {
-  buildPropertyRecommendations,
-  parseBudgetRange,
-}, { ForbiddenException }, {
-  MetaLeadsController,
-}, property(), { test }
-
-### Community 276 - "WhatsAppHubPage"
-Cohesion: 0.40
-Nodes (5): sentimentMeta(), trendMeta(), WhatsAppHubPage(), getEmployeeById(), getWhatsAppConversationByLeadId()
-
 ## Knowledge Gaps
-- **900 isolated node(s):** `{ handler }`, `$schema`, `collection`, `sourceRoot`, `deleteOutDir` (+895 more)
+- **914 isolated node(s):** `{ handler }`, `$schema`, `collection`, `sourceRoot`, `deleteOutDir` (+909 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **99 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **95 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ApiProperty` connect `ApiProperty` to `auth.service.ts`, `CreateSiteVisitDto`, `CreateBookingDto`, `UpdateProfileDto`, `SplitAssignDto`, `BulkLeadIdsDto`, `ResetPasswordDto`, `CreateLeadDto`, `properties/page.tsx`, `ChangePasswordDto`, `CreateUserDto`, `SendMessageDto`?**
-  _High betweenness centrality (0.248) - this node is a cross-community bridge._
-- **Why does `cn()` connect `cn` to `employee-performance-analysis/page.tsx`, `meta-ads/page.tsx`, `dashboard/page.tsx`, `utils.ts`, `sidebar.tsx`, `hooks/use-toast.ts`, `WhatsAppHubPage`, `properties/page.tsx`, `documents/page.tsx`, `item.tsx`, `hni-clients/page.tsx`, `site-visits/page.tsx`, `field.tsx`, `menubar.tsx`, `input.tsx`, `carousel.tsx`, `context-menu.tsx`, `react`, `PropertyCard`, `chart.tsx`, `drawer.tsx`, `app-sidebar.tsx`, `form.tsx`, `command-palette.tsx`, `toggle-group.tsx`, `searchable-select.tsx`, `alert.tsx`, `empty.tsx`, `navigation-menu.tsx`?**
-  _High betweenness centrality (0.101) - this node is a cross-community bridge._
-- **Why does `react` connect `react` to `employee-performance-analysis/page.tsx`, `carousel.tsx`, `form.tsx`, `dashboard/page.tsx`, `dependencies`, `command-palette.tsx`, `toggle-group.tsx`, `PropertyCard`, `sidebar.tsx`, `chart.tsx`, `hooks/use-toast.ts`, `WhatsAppHubPage`, `properties/page.tsx`, `documents/page.tsx`?**
-  _High betweenness centrality (0.079) - this node is a cross-community bridge._
+- **Why does `ApiProperty` connect `auth.controller.ts` to `meta-leads.controller.ts`, `leads.controller.ts`, `meta-leads.service.ts`, `CreateSiteVisitDto`, `SplitAssignDto`, `CreateBookingDto`, `leads/page.tsx`, `SendMessageDto`?**
+  _High betweenness centrality (0.247) - this node is a cross-community bridge._
+- **Why does `cn()` connect `cn` to `meta-ads/page.tsx`, `dashboard/page.tsx`, `leads/page.tsx`, `chart.tsx`, `sidebar.tsx`, `hooks/use-toast.ts`, `settings/page.tsx`, `input-group.tsx`, `hover-card.tsx`, `breadcrumb.tsx`, `documents/page.tsx`, `item.tsx`, `hni-clients/page.tsx`, `field.tsx`, `utils.ts`, `menubar.tsx`, `carousel.tsx`, `context-menu.tsx`, `react`, `PropertyCard`, `drawer.tsx`, `app-sidebar.tsx`, `form.tsx`, `(dashboard)/layout.tsx`, `toggle-group.tsx`, `searchable-select.tsx`, `pagination.tsx`, `alert.tsx`, `WhatsAppHubPage`, `empty.tsx`, `navigation-menu.tsx`?**
+  _High betweenness centrality (0.096) - this node is a cross-community bridge._
+- **Why does `react` connect `react` to `app-sidebar.tsx`, `cn`, `carousel.tsx`, `form.tsx`, `dashboard/page.tsx`, `dependencies`, `(dashboard)/layout.tsx`, `toggle-group.tsx`, `leads/page.tsx`, `PropertyCard`, `chart.tsx`, `sidebar.tsx`, `hooks/use-toast.ts`, `settings/page.tsx`, `utils.ts`, `app-preferences-provider.tsx`, `WhatsAppHubPage`, `documents/page.tsx`?**
+  _High betweenness centrality (0.078) - this node is a cross-community bridge._
 - **What connects `{ handler }`, `$schema`, `collection` to the rest of the system?**
-  _900 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `dashboard.service.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.0526006464883926 - nodes in this community are weakly interconnected._
+  _914 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `VoiceIntegrationService` be split into smaller, more focused modules?**
   _Cohesion score 0.05754385964912281 - nodes in this community are weakly interconnected._
-- **Should `employee-performance-analysis/page.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.10869565217391304 - nodes in this community are weakly interconnected._
+- **Should `dashboard.service.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.1341991341991342 - nodes in this community are weakly interconnected._
+- **Should `data.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.03333333333333333 - nodes in this community are weakly interconnected._

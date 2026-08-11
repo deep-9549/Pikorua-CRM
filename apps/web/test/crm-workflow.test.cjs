@@ -27,6 +27,8 @@ const {
 } = require('../lib/dashboard-lead-growth.ts')
 const {
   NOT_PROVIDED_BY_CLIENT,
+  CLIENT_STATUS_INPUT_VALUES,
+  CLIENT_STATUS_VALUES,
   missingSpokenLeadFields,
   isAntiBrokerCompatibleStatus,
 } = require('../../../packages/shared/src/lead-crm.ts')
@@ -103,6 +105,11 @@ test('Anti-Broker is compatible only with heat statuses and filters independentl
     { full_name: 'B', phone: null, email: null, city: null, campaign_name: null, source: 'meta_ad', received_at: '2026-08-01', client_status: 'hot', client_anti_broker: false },
   ]
   assert.deepEqual(filterLeadList(leads, '', { ...EMPTY_LEAD_FILTERS, clientStatus: 'anti_broker' }).map(lead => lead.full_name), ['A'])
+})
+
+test('Construction Business Owner is no longer a primary client status', () => {
+  assert.equal(CLIENT_STATUS_VALUES.includes('construction_biz_owner'), false)
+  assert.equal(CLIENT_STATUS_INPUT_VALUES.includes('construction_biz_owner'), true)
 })
 
 test('equal-progress comparison normalizes 28, 29, 30, and 31 day months', () => {

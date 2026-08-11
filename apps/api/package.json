@@ -16,7 +16,9 @@
     "test:meta-sync": "nest build && node --test test/meta-lead-sync.test.cjs",
     "test:property-recommendations": "nest build && node --test test/property-recommendations.test.cjs",
     "test:password-reset": "nest build && node --test test/password-reset.test.cjs",
-    "test:hrm-activity": "nest build && node --test test/hrm-activity.test.cjs"
+    "test:hrm-activity": "nest build && node --test test/hrm-activity.test.cjs",
+    "test:employee-performance": "nest build && node --test test/employee-performance.test.cjs",
+    "test:lead-routing": "nest build && node --test test/lead-routing.test.cjs"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^2.3.0",

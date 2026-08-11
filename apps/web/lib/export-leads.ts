@@ -10,6 +10,7 @@ export interface ExportableLead {
   client_status?: string | null
   client_status_note?: string | null
   client_anti_broker?: boolean
+  client_construction_business_owner?: boolean
   assigned_to_profile?: { full_name: string } | null
   crm?: {
     first_call_date?: string | null
@@ -45,7 +46,6 @@ const CLIENT_DETAIL_STATUSES = new Set([
   "low_budget",
   "not_interested",
   "broker",
-  "construction_biz_owner",
 ])
 
 function prettyClientStatus(v: string | null | undefined) {
@@ -94,6 +94,7 @@ export function buildLeadsCsv(leads: ExportableLead[]) {
     "Status",
     "Client Status",
     "Anti-Broker",
+    "Construction Business Owner",
     "Client Status Note",
     "Assigned To",
     "Call Status",
@@ -125,6 +126,7 @@ export function buildLeadsCsv(leads: ExportableLead[]) {
     pretty(l.status),
     prettyClientStatus(l.client_status),
     l.client_anti_broker ? "Yes" : "No",
+    l.client_construction_business_owner ? "Yes" : "No",
     l.client_status_note ?? "",
     l.assigned_to_profile?.full_name ?? "",
     pretty(l.crm?.call_status),

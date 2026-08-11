@@ -33,6 +33,7 @@ const leads = [
     campaign_name: 'Luxury Villas', source: 'meta_ad', status: 'assigned',
     received_at: '2026-07-10T10:00:00Z', client_status: 'hot',
     client_anti_broker: true,
+    client_construction_business_owner: true,
     assigned_to_profile: { id: 'exec-1', full_name: 'Executive One' },
     crm: { call_status: 'spoken' },
   },
@@ -79,9 +80,17 @@ test('CSV built from the filtered result contains no unfiltered leads', () => {
   assert.equal(csv.trim().split('\n').length, 2)
 })
 
-test('CSV exports Anti-Broker separately from primary client status', () => {
+test('CSV exports independent client flags separately from primary client status', () => {
   const csv = buildLeadsCsv([leads[0]])
   const [header, row] = csv.split('\n')
-  assert.match(header, /Client Status,Anti-Broker,Client Status Note/)
-  assert.match(row, /,Hot,Yes,/)
+  assert.match(header, /Client Status,Anti-Broker,Construction Business Owner,Client Status Note/)
+  assert.match(row, /,Hot,Yes,Yes,/)
+})
+
+test('Construction Business Owner filters independently from primary status', () => {
+  const filtered = filterLeadList(leads, '', {
+    ...EMPTY_LEAD_FILTERS,
+    clientStatus: 'construction_business_owner',
+  })
+  assert.deepEqual(filtered.map(lead => lead.full_name), ['Asha'])
 })

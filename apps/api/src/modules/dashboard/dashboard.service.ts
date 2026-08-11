@@ -5,6 +5,8 @@ import { metaLeads, bookings, siteVisits, userProfiles, leadActivityEvents } fro
 import { EmployeeReportInsightsService } from './employee-report-insights.service'
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+const EMPLOYEE_PERFORMANCE_CACHE_TTL_MS = 30_000
+const EMPLOYEE_PERFORMANCE_CACHE_MAX_ENTRIES = 100
 
 type PeriodKey = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'lifetime'
 
@@ -62,6 +64,34 @@ interface OwnershipWindow {
   assignedAt: Date
   releasedAt: Date | null
 }
+
+type PerformanceActivityEvent = Pick<
+  typeof leadActivityEvents.$inferSelect,
+  | 'id'
+  | 'leadId'
+  | 'actorUserId'
+  | 'eventType'
+  | 'changes'
+  | 'metadata'
+  | 'fromUserId'
+  | 'toUserId'
+  | 'createdAt'
+>
+
+type OwnershipIndex = Map<string, OwnershipWindow[]>
+
+const OWNERSHIP_EVENT_TYPES: PerformanceActivityEvent['eventType'][] = [
+  'lead_created',
+  'assigned',
+  'transferred',
+  'unassigned',
+]
+
+const PERFORMANCE_EVENT_TYPES: PerformanceActivityEvent['eventType'][] = [
+  ...OWNERSHIP_EVENT_TYPES,
+  'crm_updated',
+  'client_status_updated',
+]
 
 function serializeEmployee(user: typeof userProfiles.$inferSelect) {
   return {
@@ -197,7 +227,7 @@ function fallbackAssignmentStart(lead: any, before: Date) {
   return toDate(lead?.assignedAt) ?? toDate(lead?.receivedAt) ?? toDate(lead?.createdAt) ?? before
 }
 
-function buildOwnershipWindows(leads: any[], events: Array<typeof leadActivityEvents.$inferSelect>) {
+export function buildOwnershipWindows(leads: any[], events: PerformanceActivityEvent[]) {
   const leadById = new Map(leads.map((lead) => [lead.id, lead]))
   const windows: OwnershipWindow[] = []
   const open = new Map<string, OwnershipWindow>()
@@ -247,11 +277,8 @@ function buildOwnershipWindows(leads: any[], events: Array<typeof leadActivityEv
 
   for (const lead of leads) {
     if (!lead.assignedTo) continue
-    const hasCurrentWindow = windows.some((window) =>
-      window.leadId === lead.id &&
-      window.employeeId === lead.assignedTo &&
-      window.releasedAt === null
-    )
+    const current = open.get(lead.id)
+    const hasCurrentWindow = current?.employeeId === lead.assignedTo
 
     if (!hasCurrentWindow) {
       windows.push({
@@ -266,6 +293,25 @@ function buildOwnershipWindows(leads: any[], events: Array<typeof leadActivityEv
   return windows
 }
 
+function ownershipKey(leadId: string, employeeId: string) {
+  return `${leadId}:${employeeId}`
+}
+
+export function buildOwnershipIndex(windows: OwnershipWindow[]): OwnershipIndex {
+  const index: OwnershipIndex = new Map()
+  for (const window of windows) {
+    const key = ownershipKey(window.leadId, window.employeeId)
+    const matches = index.get(key)
+    if (matches) matches.push(window)
+    else index.set(key, [window])
+  }
+  return index
+}
+
+function employeeOwnershipWindows(index: OwnershipIndex, leadId: string, employeeId: string) {
+  return index.get(ownershipKey(leadId, employeeId)) ?? []
+}
+
 function windowOverlapsRange(window: OwnershipWindow, range: PeriodRange) {
   if (!range.start || !range.end) return true
   const release = window.releasedAt ?? new Date(8640000000000000)
@@ -277,35 +323,29 @@ function ownershipStartedInRange(window: OwnershipWindow, range: PeriodRange) {
   return window.assignedAt >= range.start && window.assignedAt < range.end
 }
 
-function ownedAt(windows: OwnershipWindow[], leadId: string, employeeId: string, value: Date | string | null | undefined) {
+export function ownedAt(index: OwnershipIndex, leadId: string, employeeId: string, value: Date | string | null | undefined) {
   const date = toDate(value)
   if (!date) return false
 
-  return windows.some((window) =>
-    window.leadId === leadId &&
-    window.employeeId === employeeId &&
+  return employeeOwnershipWindows(index, leadId, employeeId).some((window) =>
     date >= window.assignedAt &&
     (!window.releasedAt || date < window.releasedAt)
   )
 }
 
-function ownedDuringPeriod(windows: OwnershipWindow[], leadId: string, employeeId: string, range: PeriodRange) {
-  return windows.some((window) =>
-    window.leadId === leadId &&
-    window.employeeId === employeeId &&
+function ownedDuringPeriod(index: OwnershipIndex, leadId: string, employeeId: string, range: PeriodRange) {
+  return employeeOwnershipWindows(index, leadId, employeeId).some((window) =>
     windowOverlapsRange(window, range)
   )
 }
 
-function ownershipStartedDuringPeriod(windows: OwnershipWindow[], leadId: string, employeeId: string, range: PeriodRange) {
-  return windows.some((window) =>
-    window.leadId === leadId &&
-    window.employeeId === employeeId &&
+function ownershipStartedDuringPeriod(index: OwnershipIndex, leadId: string, employeeId: string, range: PeriodRange) {
+  return employeeOwnershipWindows(index, leadId, employeeId).some((window) =>
     ownershipStartedInRange(window, range)
   )
 }
 
-function attributedCallDates(lead: any, windows: OwnershipWindow[], employeeId: string, range: PeriodRange) {
+function attributedCallDates(lead: any, index: OwnershipIndex, employeeId: string, range: PeriodRange) {
   const dates = [
     toDate(lead.crmDetails?.firstCallDate),
     toDate(lead.crmDetails?.lastCallDate),
@@ -316,18 +356,18 @@ function attributedCallDates(lead: any, windows: OwnershipWindow[], employeeId: 
     .map((time) => new Date(time))
     .filter((date) =>
       inRange(date, range) &&
-      ownedAt(windows, lead.id, employeeId, date)
+      ownedAt(index, lead.id, employeeId, date)
     )
 }
 
-function metadataValue(event: typeof leadActivityEvents.$inferSelect, key: string) {
+function metadataValue(event: PerformanceActivityEvent, key: string) {
   const metadata = event.metadata
   return metadata && typeof metadata === 'object' && !Array.isArray(metadata)
     ? (metadata as Record<string, unknown>)[key]
     : null
 }
 
-function changedValue(event: typeof leadActivityEvents.$inferSelect, key: string) {
+function changedValue(event: PerformanceActivityEvent, key: string) {
   const changes = event.changes
   if (!changes || typeof changes !== 'object' || Array.isArray(changes)) return undefined
   const change = (changes as Record<string, unknown>)[key]
@@ -337,7 +377,7 @@ function changedValue(event: typeof leadActivityEvents.$inferSelect, key: string
 }
 
 function buildLeadQualityMarks(
-  events: Array<typeof leadActivityEvents.$inferSelect>,
+  events: PerformanceActivityEvent[],
   employeeId: string,
 ): LeadQualityMark[] {
   return events.flatMap((event) => {
@@ -376,7 +416,7 @@ function latestQualityMarksInRange(marks: LeadQualityMark[], range: PeriodRange)
   return [...latest.values()]
 }
 
-function buildCallActivities(events: Array<typeof leadActivityEvents.$inferSelect>, windows: OwnershipWindow[], employeeId: string): CallActivity[] {
+function buildCallActivities(events: PerformanceActivityEvent[], index: OwnershipIndex, employeeId: string): CallActivity[] {
   return events
     .map((event) => {
       const savedAt = typeof metadataValue(event, 'saved_at') === 'string'
@@ -392,7 +432,7 @@ function buildCallActivities(events: Array<typeof leadActivityEvents.$inferSelec
       event.eventType === 'crm_updated' &&
       event.actorUserId === employeeId &&
       metadataValue(event, 'call_logged') === true &&
-      ownedAt(windows, event.leadId, employeeId, savedAt)
+      ownedAt(index, event.leadId, employeeId, savedAt)
     )
     .map(({ event, savedAt }) => ({
       leadId: event.leadId,
@@ -410,7 +450,7 @@ function callActivitiesInRange(activities: CallActivity[], range: PeriodRange) {
 function legacyCallActivitiesInRange(
   leads: any[],
   events: CallActivity[],
-  windows: OwnershipWindow[],
+  ownershipIndex: OwnershipIndex,
   employeeId: string,
   range: PeriodRange,
 ) {
@@ -418,7 +458,7 @@ function legacyCallActivitiesInRange(
   return leads.flatMap((lead) => {
     if (loggedLeadIds.has(lead.id) || !lead.crmDetails?.callStatus) return []
 
-    return attributedCallDates(lead, windows, employeeId, range).map((date) => ({
+    return attributedCallDates(lead, ownershipIndex, employeeId, range).map((date) => ({
       leadId: lead.id,
       callStatus: lead.crmDetails.callStatus,
       createdAt: date,
@@ -429,14 +469,14 @@ function legacyCallActivitiesInRange(
 function periodCallActivities(
   leads: any[],
   activities: CallActivity[],
-  windows: OwnershipWindow[],
+  ownershipIndex: OwnershipIndex,
   employeeId: string,
   range: PeriodRange,
 ) {
   const eventsInRange = callActivitiesInRange(activities, range)
   return [
     ...eventsInRange,
-    ...legacyCallActivitiesInRange(leads, activities, windows, employeeId, range),
+    ...legacyCallActivitiesInRange(leads, activities, ownershipIndex, employeeId, range),
   ]
 }
 
@@ -447,7 +487,7 @@ function monthsBetween(start: Date, end: Date) {
     (endShifted.getUTCMonth() - startShifted.getUTCMonth())
 }
 
-function earliestTrendDate(leads: any[], visits: any[], windows: OwnershipWindow[], employeeId: string, activities: CallActivity[]) {
+function earliestTrendDate(leads: any[], visits: any[], windows: OwnershipWindow[], ownershipIndex: OwnershipIndex, employeeId: string, activities: CallActivity[]) {
   const times: number[] = []
 
   for (const window of windows) {
@@ -464,10 +504,10 @@ function earliestTrendDate(leads: any[], visits: any[], windows: OwnershipWindow
       .filter((date): date is Date => Boolean(date))
 
     for (const date of callDates) {
-      if (ownedAt(windows, lead.id, employeeId, date)) times.push(date.getTime())
+      if (ownedAt(ownershipIndex, lead.id, employeeId, date)) times.push(date.getTime())
     }
 
-    if (lead.status === 'converted' && ownedAt(windows, lead.id, employeeId, lead.updatedAt)) {
+    if (lead.status === 'converted' && ownedAt(ownershipIndex, lead.id, employeeId, lead.updatedAt)) {
       const updatedAt = toDate(lead.updatedAt)
       if (updatedAt) times.push(updatedAt.getTime())
     }
@@ -487,6 +527,7 @@ function buildTrendBuckets(
   leads: any[],
   visits: any[],
   windows: OwnershipWindow[],
+  ownershipIndex: OwnershipIndex,
   employeeId: string,
   activities: CallActivity[],
 ): PeriodRange[] {
@@ -525,7 +566,7 @@ function buildTrendBuckets(
     })
   }
 
-  const earliest = earliestTrendDate(leads, visits, windows, employeeId, activities)
+  const earliest = earliestTrendDate(leads, visits, windows, ownershipIndex, employeeId, activities)
   if (!earliest) return []
 
   const lifetimeStartMonth = startOfIstMonth(earliest)
@@ -550,34 +591,83 @@ function buildTrendBuckets(
   })
 }
 
-function buildTrendRows(
+function trendBucketIndex(buckets: PeriodRange[], value: Date | string | null | undefined) {
+  const date = toDate(value)
+  if (!date) return -1
+  return buckets.findIndex((bucket) => inRange(date, bucket))
+}
+
+export function buildTrendRows(
   key: PeriodKey,
   now: Date,
   leads: any[],
   visits: any[],
   windows: OwnershipWindow[],
+  ownershipIndex: OwnershipIndex,
   employeeId: string,
   activities: CallActivity[],
 ): TrendRow[] {
-  return buildTrendBuckets(key, now, leads, visits, windows, employeeId, activities).map((range) => ({
+  const buckets = buildTrendBuckets(key, now, leads, visits, windows, ownershipIndex, employeeId, activities)
+  const rows = buckets.map((range) => ({
     label: range.label,
     month: range.label,
-    leads: leads.filter((lead) => ownershipStartedDuringPeriod(windows, lead.id, employeeId, range)).length,
-    calls: periodCallActivities(leads, activities, windows, employeeId, range).length,
-    visits: visits.filter((visit) => inRange(visit.scheduledDate, range)).length,
-    conversions: leads.filter((lead) =>
-      lead.status === 'converted' &&
-      inRange(lead.updatedAt, range) &&
-      ownedAt(windows, lead.id, employeeId, lead.updatedAt)
-    ).length,
+    leads: 0,
+    calls: 0,
+    visits: 0,
+    conversions: 0,
   }))
+  const assignedLeadIds = buckets.map(() => new Set<string>())
+
+  for (const window of windows) {
+    if (window.employeeId !== employeeId) continue
+    const bucketIndex = trendBucketIndex(buckets, window.assignedAt)
+    if (bucketIndex >= 0) assignedLeadIds[bucketIndex].add(window.leadId)
+  }
+
+  const loggedLeadIds = new Set(activities.map((activity) => activity.leadId))
+  for (const activity of activities) {
+    const bucketIndex = trendBucketIndex(buckets, activity.createdAt)
+    if (bucketIndex >= 0) rows[bucketIndex].calls += 1
+  }
+
+  for (const lead of leads) {
+    if (!loggedLeadIds.has(lead.id) && lead.crmDetails?.callStatus) {
+      const dates = [
+        toDate(lead.crmDetails?.firstCallDate),
+        toDate(lead.crmDetails?.lastCallDate),
+      ].filter((date): date is Date => Boolean(date))
+      const uniqueTimes = new Set(dates.map((date) => date.getTime()))
+      for (const time of uniqueTimes) {
+        const date = new Date(time)
+        if (!ownedAt(ownershipIndex, lead.id, employeeId, date)) continue
+        const bucketIndex = trendBucketIndex(buckets, date)
+        if (bucketIndex >= 0) rows[bucketIndex].calls += 1
+      }
+    }
+
+    if (lead.status === 'converted' && ownedAt(ownershipIndex, lead.id, employeeId, lead.updatedAt)) {
+      const bucketIndex = trendBucketIndex(buckets, lead.updatedAt)
+      if (bucketIndex >= 0) rows[bucketIndex].conversions += 1
+    }
+  }
+
+  for (const visit of visits) {
+    const bucketIndex = trendBucketIndex(buckets, visit.scheduledDate)
+    if (bucketIndex >= 0) rows[bucketIndex].visits += 1
+  }
+
+  for (let index = 0; index < rows.length; index += 1) {
+    rows[index].leads = assignedLeadIds[index].size
+  }
+
+  return rows
 }
 
 function summarizeRange(
   range: PeriodRange,
   leads: any[],
   visits: any[],
-  ownershipWindows: OwnershipWindow[],
+  ownershipIndex: OwnershipIndex,
   employeeId: string,
   callActivities: CallActivity[],
   qualityMarks: LeadQualityMark[],
@@ -585,11 +675,11 @@ function summarizeRange(
   const summary = emptySummary()
 
   for (const lead of leads) {
-    const assignedInPeriod = ownershipStartedDuringPeriod(ownershipWindows, lead.id, employeeId, range)
-    const ownedInPeriod = ownedDuringPeriod(ownershipWindows, lead.id, employeeId, range)
+    const assignedInPeriod = ownershipStartedDuringPeriod(ownershipIndex, lead.id, employeeId, range)
+    const ownedInPeriod = ownedDuringPeriod(ownershipIndex, lead.id, employeeId, range)
     const convertedInPeriod = lead.status === 'converted'
       && inRange(lead.updatedAt, range)
-      && ownedAt(ownershipWindows, lead.id, employeeId, lead.updatedAt)
+      && ownedAt(ownershipIndex, lead.id, employeeId, lead.updatedAt)
 
     if (assignedInPeriod) summary.totalLeads += 1
 
@@ -604,7 +694,7 @@ function summarizeRange(
     if (
       lead.crmDetails?.followUpDate &&
       inRange(lead.crmDetails.followUpDate, range) &&
-      ownedAt(ownershipWindows, lead.id, employeeId, lead.crmDetails.followUpDate)
+      ownedAt(ownershipIndex, lead.id, employeeId, lead.crmDetails.followUpDate)
     ) {
       summary.followUpsDue += 1
     }
@@ -616,7 +706,7 @@ function summarizeRange(
     if (mark.status === 'cold') summary.coldLeads += 1
   }
 
-  const periodCalls = periodCallActivities(leads, callActivities, ownershipWindows, employeeId, range)
+  const periodCalls = periodCallActivities(leads, callActivities, ownershipIndex, employeeId, range)
   summary.callsLogged = periodCalls.length
   summary.spokenCalls = periodCalls.filter((activity) => activity.callStatus === 'spoken').length
   summary.notSpokenCalls = periodCalls.filter((activity) => activity.callStatus === 'not_spoken').length
@@ -657,7 +747,7 @@ function customTrendRows(
   range: PeriodRange,
   leads: any[],
   visits: any[],
-  windows: OwnershipWindow[],
+  ownershipIndex: OwnershipIndex,
   employeeId: string,
   activities: CallActivity[],
 ) {
@@ -678,13 +768,13 @@ function customTrendRows(
     return {
       label: bucket.label,
       month: bucket.label,
-      leads: leads.filter((lead) => ownershipStartedDuringPeriod(windows, lead.id, employeeId, bucket)).length,
-      calls: periodCallActivities(leads, activities, windows, employeeId, bucket).length,
+      leads: leads.filter((lead) => ownershipStartedDuringPeriod(ownershipIndex, lead.id, employeeId, bucket)).length,
+      calls: periodCallActivities(leads, activities, ownershipIndex, employeeId, bucket).length,
       visits: visits.filter((visit) => inRange(visit.scheduledDate, bucket)).length,
       conversions: leads.filter((lead) =>
         lead.status === 'converted' &&
         inRange(lead.updatedAt, bucket) &&
-        ownedAt(windows, lead.id, employeeId, lead.updatedAt)
+        ownedAt(ownershipIndex, lead.id, employeeId, lead.updatedAt)
       ).length,
     }
   })
@@ -710,6 +800,9 @@ function reportRatios(summary: PerformanceSummary) {
 
 @Injectable()
 export class DashboardService {
+  private readonly employeePerformanceCache = new Map<string, { expiresAt: number; value: unknown }>()
+  private readonly employeePerformanceInFlight = new Map<string, Promise<unknown>>()
+
   constructor(
     private readonly database: DatabaseService,
     private readonly employeeReportInsights: EmployeeReportInsightsService,
@@ -786,7 +879,53 @@ export class DashboardService {
     return { byMonth, recentBookings }
   }
 
-  async getEmployeePerformance(
+  getEmployeePerformance(
+    employeeId?: string,
+    startDate?: string,
+    endDate?: string,
+    listOnly = false,
+    requestedPeriod?: string,
+  ): Promise<unknown> {
+    const cacheKey = JSON.stringify([
+      employeeId ?? null,
+      startDate ?? null,
+      endDate ?? null,
+      listOnly,
+      requestedPeriod ?? 'monthly',
+    ])
+    const now = Date.now()
+    const cached = this.employeePerformanceCache.get(cacheKey)
+    if (cached && cached.expiresAt > now) return Promise.resolve(cached.value)
+    if (cached) this.employeePerformanceCache.delete(cacheKey)
+
+    const inFlight = this.employeePerformanceInFlight.get(cacheKey)
+    if (inFlight) return inFlight
+
+    const request = this.calculateEmployeePerformance(
+      employeeId,
+      startDate,
+      endDate,
+      listOnly,
+      requestedPeriod,
+    ).then((value) => {
+      if (this.employeePerformanceCache.size >= EMPLOYEE_PERFORMANCE_CACHE_MAX_ENTRIES) {
+        const oldestKey = this.employeePerformanceCache.keys().next().value
+        if (oldestKey !== undefined) this.employeePerformanceCache.delete(oldestKey)
+      }
+      this.employeePerformanceCache.set(cacheKey, {
+        expiresAt: Date.now() + EMPLOYEE_PERFORMANCE_CACHE_TTL_MS,
+        value,
+      })
+      return value
+    }).finally(() => {
+      this.employeePerformanceInFlight.delete(cacheKey)
+    })
+
+    this.employeePerformanceInFlight.set(cacheKey, request)
+    return request
+  }
+
+  private async calculateEmployeePerformance(
     employeeId?: string,
     startDate?: string,
     endDate?: string,
@@ -843,12 +982,26 @@ export class DashboardService {
       }
     }
 
-    const [employeeAssignmentEvents, currentLeads, visits] = await Promise.all([
+    const [employeeEvents, currentLeads, visits] = await Promise.all([
       this.db.query.leadActivityEvents.findMany({
-        where: or(
-          eq(leadActivityEvents.toUserId, selectedEmployee.id),
-          eq(leadActivityEvents.fromUserId, selectedEmployee.id),
-          eq(leadActivityEvents.actorUserId, selectedEmployee.id),
+        columns: {
+          id: true,
+          leadId: true,
+          actorUserId: true,
+          eventType: true,
+          changes: true,
+          metadata: true,
+          fromUserId: true,
+          toUserId: true,
+          createdAt: true,
+        },
+        where: and(
+          inArray(leadActivityEvents.eventType, PERFORMANCE_EVENT_TYPES),
+          or(
+            eq(leadActivityEvents.toUserId, selectedEmployee.id),
+            eq(leadActivityEvents.fromUserId, selectedEmployee.id),
+            eq(leadActivityEvents.actorUserId, selectedEmployee.id),
+          ),
         ),
         orderBy: [asc(leadActivityEvents.createdAt)],
       }),
@@ -875,7 +1028,7 @@ export class DashboardService {
     ])
 
     const leadIds = [...new Set([
-      ...employeeAssignmentEvents.map((event) => event.leadId),
+      ...employeeEvents.map((event) => event.leadId),
       ...currentLeads.map((lead) => lead.id),
       ...visits.map((visit) => visit.leadId),
     ])]
@@ -893,15 +1046,30 @@ export class DashboardService {
             orderBy: [desc(metaLeads.receivedAt)],
           }),
           this.db.query.leadActivityEvents.findMany({
-            where: inArray(leadActivityEvents.leadId, leadIds),
+            columns: {
+              id: true,
+              leadId: true,
+              actorUserId: true,
+              eventType: true,
+              changes: true,
+              metadata: true,
+              fromUserId: true,
+              toUserId: true,
+              createdAt: true,
+            },
+            where: and(
+              inArray(leadActivityEvents.leadId, leadIds),
+              inArray(leadActivityEvents.eventType, OWNERSHIP_EVENT_TYPES),
+            ),
             orderBy: [asc(leadActivityEvents.createdAt)],
           }),
         ])
       : [[], []]
 
     const ownershipWindows = buildOwnershipWindows(leads, assignmentEvents)
-    const callActivities = buildCallActivities(assignmentEvents, ownershipWindows, selectedEmployee.id)
-    const qualityMarks = buildLeadQualityMarks(assignmentEvents, selectedEmployee.id)
+    const ownershipIndex = buildOwnershipIndex(ownershipWindows)
+    const callActivities = buildCallActivities(employeeEvents, ownershipIndex, selectedEmployee.id)
+    const qualityMarks = buildLeadQualityMarks(employeeEvents, selectedEmployee.id)
 
     const now = new Date()
     const periods = buildPeriodRanges(now)
@@ -917,30 +1085,36 @@ export class DashboardService {
         range,
         leads,
         visits,
-        ownershipWindows,
+        ownershipIndex,
         selectedEmployee.id,
         callActivities,
         qualityMarks,
       )
-      trend = buildTrendRows(selectedPeriod, now, leads, visits, ownershipWindows, selectedEmployee.id, callActivities)
+      trend = buildTrendRows(selectedPeriod, now, leads, visits, ownershipWindows, ownershipIndex, selectedEmployee.id, callActivities)
       trendByPeriod[selectedPeriod] = trend
     }
 
-    const mostRecentOwnershipStart = (leadId: string) => {
-      const starts = ownershipWindows
-        .filter((window) => window.leadId === leadId && window.employeeId === selectedEmployee.id)
-        .map((window) => window.assignedAt.getTime())
-      return starts.length > 0 ? Math.max(...starts) : null
+    const mostRecentOwnershipStart = new Map<string, number>()
+    for (const window of ownershipWindows) {
+      if (window.employeeId !== selectedEmployee.id) continue
+      const assignedAt = window.assignedAt.getTime()
+      const current = mostRecentOwnershipStart.get(window.leadId)
+      if (current === undefined || assignedAt > current) {
+        mostRecentOwnershipStart.set(window.leadId, assignedAt)
+      }
     }
-    const mostRecentLeadQuality = (leadId: string) => qualityMarks
-      .filter((mark) => mark.leadId === leadId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.status ?? null
+
+    const mostRecentLeadQuality = new Map<string, LeadQualityMark>()
+    for (const mark of qualityMarks) {
+      const current = mostRecentLeadQuality.get(mark.leadId)
+      if (!current || mark.createdAt > current.createdAt) mostRecentLeadQuality.set(mark.leadId, mark)
+    }
 
     const recentLeads = [...leads]
-      .sort((a, b) => (mostRecentOwnershipStart(b.id) ?? 0) - (mostRecentOwnershipStart(a.id) ?? 0))
+      .sort((a, b) => (mostRecentOwnershipStart.get(b.id) ?? 0) - (mostRecentOwnershipStart.get(a.id) ?? 0))
       .slice(0, 8)
       .map((lead) => {
-        const ownershipStart = mostRecentOwnershipStart(lead.id)
+        const ownershipStart = mostRecentOwnershipStart.get(lead.id) ?? null
 
         return {
           id: lead.id,
@@ -954,7 +1128,7 @@ export class DashboardService {
           ownership_status: lead.assignedTo === selectedEmployee.id ? 'current' : 'previous',
           call_status: lead.crmDetails?.callStatus ?? null,
           follow_up_date: lead.crmDetails?.followUpDate ?? null,
-          hwc: mostRecentLeadQuality(lead.id),
+          hwc: mostRecentLeadQuality.get(lead.id)?.status ?? null,
           buying_status: lead.crmDetails?.buyingStatus ?? null,
           site_visit_status: lead.crmDetails?.siteVisitStatus ?? null,
         }
@@ -985,8 +1159,8 @@ export class DashboardService {
         start: addDays(customStart, -rangeDays),
         end: customStart,
       }
-      const summary = summarizeRange(customRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities, qualityMarks)
-      const previousSummary = summarizeRange(previousRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities, qualityMarks)
+      const summary = summarizeRange(customRange, leads, visits, ownershipIndex, selectedEmployee.id, callActivities, qualityMarks)
+      const previousSummary = summarizeRange(previousRange, leads, visits, ownershipIndex, selectedEmployee.id, callActivities, qualityMarks)
       const ratios = reportRatios(summary)
       const previousRatios = reportRatios(previousSummary)
       const insights = await this.employeeReportInsights.analyze({
@@ -1003,7 +1177,7 @@ export class DashboardService {
         previousSummary,
         ratios,
         previousRatios,
-        trend: customTrendRows(customRange, leads, visits, ownershipWindows, selectedEmployee.id, callActivities),
+        trend: customTrendRows(customRange, leads, visits, ownershipIndex, selectedEmployee.id, callActivities),
         insights,
       }
     }

@@ -9,7 +9,14 @@ export const CLIENT_STATUS_VALUES = [
   'low_budget',
   'not_interested',
   'broker',
-  'construction_biz_owner',
+] as const
+
+// Accepted temporarily by the API so an older browser can be translated to
+// the new independent construction-business-owner flag during rollout.
+export const LEGACY_CLIENT_STATUS_VALUES = ['construction_biz_owner'] as const
+export const CLIENT_STATUS_INPUT_VALUES = [
+  ...CLIENT_STATUS_VALUES,
+  ...LEGACY_CLIENT_STATUS_VALUES,
 ] as const
 
 export type ClientStatus = (typeof CLIENT_STATUS_VALUES)[number]
