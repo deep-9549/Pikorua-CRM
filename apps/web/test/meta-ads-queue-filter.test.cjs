@@ -24,6 +24,7 @@ const {
   EMPTY_META_ADS_QUEUE_FILTERS,
   filterMetaAdsQueueLeads,
   matchingSelectedMetaAdsQueueLeadIds,
+  metaAdsBudgetOptions,
   metaAdsQueueLeadIds,
 } = loadTypeScriptModule('lib/meta-ads-queue-filter.ts')
 
@@ -50,10 +51,10 @@ const leads = [
   lead('spoken', {
     client_status: 'hot',
     client_construction_business_owner: true,
-    crm: { call_status: 'spoken' },
+    crm: { call_status: 'spoken', budget_range: '5 Cr' },
   }),
-  lead('not-spoken', { client_status: 'warm', crm: { call_status: 'not_spoken' } }),
-  lead('callback', { crm: { call_status: 'call_back_later' } }),
+  lead('not-spoken', { client_status: 'warm', crm: { call_status: 'not_spoken', budget_range: '2 Cr' } }),
+  lead('callback', { crm: { call_status: 'call_back_later', budget_range: ' 5 Cr ' } }),
   lead('unset-crm'),
   lead('unset-status', { crm: { call_status: null } }),
   lead('other-exec-spoken', {
@@ -120,6 +121,19 @@ test('Construction Business Owner filters as an independent flag', () => {
   })
 
   assert.deepEqual(metaAdsQueueLeadIds(filtered), ['spoken'])
+})
+
+test('Budget options are trimmed, deduplicated, and naturally sorted', () => {
+  assert.deepEqual(metaAdsBudgetOptions(leads), ['2 Cr', '5 Cr'])
+})
+
+test('Budget filters the queue and composes with assigned status', () => {
+  const filtered = filterMetaAdsQueueLeads(leads, {
+    ...assignedFilters,
+    budget: '5 Cr',
+  })
+
+  assert.deepEqual(metaAdsQueueLeadIds(filtered), ['spoken', 'callback'])
 })
 
 test('Split shown IDs contain only matching leads from the unassigned queue', () => {

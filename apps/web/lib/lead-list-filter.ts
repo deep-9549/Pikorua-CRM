@@ -2,6 +2,7 @@ export interface LeadListFilters {
   clientStatus: string
   callStatus: string
   campaign: string
+  budget: string
   source: string
   assignedTo: string
   dateFrom: string
@@ -20,13 +21,14 @@ export interface FilterableLead {
   client_anti_broker?: boolean
   client_construction_business_owner?: boolean
   assigned_to_profile?: { id: string } | null
-  crm?: { call_status?: string | null } | null
+  crm?: { call_status?: string | null; budget_range?: string | null } | null
 }
 
 export const EMPTY_LEAD_FILTERS: LeadListFilters = {
   clientStatus: "",
   callStatus: "",
   campaign: "",
+  budget: "",
   source: "",
   assignedTo: "",
   dateFrom: "",
@@ -39,6 +41,14 @@ export function campaignOptions(leads: FilterableLead[]) {
       .map(lead => lead.campaign_name?.trim())
       .filter((campaign): campaign is string => Boolean(campaign)),
   )).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+}
+
+export function budgetOptions(leads: FilterableLead[]) {
+  return Array.from(new Set(
+    leads
+      .map(lead => lead.crm?.budget_range?.trim())
+      .filter((budget): budget is string => Boolean(budget)),
+  )).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }))
 }
 
 export function filterLeadList<T extends FilterableLead>(
@@ -71,6 +81,7 @@ export function filterLeadList<T extends FilterableLead>(
       if (filters.callStatus !== "fresh" && callStatus !== filters.callStatus) return false
     }
     if (filters.campaign && lead.campaign_name?.trim() !== filters.campaign) return false
+    if (filters.budget && lead.crm?.budget_range?.trim() !== filters.budget) return false
     if (filters.source && lead.source !== filters.source) return false
     if (filters.assignedTo && lead.assigned_to_profile?.id !== filters.assignedTo) return false
     if (filters.dateFrom && lead.received_at < filters.dateFrom) return false

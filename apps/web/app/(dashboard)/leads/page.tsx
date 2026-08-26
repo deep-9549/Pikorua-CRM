@@ -26,7 +26,7 @@ import {
 import { ProtectedPhone } from "@/components/security/protected-phone"
 import { AddLeadDialog } from "@/components/add-lead-dialog"
 import { exportLeadsToExcel } from "@/lib/export-leads"
-import { campaignOptions, EMPTY_LEAD_FILTERS, filterLeadList } from "@/lib/lead-list-filter"
+import { budgetOptions, campaignOptions, EMPTY_LEAD_FILTERS, filterLeadList } from "@/lib/lead-list-filter"
 import {
   dateKey,
   getLeadDisplaySections,
@@ -242,6 +242,7 @@ export default function LeadsPage() {
   }, [leads])
 
   const campaigns = useMemo(() => campaignOptions(leads), [leads])
+  const budgets = useMemo(() => budgetOptions(leads), [leads])
 
   function setFilter(key: keyof typeof EMPTY_LEAD_FILTERS, value: string) {
     setFilters(p => ({ ...p, [key]: value }))
@@ -545,6 +546,10 @@ export default function LeadsPage() {
               <FilterSelect value={filters.campaign} onChange={v => setFilter("campaign", v)}>
                 <option value="">All Campaigns</option>
                 {campaigns.map(campaign => <option key={campaign} value={campaign}>{campaign}</option>)}
+              </FilterSelect>
+              <FilterSelect value={filters.budget} onChange={v => setFilter("budget", v)}>
+                <option value="">All Budgets</option>
+                {budgets.map(budget => <option key={budget} value={budget}>{budget}</option>)}
               </FilterSelect>
               <FilterSelect value={filters.source} onChange={v => setFilter("source", v)}>
                 <option value="">All Sources</option>
