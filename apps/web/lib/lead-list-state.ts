@@ -1,6 +1,6 @@
 import { EMPTY_LEAD_FILTERS, type LeadListFilters } from './lead-list-filter'
 
-export type LeadTab = 'leads' | 'freshly-assigned' | 'follow-ups' | 'overdue'
+export type LeadTab = 'leads' | 'legacy' | 'freshly-assigned' | 'follow-ups' | 'overdue'
 
 export type LeadListViewState = {
   version: 1
@@ -30,7 +30,7 @@ export const DEFAULT_LEAD_LIST_VIEW_STATE: LeadListViewState = {
 }
 
 const FILTER_KEYS = Object.keys(EMPTY_LEAD_FILTERS) as Array<keyof LeadListFilters>
-const LEAD_TABS = new Set<LeadTab>(['leads', 'freshly-assigned', 'follow-ups', 'overdue'])
+const LEAD_TABS = new Set<LeadTab>(['leads', 'legacy', 'freshly-assigned', 'follow-ups', 'overdue'])
 
 export function parseLeadListViewState(raw: string | null): LeadListViewState {
   if (!raw) return { ...DEFAULT_LEAD_LIST_VIEW_STATE, filters: { ...EMPTY_LEAD_FILTERS } }

@@ -6,6 +6,15 @@ const path = require('node:path')
 const test = require('node:test')
 const ts = require('typescript')
 
+require.extensions['.ts'] = function loadTs(module, filename) {
+  const source = fs.readFileSync(filename, 'utf8')
+  const output = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2021 },
+    fileName: filename,
+  }).outputText
+  module._compile(output, filename)
+}
+
 function loadTypeScriptModule(relativePath) {
   const filename = path.resolve(__dirname, '..', relativePath)
   const source = fs.readFileSync(filename, 'utf8')
@@ -58,8 +67,17 @@ test('campaign options are trimmed, deduplicated, and sorted', () => {
   assert.deepEqual(campaignOptions(leads), ['City Apartments', 'Luxury Villas'])
 })
 
-test('budget options are trimmed, deduplicated, and naturally sorted', () => {
-  assert.deepEqual(budgetOptions(leads), ['2 Cr', '5 Cr'])
+test('budget options are canonical individual crore buckets', () => {
+  assert.deepEqual(budgetOptions(leads), [
+    '1 Cr', '2 Cr', '3 Cr', '4 Cr', '5 Cr', '6 Cr', '7 Cr', '8 Cr', '9 Cr', '10 Cr',
+    '11 Cr', '12 Cr', '13 Cr', '14 Cr', '15 Cr', '16 Cr', '17 Cr', '18 Cr', '19 Cr', '20 Cr', '21 Cr+',
+  ])
+})
+
+test('budget filter includes range clients in each matching individual bucket', () => {
+  const ranged = [...leads, { ...leads[0], full_name: 'Range client', crm: { budget_range: '₹5 Cr – ₹7 Cr' } }]
+  assert.deepEqual(filterLeadList(ranged, '', { ...EMPTY_LEAD_FILTERS, budget: '6 Cr' }).map(lead => lead.full_name), ['Range client'])
+  assert.deepEqual(filterLeadList(ranged, '', { ...EMPTY_LEAD_FILTERS, budget: '5 Cr' }).map(lead => lead.full_name), ['Asha', 'Mira', 'Range client'])
 })
 
 test('campaign filter composes with the other lead filters', () => {

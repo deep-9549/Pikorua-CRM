@@ -1,5 +1,6 @@
 import {
   Controller,
+  Body,
   Get,
   Post,
   Res,
@@ -59,7 +60,7 @@ export class ImportController {
       },
     }),
   )
-  async importMetaLeads(@UploadedFile() file: Express.Multer.File) {
-    return this.importService.importMetaLeads(file)
+  async importMetaLeads(@UploadedFile() file: Express.Multer.File, @Body('mode') mode?: string) {
+    return this.importService.importMetaLeads(file, mode)
   }
 }

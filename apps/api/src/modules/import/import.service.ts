@@ -145,8 +145,12 @@ export class ImportService {
     ])
   }
 
-  async importMetaLeads(file: Express.Multer.File): Promise<ImportResultDto> {
+  async importMetaLeads(file: Express.Multer.File, mode: string | undefined = 'normal'): Promise<ImportResultDto> {
     if (!file) throw new BadRequestException('No file uploaded')
+    if (mode !== 'normal' && mode !== 'legacy') {
+      throw new BadRequestException('Import mode must be either normal or legacy')
+    }
+    const isLegacy = mode === 'legacy'
 
     let workbook: XLSX.WorkBook
     try {
@@ -221,7 +225,10 @@ export class ImportService {
     const CHUNK = 1000
     const uniquePhones = [...new Set(parsed.map(r => r.phone))]
 
-    // ── Step 2: Omit duplicate enquiries by phone + campaign + received date ──
+    // ── Step 2: Omit duplicates ──────────────────────────────────────────────
+    // Normal imports preserve historical enquiries by phone + campaign + date.
+    // Legacy imports are a one-time CRM backfill, so any live matching phone is
+    // already represented and must be skipped.
     const seenLeadKeys = new Set<string>()
 
     for (const batch of this.chunk(uniquePhones, CHUNK)) {
@@ -236,17 +243,19 @@ export class ImportService {
 
       for (const lead of rows) {
         if (!lead.phone) continue
-        seenLeadKeys.add(this.leadIdentityKey({
-          phone: lead.phone,
-          campaignName: normalizeCampaignName(lead.campaignName),
-          receivedAt: lead.receivedAt,
-        }))
+        seenLeadKeys.add(isLegacy
+          ? lead.phone
+          : this.leadIdentityKey({
+              phone: lead.phone,
+              campaignName: normalizeCampaignName(lead.campaignName),
+              receivedAt: lead.receivedAt,
+            }))
       }
     }
 
     const uniqueParsed: ParsedRow[] = []
     for (const row of parsed) {
-      const key = this.leadIdentityKey(row)
+      const key = isLegacy ? row.phone : this.leadIdentityKey(row)
       if (seenLeadKeys.has(key)) {
         result.skipped += 1
         continue
@@ -330,7 +339,11 @@ export class ImportService {
           campaignName: r.campaignName,
           platform:     r.platform,
           clientId:     clientIdByPhone.get(r.phone) ?? null,
-          source:       'migrated',
+          source:       isLegacy ? 'legacy_import' : 'migrated',
+          legacyImport: isLegacy,
+          // A row already marked spoken has completed the legacy gate and
+          // should enter the normal lifecycle as soon as it is assigned.
+          legacyTransferProtected: isLegacy && r.callStatus !== 'spoken',
           status:       (poolStatusForClientStatus(r.hwc ?? clientStatusByPhone.get(r.phone)) ?? 'unassigned') as never,
           receivedAt:   r.receivedAt,
         })))

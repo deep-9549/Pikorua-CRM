@@ -78,6 +78,8 @@ interface MetaLead {
   client_status_note?: string | null
   client_anti_broker?: boolean
   client_construction_business_owner?: boolean
+  legacy_import?: boolean
+  legacy_transfer_protected?: boolean
   today_follow_up_calls?: Array<{
     id: string
     call_status: "spoken" | "not_spoken"
@@ -334,15 +336,23 @@ export default function LeadsPage() {
     }
   }, [callStatsLeads, today])
 
-  const freshlyAssigned = useMemo(
-    () => filtered
-      .filter(isFreshlyAssignedLead)
-      .sort((a, b) => new Date(b.assigned_at ?? 0).getTime() - new Date(a.assigned_at ?? 0).getTime()),
+  const legacyLeads = useMemo(
+    () => filtered.filter(lead => lead.legacy_transfer_protected),
     [filtered],
   )
-  const workedLeads = useMemo(
-    () => filtered.filter(lead => !isFreshlyAssignedLead(lead)),
+  const normalFiltered = useMemo(
+    () => filtered.filter(lead => !lead.legacy_transfer_protected),
     [filtered],
+  )
+  const freshlyAssigned = useMemo(
+    () => normalFiltered
+      .filter(isFreshlyAssignedLead)
+      .sort((a, b) => new Date(b.assigned_at ?? 0).getTime() - new Date(a.assigned_at ?? 0).getTime()),
+    [normalFiltered],
+  )
+  const workedLeads = useMemo(
+    () => normalFiltered.filter(lead => !isFreshlyAssignedLead(lead)),
+    [normalFiltered],
   )
 
   // This is the exact order rendered on the page and used by the lead-detail
@@ -357,8 +367,9 @@ export default function LeadsPage() {
     if (activeTab === "follow-ups") return dueToday
     if (activeTab === "overdue") return overdue
     if (activeTab === "freshly-assigned") return freshlyAssigned
+    if (activeTab === "legacy") return legacyLeads
     return rest
-  }, [activeTab, dueToday, freshlyAssigned, overdue, rest])
+  }, [activeTab, dueToday, freshlyAssigned, legacyLeads, overdue, rest])
 
   const selectedCallEntries = callListStatus ? todayCallStats.callsByStatus[callListStatus] : []
 
@@ -596,6 +607,10 @@ export default function LeadsPage() {
             Leads
             <TabCount value={rest.length} />
           </TabsTrigger>
+          <TabsTrigger value="legacy">
+            Legacy Leads
+            <TabCount value={legacyLeads.length} />
+          </TabsTrigger>
           <TabsTrigger value="freshly-assigned">
             Freshly Assigned
             <TabCount value={freshlyAssigned.length} />
@@ -610,8 +625,8 @@ export default function LeadsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {(["leads", "freshly-assigned", "follow-ups", "overdue"] as LeadTab[]).map(tab => {
-          const tabLeads = tab === "follow-ups" ? dueToday : tab === "overdue" ? overdue : tab === "freshly-assigned" ? freshlyAssigned : rest
+        {(["leads", "legacy", "freshly-assigned", "follow-ups", "overdue"] as LeadTab[]).map(tab => {
+          const tabLeads = tab === "follow-ups" ? dueToday : tab === "overdue" ? overdue : tab === "freshly-assigned" ? freshlyAssigned : tab === "legacy" ? legacyLeads : rest
           return (
             <TabsContent key={tab} value={tab} className="mt-0">
               {loading ? (
@@ -669,8 +684,10 @@ function EmptyLeadTab({ tab, hasQuery, hasAnyLeads, onAdd }: {
   onAdd: () => void
 }) {
   const message = hasQuery
-    ? `No ${tab === "leads" ? "leads" : tab} match your search or filters`
-    : tab === "freshly-assigned"
+    ? `No ${tab === "leads" ? "leads" : tab === "legacy" ? "legacy leads" : tab} match your search or filters`
+    : tab === "legacy"
+      ? "No protected legacy leads"
+      : tab === "freshly-assigned"
       ? "No freshly assigned or transferred leads"
       : tab === "follow-ups"
       ? "No follow-ups due today"

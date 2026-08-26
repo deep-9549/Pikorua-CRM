@@ -6,6 +6,15 @@ const path = require('node:path')
 const test = require('node:test')
 const ts = require('typescript')
 
+require.extensions['.ts'] = function loadTs(module, filename) {
+  const source = fs.readFileSync(filename, 'utf8')
+  const output = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2021 },
+    fileName: filename,
+  }).outputText
+  module._compile(output, filename)
+}
+
 function loadTypeScriptModule(relativePath) {
   const filename = path.resolve(__dirname, '..', relativePath)
   const source = fs.readFileSync(filename, 'utf8')
@@ -123,11 +132,12 @@ test('Construction Business Owner filters as an independent flag', () => {
   assert.deepEqual(metaAdsQueueLeadIds(filtered), ['spoken'])
 })
 
-test('Budget options are trimmed, deduplicated, and naturally sorted', () => {
-  assert.deepEqual(metaAdsBudgetOptions(leads), ['2 Cr', '5 Cr'])
+test('Budget options use the shared canonical crore buckets', () => {
+  assert.equal(metaAdsBudgetOptions(leads)[0], '1 Cr')
+  assert.equal(metaAdsBudgetOptions(leads).at(-1), '21 Cr+')
 })
 
-test('Budget filters the queue and composes with assigned status', () => {
+test('Budget filters ranges and composes with assigned status', () => {
   const filtered = filterMetaAdsQueueLeads(leads, {
     ...assignedFilters,
     budget: '5 Cr',

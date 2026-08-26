@@ -44,11 +44,8 @@ export function campaignOptions(leads: FilterableLead[]) {
 }
 
 export function budgetOptions(leads: FilterableLead[]) {
-  return Array.from(new Set(
-    leads
-      .map(lead => lead.crm?.budget_range?.trim())
-      .filter((budget): budget is string => Boolean(budget)),
-  )).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }))
+  void leads
+  return [...BUDGET_BUCKETS]
 }
 
 export function filterLeadList<T extends FilterableLead>(
@@ -81,7 +78,7 @@ export function filterLeadList<T extends FilterableLead>(
       if (filters.callStatus !== "fresh" && callStatus !== filters.callStatus) return false
     }
     if (filters.campaign && lead.campaign_name?.trim() !== filters.campaign) return false
-    if (filters.budget && lead.crm?.budget_range?.trim() !== filters.budget) return false
+    if (filters.budget && !budgetMatchesBucket(lead.crm?.budget_range, filters.budget)) return false
     if (filters.source && lead.source !== filters.source) return false
     if (filters.assignedTo && lead.assigned_to_profile?.id !== filters.assignedTo) return false
     if (filters.dateFrom && lead.received_at < filters.dateFrom) return false
@@ -89,3 +86,4 @@ export function filterLeadList<T extends FilterableLead>(
     return true
   })
 }
+import { BUDGET_BUCKETS, budgetMatchesBucket } from './budget-buckets'

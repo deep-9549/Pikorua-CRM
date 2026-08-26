@@ -270,6 +270,17 @@ export class LeadsService {
       await this.db.insert(leadCrmDetails).values({ leadId: id, ...payload })
     }
 
+    // A protected legacy lead joins the ordinary routing lifecycle only after
+    // its first confirmed conversation. Reset the clock at that moment so an
+    // old import is never transferred immediately.
+    const activatesLegacyLead = dto.call_status === 'spoken'
+      && Boolean((lead as any).legacyTransferProtected ?? (lead as any).legacy_transfer_protected)
+    if (activatesLegacyLead) {
+      await this.db.update(metaLeads)
+        .set({ legacyTransferProtected: false, assignedAt: now, updatedAt: now })
+        .where(eq(metaLeads.id, id))
+    }
+
     // Sync to siteVisits table only when a site-visit field was actually part of
     // this update — a plain CRM save shouldn't touch the site_visits table.
     if (dto.site_visit_status !== undefined) {
@@ -310,7 +321,7 @@ export class LeadsService {
       })
     }
 
-    return { ...lead, crm: mergedCrm }
+    return { ...lead, legacy_transfer_protected: activatesLegacyLead ? false : (lead as any).legacyTransferProtected, crm: mergedCrm }
   }
 
   async getFollowUps(leadId: string, user: { id: string; role: string }) {

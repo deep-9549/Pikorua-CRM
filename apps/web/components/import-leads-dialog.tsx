@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,7 @@ export function ImportLeadsDialog({
   const [dragging, setDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [mode, setMode] = useState<"normal" | "legacy">("normal")
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -81,6 +83,7 @@ export function ImportLeadsDialog({
 
     const formData = new FormData()
     formData.append("file", file)
+    formData.append("mode", mode)
 
     try {
       const res = await fetch("/api/import/meta-leads", {
@@ -114,11 +117,28 @@ export function ImportLeadsDialog({
             Import Leads from Excel
           </DialogTitle>
           <DialogDescription>
-            Upload a .xlsx or .csv file to bulk-import historical leads. Repeat phone numbers are kept unless the same phone appears on the same date for the same campaign.
+            Choose a normal import for routine historical uploads, or a protected legacy import for leads from before the CRM was adopted.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-1">
+          {!result && (
+            <fieldset className="space-y-2">
+              <Label className="text-xs">Import type</Label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button type="button" onClick={() => setMode("normal")}
+                  className={`rounded-lg border p-3 text-left text-xs transition-colors ${mode === "normal" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <p className="font-semibold">Normal import</p>
+                  <p className="mt-1 text-muted-foreground">Keeps separate enquiries unless phone, campaign, and date are identical.</p>
+                </button>
+                <button type="button" onClick={() => setMode("legacy")}
+                  className={`rounded-lg border p-3 text-left text-xs transition-colors ${mode === "legacy" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <p className="font-semibold">Legacy import</p>
+                  <p className="mt-1 text-muted-foreground">Skips any phone already in CRM and protects the lead from automatic transfers until Spoken.</p>
+                </button>
+              </div>
+            </fieldset>
+          )}
           {/* Template download */}
           <div className="flex flex-col gap-3 rounded-lg px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
             style={{ background: "rgb(194 65 12 / 0.06)", border: "1px solid rgb(194 65 12 / 0.18)" }}>
@@ -213,7 +233,7 @@ export function ImportLeadsDialog({
 
               {result.skipped > 0 && (
                 <p className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
-                  {result.skipped} row{result.skipped !== 1 ? "s" : ""} skipped - same phone, campaign, and date already exists.
+                  {result.skipped} row{result.skipped !== 1 ? "s" : ""} skipped - {mode === "legacy" ? "phone already exists in CRM or appears more than once in this file." : "same phone, campaign, and date already exists."}
                 </p>
               )}
 
