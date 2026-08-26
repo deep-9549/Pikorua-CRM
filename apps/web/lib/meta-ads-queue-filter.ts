@@ -9,7 +9,7 @@ export interface MetaAdsQueueFilterableLead {
   city: string | null
   campaign_name: string | null
   platform: "instagram" | "facebook" | null
-  source: "meta_ad" | "website" | "microsite" | "manual" | "migrated"
+  source: "meta_ad" | "website" | "microsite" | "manual" | "migrated" | "legacy_import"
   status: MetaAdsQueueStatus
   received_at: string
   assigned_to_profile: { id: string } | null
@@ -47,11 +47,8 @@ export const EMPTY_META_ADS_QUEUE_FILTERS: MetaAdsQueueFilters = {
 }
 
 export function metaAdsBudgetOptions(leads: readonly MetaAdsQueueFilterableLead[]) {
-  return Array.from(new Set(
-    leads
-      .map(lead => lead.crm?.budget_range?.trim())
-      .filter((budget): budget is string => Boolean(budget)),
-  )).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }))
+  void leads
+  return [...BUDGET_BUCKETS]
 }
 
 function toDateInputValue(dateStr: string) {
@@ -85,7 +82,7 @@ export function filterMetaAdsQueueLeads<T extends MetaAdsQueueFilterableLead>(
     if (filters.source && lead.source !== filters.source) return false
     if (filters.platform && lead.platform !== filters.platform) return false
     if (filters.campaign && lead.campaign_name !== filters.campaign) return false
-    if (filters.budget && lead.crm?.budget_range?.trim() !== filters.budget) return false
+    if (filters.budget && !budgetMatchesBucket(lead.crm?.budget_range, filters.budget)) return false
     if (filters.executive && lead.assigned_to_profile?.id !== filters.executive) return false
     if (
       filters.clientStatus === "construction_business_owner"
@@ -114,3 +111,4 @@ export function matchingSelectedMetaAdsQueueLeadIds(
   const matchingIds = new Set(metaAdsQueueLeadIds(leads))
   return Array.from(selectedIds).filter(id => matchingIds.has(id))
 }
+import { BUDGET_BUCKETS, budgetMatchesBucket } from './budget-buckets'

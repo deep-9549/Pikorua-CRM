@@ -61,7 +61,7 @@ interface MetaLead {
   city: string | null
   campaign_name: string | null
   platform: "instagram" | "facebook" | null
-  source: "meta_ad" | "website" | "microsite" | "manual" | "migrated"
+  source: "meta_ad" | "website" | "microsite" | "manual" | "migrated" | "legacy_import"
   status: "unassigned" | "assigned"
   received_at: string
   assigned_at: string | null
@@ -1002,14 +1002,14 @@ export default function MetaAdsPage() {
             </TabsList>
 
             {/* Search + filters */}
-            <div className="flex flex-col sm:flex-row gap-2 mb-4">
-              <div className="relative flex-1">
+            <div className="flex flex-col gap-2 mb-4 xl:flex-row xl:flex-wrap">
+              <div className="relative min-w-0 w-full xl:min-w-[280px] xl:flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--color-muted-foreground)" }} />
                 <Input
                   placeholder="Search by name, phone, email, city, campaign..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="pl-9 h-9"
+                  className="h-9 w-full pl-9"
                 />
               </div>
               <select
@@ -1024,6 +1024,7 @@ export default function MetaAdsPage() {
                 <option value="microsite">Microsite</option>
                 <option value="manual">Manual</option>
                 <option value="migrated">Migrated</option>
+                <option value="legacy_import">Legacy import</option>
               </select>
               <select
                 value={platformFilter}

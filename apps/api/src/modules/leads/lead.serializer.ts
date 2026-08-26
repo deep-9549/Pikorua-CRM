@@ -82,6 +82,8 @@ export function serializeMetaLead(lead: any) {
     email: lead.email ?? null,
     city: lead.city ?? null,
     source: lead.source === 'meta_ads' ? 'meta_ad' : lead.source,
+    legacy_import: Boolean(lead.legacyImport ?? lead.legacy_import),
+    legacy_transfer_protected: Boolean(lead.legacyTransferProtected ?? lead.legacy_transfer_protected),
     external_id: lead.externalId ?? null,
     status: lead.status,
     form_data: lead.formData ?? null,

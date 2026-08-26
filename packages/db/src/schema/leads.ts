@@ -49,6 +49,10 @@ export const metaLeads = pgTable('meta_leads', {
   email: text('email'),
   city: text('city'),
   source: text('source').default('meta_ads'),
+  // Legacy imports retain their origin permanently. Protection is cleared only
+  // after the first successful "spoken" CRM update.
+  legacyImport: boolean('legacy_import').default(false).notNull(),
+  legacyTransferProtected: boolean('legacy_transfer_protected').default(false).notNull(),
   // Stable identifier supplied by an external lead source (for example, the
   // website Supabase row id). Together with source this makes imports safe to
   // retry without creating duplicate CRM leads.
@@ -72,6 +76,7 @@ export const metaLeads = pgTable('meta_leads', {
   index('meta_leads_platform_idx').on(t.platform),
   index('meta_leads_phone_idx').on(t.phone),
   index('meta_leads_deleted_received_idx').on(t.deletedAt, t.receivedAt),
+  index('meta_leads_legacy_protected_idx').on(t.legacyTransferProtected, t.deletedAt, t.receivedAt),
   uniqueIndex('meta_leads_source_external_id_uidx').on(t.source, t.externalId),
 ])
 
