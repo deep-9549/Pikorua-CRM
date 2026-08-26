@@ -15,7 +15,7 @@ export interface MetaAdsQueueFilterableLead {
   assigned_to_profile: { id: string } | null
   client_status: string | null
   client_construction_business_owner?: boolean
-  crm: { call_status: MetaAdsCallStatus | null } | null
+  crm: { call_status: MetaAdsCallStatus | null; budget_range?: string | null } | null
 }
 
 export interface MetaAdsQueueFilters {
@@ -23,6 +23,7 @@ export interface MetaAdsQueueFilters {
   source: string
   platform: string
   campaign: string
+  budget: string
   executive: string
   clientStatus: string
   callStatus: string
@@ -36,12 +37,21 @@ export const EMPTY_META_ADS_QUEUE_FILTERS: MetaAdsQueueFilters = {
   source: "",
   platform: "",
   campaign: "",
+  budget: "",
   executive: "",
   clientStatus: "",
   callStatus: "",
   receivedDateFrom: "",
   receivedDateTo: "",
   queueStatus: "",
+}
+
+export function metaAdsBudgetOptions(leads: readonly MetaAdsQueueFilterableLead[]) {
+  return Array.from(new Set(
+    leads
+      .map(lead => lead.crm?.budget_range?.trim())
+      .filter((budget): budget is string => Boolean(budget)),
+  )).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }))
 }
 
 function toDateInputValue(dateStr: string) {
@@ -75,6 +85,7 @@ export function filterMetaAdsQueueLeads<T extends MetaAdsQueueFilterableLead>(
     if (filters.source && lead.source !== filters.source) return false
     if (filters.platform && lead.platform !== filters.platform) return false
     if (filters.campaign && lead.campaign_name !== filters.campaign) return false
+    if (filters.budget && lead.crm?.budget_range?.trim() !== filters.budget) return false
     if (filters.executive && lead.assigned_to_profile?.id !== filters.executive) return false
     if (
       filters.clientStatus === "construction_business_owner"

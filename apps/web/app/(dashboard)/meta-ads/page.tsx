@@ -46,6 +46,7 @@ import { getAuthUser } from "@/lib/auth/cookies"
 import {
   filterMetaAdsQueueLeads,
   matchingSelectedMetaAdsQueueLeadIds,
+  metaAdsBudgetOptions,
   metaAdsQueueLeadIds,
 } from "@/lib/meta-ads-queue-filter"
 import type { MetaAdsQueueFilters } from "@/lib/meta-ads-queue-filter"
@@ -67,7 +68,10 @@ interface MetaLead {
   assigned_to_profile: { id: string; full_name: string; role: string } | null
   client_status: string | null
   client_construction_business_owner?: boolean
-  crm: { call_status: "spoken" | "not_spoken" | "call_back_later" | null } | null
+  crm: {
+    call_status: "spoken" | "not_spoken" | "call_back_later" | null
+    budget_range?: string | null
+  } | null
 }
 
 interface Employee {
@@ -624,6 +628,7 @@ export default function MetaAdsPage() {
   const [sourceFilter, setSourceFilter] = useState("")
   const [platformFilter, setPlatformFilter] = useState("")
   const [campaignFilter, setCampaignFilter] = useState("")
+  const [budgetFilter, setBudgetFilter] = useState("")
   const [executiveFilter, setExecutiveFilter] = useState("")
   const [clientStatusFilter, setClientStatusFilter] = useState("")
   const [callStatusFilter, setCallStatusFilter] = useState("")
@@ -826,19 +831,21 @@ export default function MetaAdsPage() {
     leads.forEach(l => { if (l.campaign_name) set.add(l.campaign_name) })
     return Array.from(set).sort()
   }, [leads])
+  const budgets = useMemo(() => metaAdsBudgetOptions(leads), [leads])
 
   const queueFilters = useMemo<MetaAdsQueueFilters>(() => ({
     search,
     source: sourceFilter,
     platform: platformFilter,
     campaign: campaignFilter,
+    budget: budgetFilter,
     executive: executiveFilter,
     clientStatus: clientStatusFilter,
     callStatus: callStatusFilter,
     receivedDateFrom: receivedDateFromFilter,
     receivedDateTo: receivedDateToFilter,
     queueStatus: activeTab === "assigned" || activeTab === "unassigned" ? activeTab : "",
-  }), [activeTab, search, sourceFilter, platformFilter, campaignFilter, executiveFilter, clientStatusFilter, callStatusFilter, receivedDateFromFilter, receivedDateToFilter])
+  }), [activeTab, search, sourceFilter, platformFilter, campaignFilter, budgetFilter, executiveFilter, clientStatusFilter, callStatusFilter, receivedDateFromFilter, receivedDateToFilter])
 
   // Apply search + filters to the loaded queue through a pure, regression-tested helper.
   const filteredLeads = useMemo(
@@ -846,7 +853,7 @@ export default function MetaAdsPage() {
     [leads, queueFilters],
   )
 
-  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || executiveFilter || clientStatusFilter || callStatusFilter || receivedDateFromFilter || receivedDateToFilter)
+  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || budgetFilter || executiveFilter || clientStatusFilter || callStatusFilter || receivedDateFromFilter || receivedDateToFilter)
   const shownLeadIds = metaAdsQueueLeadIds(filteredLeads)
   const selectedShownLeadIds = matchingSelectedMetaAdsQueueLeadIds(filteredLeads, selected)
   const splitLeadIds = selectedShownLeadIds.length > 0 ? selectedShownLeadIds : shownLeadIds
@@ -859,6 +866,7 @@ export default function MetaAdsPage() {
     setSourceFilter("")
     setPlatformFilter("")
     setCampaignFilter("")
+    setBudgetFilter("")
     setExecutiveFilter("")
     setClientStatusFilter("")
     setCallStatusFilter("")
@@ -1036,6 +1044,18 @@ export default function MetaAdsPage() {
                 >
                   <option value="">All Campaigns</option>
                   {campaigns.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              )}
+              {budgets.length > 0 && (
+                <select
+                  value={budgetFilter}
+                  onChange={e => setBudgetFilter(e.target.value)}
+                  aria-label="Filter by budget"
+                  className="h-9 w-full rounded-lg px-2.5 text-xs bg-transparent cursor-pointer sm:max-w-[160px]"
+                  style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+                >
+                  <option value="">All Budgets</option>
+                  {budgets.map(budget => <option key={budget} value={budget}>{budget}</option>)}
                 </select>
               )}
               {isSuperAdmin && activeTab !== "unassigned" && (
