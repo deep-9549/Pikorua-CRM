@@ -10,6 +10,7 @@ export interface MetaAdsQueueFilterableLead {
   campaign_name: string | null
   platform: "instagram" | "facebook" | null
   source: "meta_ad" | "website" | "microsite" | "manual" | "migrated" | "legacy_import"
+  legacy_import: boolean
   status: MetaAdsQueueStatus
   received_at: string
   assigned_to_profile: { id: string } | null
@@ -30,6 +31,7 @@ export interface MetaAdsQueueFilters {
   receivedDateFrom: string
   receivedDateTo: string
   queueStatus: "" | MetaAdsQueueStatus
+  legacyMode: "all" | "exclude" | "only"
 }
 
 export const EMPTY_META_ADS_QUEUE_FILTERS: MetaAdsQueueFilters = {
@@ -44,6 +46,7 @@ export const EMPTY_META_ADS_QUEUE_FILTERS: MetaAdsQueueFilters = {
   receivedDateFrom: "",
   receivedDateTo: "",
   queueStatus: "",
+  legacyMode: "all",
 }
 
 export function metaAdsBudgetOptions(leads: readonly MetaAdsQueueFilterableLead[]) {
@@ -69,6 +72,8 @@ export function filterMetaAdsQueueLeads<T extends MetaAdsQueueFilterableLead>(
 
   return leads.filter(lead => {
     if (filters.queueStatus && lead.status !== filters.queueStatus) return false
+    if (filters.legacyMode === "exclude" && lead.legacy_import) return false
+    if (filters.legacyMode === "only" && !lead.legacy_import) return false
 
     if (query) {
       const hit = lead.full_name?.toLowerCase().includes(query)

@@ -62,6 +62,7 @@ interface MetaLead {
   campaign_name: string | null
   platform: "instagram" | "facebook" | null
   source: "meta_ad" | "website" | "microsite" | "manual" | "migrated" | "legacy_import"
+  legacy_import: boolean
   status: "unassigned" | "assigned"
   received_at: string
   assigned_at: string | null
@@ -72,6 +73,14 @@ interface MetaLead {
     call_status: "spoken" | "not_spoken" | "call_back_later" | null
     budget_range?: string | null
   } | null
+}
+
+type MetaAdsTab = "unassigned" | "assigned" | "legacy-unassigned" | "legacy-assigned" | "all"
+
+function queueStatusForTab(tab: MetaAdsTab): "assigned" | "unassigned" | undefined {
+  if (tab === "assigned" || tab === "legacy-assigned") return "assigned"
+  if (tab === "unassigned" || tab === "legacy-unassigned") return "unassigned"
+  return undefined
 }
 
 interface Employee {
@@ -613,7 +622,7 @@ export default function MetaAdsPage() {
   const [error, setError] = useState<string | null>(null)
   const [assigningId, setAssigningId] = useState<string | null>(null)
   const [unassigningId, setUnassigningId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("unassigned")
+  const [activeTab, setActiveTab] = useState<MetaAdsTab>("unassigned")
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -634,6 +643,8 @@ export default function MetaAdsPage() {
   const [callStatusFilter, setCallStatusFilter] = useState("")
   const [receivedDateFromFilter, setReceivedDateFromFilter] = useState("")
   const [receivedDateToFilter, setReceivedDateToFilter] = useState("")
+  const isUnassignedTab = activeTab === "unassigned" || activeTab === "legacy-unassigned"
+  const isAssignedTab = activeTab === "assigned" || activeTab === "legacy-assigned"
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -694,7 +705,7 @@ export default function MetaAdsPage() {
   }
 
   async function handleBulkUnassign() {
-    if (!isSuperAdmin || activeTab !== "assigned" || selectedShownLeadIds.length === 0) return
+    if (!isSuperAdmin || !isAssignedTab || selectedShownLeadIds.length === 0) return
     setBulkUnassigning(true)
     try {
       const selectedIds = selectedShownLeadIds
@@ -715,7 +726,7 @@ export default function MetaAdsPage() {
   }
 
   async function handleBulkDelete() {
-    if (!isSuperAdmin || activeTab !== "unassigned" || selectedShownLeadIds.length === 0) return
+    if (!isSuperAdmin || !isUnassignedTab || selectedShownLeadIds.length === 0) return
     setBulkDeleting(true)
     try {
       const selectedIds = selectedShownLeadIds
@@ -787,7 +798,7 @@ export default function MetaAdsPage() {
       if (!res.ok) throw new Error(await readApiError(res, "Unassign failed"))
       // On the "assigned" tab the lead leaves the view; elsewhere flip it back
       // to unassigned in place.
-      setLeads(prev => activeTab === "assigned"
+      setLeads(prev => isAssignedTab
         ? prev.filter(l => l.id !== leadId)
         : prev.map(l => l.id === leadId
             ? { ...l, status: "unassigned", assigned_to_profile: null, assigned_at: null }
@@ -800,18 +811,19 @@ export default function MetaAdsPage() {
   }
 
   function handleTabChange(tab: string) {
-    setActiveTab(tab)
+    const nextTab = tab as MetaAdsTab
+    setActiveTab(nextTab)
     setSelected(new Set())
     setExecutiveFilter("")
     setClientStatusFilter("")
     setCallStatusFilter("")
-    fetchLeads(tab === "all" ? undefined : tab)
+    fetchLeads(queueStatusForTab(nextTab))
   }
 
   function handleLeadAdded(lead: MetaLead) {
     // Manual leads can be unassigned or assigned to the creator; only add them
     // when they belong in the current tab.
-    if (activeTab === "all" || lead.status === activeTab) {
+    if (activeTab === "all" || (!lead.legacy_import && lead.status === activeTab)) {
       setLeads(prev => [lead, ...prev])
     }
   }
@@ -823,7 +835,7 @@ export default function MetaAdsPage() {
   const instagramCount = leads.filter(l => l.platform === "instagram").length
   const facebookCount = leads.filter(l => l.platform === "facebook").length
   // Bulk select is available where leads await assignment
-  const selectable = isSuperAdmin && (activeTab === "unassigned" || activeTab === "assigned")
+  const selectable = isSuperAdmin && (isUnassignedTab || isAssignedTab)
 
   // Distinct campaign names present in the current queue (for the filter)
   const campaigns = useMemo(() => {
@@ -844,7 +856,8 @@ export default function MetaAdsPage() {
     callStatus: callStatusFilter,
     receivedDateFrom: receivedDateFromFilter,
     receivedDateTo: receivedDateToFilter,
-    queueStatus: activeTab === "assigned" || activeTab === "unassigned" ? activeTab : "",
+    queueStatus: queueStatusForTab(activeTab) ?? "",
+    legacyMode: activeTab.startsWith("legacy-") ? "only" : activeTab === "all" ? "all" : "exclude",
   }), [activeTab, search, sourceFilter, platformFilter, campaignFilter, budgetFilter, executiveFilter, clientStatusFilter, callStatusFilter, receivedDateFromFilter, receivedDateToFilter])
 
   // Apply search + filters to the loaded queue through a pure, regression-tested helper.
@@ -995,9 +1008,11 @@ export default function MetaAdsPage() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 h-auto flex-wrap justify-start">
               <TabsTrigger value="unassigned">Unassigned</TabsTrigger>
               <TabsTrigger value="assigned">Assigned</TabsTrigger>
+              <TabsTrigger value="legacy-unassigned">Legacy Unassigned</TabsTrigger>
+              <TabsTrigger value="legacy-assigned">Legacy Assigned</TabsTrigger>
               <TabsTrigger value="all">All</TabsTrigger>
             </TabsList>
 
@@ -1059,7 +1074,7 @@ export default function MetaAdsPage() {
                   {budgets.map(budget => <option key={budget} value={budget}>{budget}</option>)}
                 </select>
               )}
-              {isSuperAdmin && activeTab !== "unassigned" && (
+              {isSuperAdmin && !isUnassignedTab && (
                 <select
                   value={executiveFilter}
                   onChange={e => setExecutiveFilter(e.target.value)}
@@ -1073,7 +1088,7 @@ export default function MetaAdsPage() {
                   ))}
                 </select>
               )}
-              {activeTab === "assigned" && (
+              {isAssignedTab && (
                 <select
                   value={clientStatusFilter}
                   onChange={e => setClientStatusFilter(e.target.value)}
@@ -1087,7 +1102,7 @@ export default function MetaAdsPage() {
                   ))}
                 </select>
               )}
-              {activeTab === "assigned" && (
+              {isAssignedTab && (
                 <select
                   value={callStatusFilter}
                   onChange={e => setCallStatusFilter(e.target.value)}
@@ -1136,7 +1151,7 @@ export default function MetaAdsPage() {
                     <ListChecks className="w-3.5 h-3.5" />
                     Select shown
                   </Button>
-                  {activeTab === "unassigned" && (
+                  {isUnassignedTab && (
                     <Button
                       size="sm"
                       className="gap-1.5 h-9 text-xs shrink-0 gold-gradient font-semibold shadow-gold-sm"
@@ -1187,7 +1202,7 @@ export default function MetaAdsPage() {
                   </Button>
                 </div>
                 <div className="hidden flex-1 sm:block" />
-                {activeTab === "unassigned" ? (
+                {isUnassignedTab ? (
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                     <select
                       value={bulkExec}
@@ -1341,7 +1356,7 @@ export default function MetaAdsPage() {
       <ImportLeadsDialog
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onImported={() => fetchLeads(activeTab === "all" ? undefined : activeTab)}
+        onImported={() => fetchLeads(queueStatusForTab(activeTab))}
       />
 
       <SplitLeadsDialog

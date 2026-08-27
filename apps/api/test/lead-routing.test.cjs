@@ -53,3 +53,15 @@ test('migration rotates cold leads with not-spoken leads after 48 hours', () => 
   assert.match(migration, /call_status IS DISTINCT FROM 'spoken' OR c\.hwc = 'cold'/i)
   assert.doesNotMatch(migration, /SET\s+status\s*=\s*'cold_pool'/i)
 })
+
+test('legacy spreadsheet rows start unassigned, protected, and without imported call status', () => {
+  const importer = fs.readFileSync(path.resolve(
+    __dirname,
+    '../src/modules/import/import.service.ts',
+  ), 'utf8')
+
+  assert.match(importer, /legacyTransferProtected:\s*isLegacy/i)
+  assert.match(importer, /status:\s*\(isLegacy\s*\?\s*'unassigned'/i)
+  assert.match(importer, /const importedCallStatus = isLegacy \? null : r\.callStatus/i)
+  assert.match(importer, /original_row:\s*r\.rawRow/i)
+})

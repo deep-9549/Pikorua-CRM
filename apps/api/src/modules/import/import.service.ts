@@ -6,38 +6,13 @@ import { metaLeads, leadCrmDetails, clients } from '@pikorua/db'
 import { ImportResultDto } from './dto/import-result.dto'
 import { normalizeMetaBudget, normalizeCampaignName, normalizeMetaPlatform, stripPhonePrefix } from '../../common/utils/meta-format'
 import { poolStatusForClientStatus } from '../leads/lead-pools'
+import {
+  buildImportHeaderIndex,
+  IMPORT_FIELDS,
+  parseImportColumnMapping,
+} from './import-mapping'
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000000'
-
-// Exact-match aliases (header is lower-cased & trimmed before comparison).
-// Includes Meta's underscore_separated lead-form export headers.
-const HEADER_MAP: Record<string, string[]> = {
-  full_name:      ['name', 'full name', 'full_name', 'lead name', 'contact name'],
-  phone:          ['phone', 'mobile', 'contact', 'phone number', 'phone_number', 'mobile number'],
-  email:          ['email', 'email address', 'e-mail'],
-  city:           ['city', 'location', 'town'],
-  campaign_name:  ['source', 'campaign', 'campaign name', 'campaign_name', 'lead source'],
-  platform:       ['platform', 'publisher platform', 'publisher_platform'],
-  received_at:    ['date', 'received', 'received at', 'created', 'created_time', 'created time', 'lead date', 'enquiry date'],
-  call_status:    ['call status', 'call_status', 'status'],
-  hwc:            ['client status', 'client_status', 'hwc', 'priority', 'temperature', 'lead quality'],
-  budget_range:   ['budget', 'budget range', 'budget_range'],
-  profession:     ['profession', 'occupation', 'job', 'job title', 'job_title'],
-  company_name:   ['company', 'company name', 'company_name', 'organisation', 'organization'],
-  current_city:   ['current city', 'current location', 'from city'],
-  current_area:   ['current area', 'area', 'locality'],
-  follow_up_date: ['follow up', 'follow up date', 'followup', 'next follow up'],
-  remarks:        ['remarks', 'notes', 'comments', 'additional info'],
-}
-
-// Fallback substring rules for Meta's free-text question headers, e.g.
-// "what_budget_are_you_comfortable_with". Applied only to fields not already
-// matched exactly above. Order is irrelevant — each field is filled once.
-const HEADER_CONTAINS_MAP: Record<string, string[]> = {
-  budget_range:  ['budget'],
-  company_name:  ['company', 'organis', 'organiz'],
-  profession:    ['job', 'profession', 'occupation', 'designation'],
-}
 
 const CALL_STATUS_MAP: Record<string, string> = {
   spoken: 'spoken', talked: 'spoken', yes: 'spoken',
@@ -48,6 +23,16 @@ const CALL_STATUS_MAP: Record<string, string> = {
 const HWC_MAP: Record<string, string> = {
   hot: 'hot', warm: 'warm', cold: 'cold',
   h: 'hot', w: 'warm', c: 'cold',
+}
+
+const BUYING_STATUS_MAP: Record<string, string> = {
+  ready: 'ready', exploring: 'exploring', 'still searching': 'exploring',
+  'not ready': 'not_ready', not_ready: 'not_ready', interested: 'interested',
+}
+
+const SITE_VISIT_STATUS_MAP: Record<string, string> = {
+  scheduled: 'scheduled', completed: 'completed', visited: 'completed',
+  'not scheduled': 'not_scheduled', not_scheduled: 'not_scheduled', 'yet to visit': 'not_scheduled',
 }
 
 interface ParsedRow {
@@ -68,6 +53,19 @@ interface ParsedRow {
   currentArea: string | null
   followUpDate: Date | null
   remarks: string | null
+  firstCallDate: Date | null
+  lastCallDate: Date | null
+  buyingStatus: string | null
+  siteVisitStatus: string | null
+  visitDate: Date | null
+  visitConfirmationDate: Date | null
+  configuration: string[] | null
+  projectName: string | null
+  pageName: string | null
+  formId: string | null
+  adId: string | null
+  externalId: string | null
+  rawRow: Record<string, unknown>
 }
 
 @Injectable()
@@ -78,35 +76,7 @@ export class ImportService {
 
   private get db() { return this.database.db }
 
-  private buildHeaderIndex(headers: string[]): Record<string, string> {
-    const index: Record<string, string> = {}
-
-    // Pass 1 — exact alias match (most precise).
-    for (const header of headers) {
-      const lc = header.trim().toLowerCase()
-      for (const [field, aliases] of Object.entries(HEADER_MAP)) {
-        if (aliases.includes(lc) && !(field in index)) {
-          index[field] = header
-        }
-      }
-    }
-
-    // Pass 2 — substring fallback for verbose Meta question headers,
-    // only for fields still unmatched.
-    for (const header of headers) {
-      const lc = header.trim().toLowerCase()
-      for (const [field, needles] of Object.entries(HEADER_CONTAINS_MAP)) {
-        if (field in index) continue
-        if (needles.some(n => lc.includes(n)) && !Object.values(index).includes(header)) {
-          index[field] = header
-        }
-      }
-    }
-
-    return index
-  }
-
-  private cell(row: Record<string, unknown>, header: string | undefined): string | null {
+  private cell(row: Record<string, unknown>, header: string | null | undefined): string | null {
     if (!header) return null
     const v = row[header]
     if (v === undefined || v === null || String(v).trim() === '') return null
@@ -120,8 +90,55 @@ export class ImportService {
       const date = XLSX.SSF.parse_date_code(num)
       if (date) return new Date(date.y, date.m - 1, date.d)
     }
-    const d = new Date(v)
+    const normalized = v
+      .replace(/^(\d{4}-\d{2}-\d{2})\s+-\s+(\d{1,2}:\d{2})$/, '$1T$2:00')
+      .replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2})$/, '$1T$2:00')
+    const d = new Date(normalized)
     return isNaN(d.getTime()) ? null : d
+  }
+
+  private parseList(v: string | null): string[] | null {
+    if (!v) return null
+    const values = v.split(/[,;|]/).map(item => item.trim()).filter(Boolean)
+    return values.length > 0 ? values : null
+  }
+
+  private readRows(file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file uploaded')
+
+    let workbook: XLSX.WorkBook
+    try {
+      workbook = XLSX.read(file.buffer, { type: 'buffer', cellDates: false })
+    } catch {
+      throw new BadRequestException('Could not parse file — ensure it is a valid .xlsx or .csv')
+    }
+
+    const sheetName = workbook.SheetNames[0]
+    if (!sheetName) throw new BadRequestException('File has no sheets')
+    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+      workbook.Sheets[sheetName],
+      { defval: null },
+    )
+    if (rawRows.length === 0) throw new BadRequestException('File is empty or has no data rows')
+    return { sheetName, rawRows, headers: Object.keys(rawRows[0]) }
+  }
+
+  previewMetaLeads(file: Express.Multer.File) {
+    const { sheetName, rawRows, headers } = this.readRows(file)
+    const mapping = buildImportHeaderIndex(headers)
+    const sampleValues = Object.fromEntries(headers.map(header => [
+      header,
+      rawRows.slice(0, 3).map(row => this.cell(row, header)).filter(Boolean),
+    ]))
+
+    return {
+      sheet_name: sheetName,
+      total_rows: rawRows.length,
+      headers,
+      fields: IMPORT_FIELDS.map(({ key, label, ...field }) => ({ key, label, required: 'required' in field && field.required === true })),
+      mapping,
+      sample_values: sampleValues,
+    }
   }
 
   private normalizePhone(raw: string): string {
@@ -145,31 +162,19 @@ export class ImportService {
     ])
   }
 
-  async importMetaLeads(file: Express.Multer.File, mode: string | undefined = 'normal'): Promise<ImportResultDto> {
-    if (!file) throw new BadRequestException('No file uploaded')
+  async importMetaLeads(
+    file: Express.Multer.File,
+    mode: string | undefined = 'normal',
+    mappingRaw?: string,
+  ): Promise<ImportResultDto> {
     if (mode !== 'normal' && mode !== 'legacy') {
       throw new BadRequestException('Import mode must be either normal or legacy')
     }
     const isLegacy = mode === 'legacy'
 
-    let workbook: XLSX.WorkBook
-    try {
-      workbook = XLSX.read(file.buffer, { type: 'buffer', cellDates: false })
-    } catch {
-      throw new BadRequestException('Could not parse file — ensure it is a valid .xlsx or .csv')
-    }
-
-    const sheetName = workbook.SheetNames[0]
-    if (!sheetName) throw new BadRequestException('File has no sheets')
-
-    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
-      workbook.Sheets[sheetName],
-      { defval: null },
-    )
-    if (rawRows.length === 0) throw new BadRequestException('File is empty or has no data rows')
-
-    const headers = Object.keys(rawRows[0])
-    const idx = this.buildHeaderIndex(headers)
+    const { sheetName, rawRows, headers } = this.readRows(file)
+    const suppliedMapping = parseImportColumnMapping(mappingRaw, headers)
+    const idx = buildImportHeaderIndex(headers, suppliedMapping)
 
     if (!idx['phone']) {
       throw new BadRequestException(
@@ -193,8 +198,10 @@ export class ImportService {
       }
       const phone = this.normalizePhone(rawPhone)
 
-      const callStatusRaw = this.cell(row, idx['call_status'])
+      const callStatusRaw = this.cell(row, idx.call_status)
       const hwcRaw        = this.cell(row, idx['hwc'])
+      const buyingStatusRaw = this.cell(row, idx.buying_status)
+      const siteVisitStatusRaw = this.cell(row, idx.site_visit_status)
 
       parsed.push({
         rowNum,
@@ -214,6 +221,19 @@ export class ImportService {
         currentArea:  this.cell(row, idx['current_area']),
         followUpDate: this.parseDate(this.cell(row, idx['follow_up_date'])),
         remarks:      this.cell(row, idx['remarks']),
+        firstCallDate: this.parseDate(this.cell(row, idx.first_call_date)),
+        lastCallDate: this.parseDate(this.cell(row, idx.last_call_date)),
+        buyingStatus: buyingStatusRaw ? (BUYING_STATUS_MAP[buyingStatusRaw.toLowerCase()] ?? null) : null,
+        siteVisitStatus: siteVisitStatusRaw ? (SITE_VISIT_STATUS_MAP[siteVisitStatusRaw.toLowerCase()] ?? null) : null,
+        visitDate: this.parseDate(this.cell(row, idx.visit_date)),
+        visitConfirmationDate: this.parseDate(this.cell(row, idx.visit_confirmation_date)),
+        configuration: this.parseList(this.cell(row, idx.configuration)),
+        projectName: this.cell(row, idx.project_name),
+        pageName: this.cell(row, idx.page_name),
+        formId: this.cell(row, idx.form_id),
+        adId: this.cell(row, idx.ad_id),
+        externalId: this.cell(row, idx.external_id),
+        rawRow: row,
       })
     }
 
@@ -336,15 +356,26 @@ export class ImportService {
           phone:        r.phone,
           email:        r.email,
           city:         r.city,
+          pageName:     r.pageName,
+          formId:       r.formId,
+          adId:         r.adId,
           campaignName: r.campaignName,
           platform:     r.platform,
           clientId:     clientIdByPhone.get(r.phone) ?? null,
           source:       isLegacy ? 'legacy_import' : 'migrated',
           legacyImport: isLegacy,
-          // A row already marked spoken has completed the legacy gate and
-          // should enter the normal lifecycle as soon as it is assigned.
-          legacyTransferProtected: isLegacy && r.callStatus !== 'spoken',
-          status:       (poolStatusForClientStatus(r.hwc ?? clientStatusByPhone.get(r.phone)) ?? 'unassigned') as never,
+          // Historical spreadsheet activity is audit data. Every legacy row
+          // starts protected and unassigned until a user marks it Spoken in CRM.
+          legacyTransferProtected: isLegacy,
+          externalId:   r.externalId,
+          formData: {
+            import_mode: isLegacy ? 'legacy' : 'normal',
+            source_sheet: sheetName,
+            original_row: r.rawRow,
+          },
+          status:       (isLegacy
+            ? 'unassigned'
+            : (poolStatusForClientStatus(r.hwc ?? clientStatusByPhone.get(r.phone)) ?? 'unassigned')) as never,
           receivedAt:   r.receivedAt,
         })))
         .returning({ id: metaLeads.id })
@@ -356,11 +387,14 @@ export class ImportService {
       .map((r, i) => {
         const leadId = leadIds[i]
         if (!leadId) return null
-        if (!(r.callStatus || r.budgetRange || r.profession || r.companyName ||
-              r.currentCity || r.currentArea || r.followUpDate || r.remarks)) return null
+        const importedCallStatus = isLegacy ? null : r.callStatus
+        if (!(importedCallStatus || r.budgetRange || r.profession || r.companyName ||
+              r.currentCity || r.currentArea || r.followUpDate || r.remarks ||
+              r.firstCallDate || r.lastCallDate || r.buyingStatus || r.siteVisitStatus ||
+              r.visitDate || r.visitConfirmationDate || r.configuration || r.projectName)) return null
         return {
           leadId,
-          ...(r.callStatus   ? { callStatus:   r.callStatus   as 'spoken' | 'not_spoken' | 'call_back_later' } : {}),
+          ...(importedCallStatus ? { callStatus: importedCallStatus as 'spoken' | 'not_spoken' | 'call_back_later' } : {}),
           ...(r.budgetRange  ? { budgetRange:  r.budgetRange  } : {}),
           ...(r.profession   ? { profession:   r.profession   } : {}),
           ...(r.companyName  ? { companyName:  r.companyName  } : {}),
@@ -368,6 +402,14 @@ export class ImportService {
           ...(r.currentArea  ? { currentArea:  r.currentArea  } : {}),
           ...(r.followUpDate ? { followUpDate: r.followUpDate } : {}),
           ...(r.remarks      ? { remarks:      r.remarks      } : {}),
+          ...(r.firstCallDate ? { firstCallDate: r.firstCallDate } : {}),
+          ...(r.lastCallDate ? { lastCallDate: r.lastCallDate } : {}),
+          ...(r.buyingStatus ? { buyingStatus: r.buyingStatus as 'ready' | 'exploring' | 'not_ready' | 'interested' } : {}),
+          ...(r.siteVisitStatus ? { siteVisitStatus: r.siteVisitStatus as 'scheduled' | 'completed' | 'not_scheduled' } : {}),
+          ...(r.visitDate ? { visitDate: r.visitDate } : {}),
+          ...(r.visitConfirmationDate ? { visitConfirmationDate: r.visitConfirmationDate } : {}),
+          ...(r.configuration ? { configuration: r.configuration } : {}),
+          ...(r.projectName ? { projectName: r.projectName } : {}),
         }
       })
       .filter(Boolean) as Record<string, unknown>[]
@@ -391,14 +433,19 @@ export class ImportService {
 
   generateMetaLeadsTemplate(): Buffer {
     const headers = [
-      'Name', 'Phone', 'Email', 'City', 'Source', 'Platform',
-      'Date', 'Call Status', 'Client Status', 'Budget', 'Profession', 'Company',
-      'Current City', 'Current Area', 'Follow Up', 'Remarks',
+      'Name', 'Phone', 'Email', 'City', 'Campaign', 'Platform', 'Date',
+      'Call Status', 'Client Status', 'Budget', 'Profession', 'Company',
+      'Current City', 'Current Area', 'Follow Up Date', 'Remarks',
+      'First Call Date', 'Latest Call Date', 'Buying Status', 'Visit Status',
+      'Visit Date', 'Visit Confirmation Date', 'Configuration Required', 'Project',
+      'Facebook Page', 'Facebook Ad ID', 'Facebook Form ID', 'Meta Lead ID',
     ]
     const sample = [
-      'John Doe', '9876543210', 'john@example.com', 'Mumbai', 'Meta Campaign', 'ig',
+      'John Doe', '9876543210', 'john@example.com', 'Mumbai', 'Meta Campaign', 'facebook',
       '2024-01-15', 'spoken', 'hot', '50-80L', 'IT Professional', 'Acme Corp',
       'Pune', 'Baner', '2024-02-01', 'Looking for 2BHK near metro',
+      '2024-01-16', '2024-01-20', 'interested', 'not scheduled', '', '',
+      '2BHK, 3BHK', 'Sample Project', 'Sample Facebook Page', '123456', '789012', '345678',
     ]
     const ws = XLSX.utils.aoa_to_sheet([headers, sample])
     ws['!cols'] = headers.map(() => ({ wch: 18 }))
