@@ -47,6 +47,7 @@ function lead(id, overrides = {}) {
     campaign_name: 'Campaign A',
     platform: 'instagram',
     source: 'meta_ad',
+    legacy_import: false,
     status: 'assigned',
     received_at: '2026-08-01T10:00:00Z',
     assigned_to_profile: { id: 'exec-1' },
@@ -178,4 +179,29 @@ test('Clear filters restores every loaded lead', () => {
   const filtered = filterMetaAdsQueueLeads(leads, EMPTY_META_ADS_QUEUE_FILTERS)
 
   assert.deepEqual(metaAdsQueueLeadIds(filtered), metaAdsQueueLeadIds(leads))
+})
+
+test('normal queues exclude legacy leads while legacy queues contain only legacy leads', () => {
+  const mixed = [
+    lead('normal-unassigned', { status: 'unassigned', assigned_to_profile: null }),
+    lead('legacy-unassigned', { status: 'unassigned', assigned_to_profile: null, legacy_import: true }),
+    lead('normal-assigned'),
+    lead('legacy-assigned', { legacy_import: true }),
+  ]
+
+  assert.deepEqual(metaAdsQueueLeadIds(filterMetaAdsQueueLeads(mixed, {
+    ...EMPTY_META_ADS_QUEUE_FILTERS,
+    queueStatus: 'unassigned',
+    legacyMode: 'exclude',
+  })), ['normal-unassigned'])
+
+  assert.deepEqual(metaAdsQueueLeadIds(filterMetaAdsQueueLeads(mixed, {
+    ...EMPTY_META_ADS_QUEUE_FILTERS,
+    queueStatus: 'assigned',
+    legacyMode: 'only',
+  })), ['legacy-assigned'])
+
+  assert.deepEqual(metaAdsQueueLeadIds(filterMetaAdsQueueLeads(mixed, EMPTY_META_ADS_QUEUE_FILTERS)), [
+    'normal-unassigned', 'legacy-unassigned', 'normal-assigned', 'legacy-assigned',
+  ])
 })

@@ -60,7 +60,38 @@ export class ImportController {
       },
     }),
   )
-  async importMetaLeads(@UploadedFile() file: Express.Multer.File, @Body('mode') mode?: string) {
-    return this.importService.importMetaLeads(file, mode)
+  async importMetaLeads(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('mode') mode?: string,
+    @Body('mapping') mapping?: string,
+  ) {
+    return this.importService.importMetaLeads(file, mode, mapping)
+  }
+
+  @Post('meta-leads/preview')
+  @ApiOperation({ summary: 'Preview and auto-map an Excel or CSV lead import' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const allowed = [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel',
+          'text/csv',
+          'application/csv',
+        ]
+        if (allowed.includes(file.mimetype) || file.originalname.match(/\.(xlsx|csv)$/i)) {
+          cb(null, true)
+        } else {
+          cb(new Error('Only .xlsx and .csv files are allowed'), false)
+        }
+      },
+    }),
+  )
+  previewMetaLeads(@UploadedFile() file: Express.Multer.File) {
+    return this.importService.previewMetaLeads(file)
   }
 }

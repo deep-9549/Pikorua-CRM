@@ -24,6 +24,15 @@ interface ImportResult {
   errors: ImportError[]
 }
 
+interface ImportPreview {
+  sheet_name: string
+  total_rows: number
+  headers: string[]
+  fields: Array<{ key: string; label: string; required: boolean }>
+  mapping: Record<string, string>
+  sample_values: Record<string, string[]>
+}
+
 export function ImportLeadsDialog({
   open,
   onClose,
@@ -34,15 +43,22 @@ export function ImportLeadsDialog({
   onImported?: (count: number) => void
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewRequestRef = useRef(0)
   const [dragging, setDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
   const [mode, setMode] = useState<"normal" | "legacy">("normal")
+  const [preview, setPreview] = useState<ImportPreview | null>(null)
+  const [mapping, setMapping] = useState<Record<string, string>>({})
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   function reset() {
+    previewRequestRef.current += 1
     setFile(null)
+    setPreview(null)
+    setMapping({})
     setResult(null)
     setError(null)
   }
@@ -52,26 +68,56 @@ export function ImportLeadsDialog({
     onClose()
   }
 
-  function pickFile(f: File) {
+  async function pickFile(f: File) {
     if (!f.name.match(/\.(xlsx|csv)$/i)) {
       setError("Only .xlsx and .csv files are supported")
       return
     }
+    if (f.size > 5 * 1024 * 1024) {
+      setError("File must be 5 MB or smaller")
+      return
+    }
+    const requestId = ++previewRequestRef.current
     setFile(f)
     setError(null)
     setResult(null)
+    setPreview(null)
+    setMapping({})
+    setPreviewing(true)
+
+    const formData = new FormData()
+    formData.append("file", f)
+    try {
+      const res = await fetch("/api/import/meta-leads/preview", { method: "POST", body: formData })
+      const json = await res.json()
+      if (!res.ok) {
+        if (requestId === previewRequestRef.current) {
+          setError(json?.message ?? json?.error ?? "Could not preview this file")
+        }
+        return
+      }
+      if (requestId !== previewRequestRef.current) return
+      setPreview(json)
+      setMapping(json.mapping ?? {})
+    } catch {
+      if (requestId === previewRequestRef.current) {
+        setError("Could not preview the file — check your connection and try again")
+      }
+    } finally {
+      if (requestId === previewRequestRef.current) setPreviewing(false)
+    }
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragging(false)
     const f = e.dataTransfer.files[0]
-    if (f) pickFile(f)
+    if (f) void pickFile(f)
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
-    if (f) pickFile(f)
+    if (f) void pickFile(f)
     e.target.value = ""
   }
 
@@ -84,6 +130,7 @@ export function ImportLeadsDialog({
     const formData = new FormData()
     formData.append("file", file)
     formData.append("mode", mode)
+    formData.append("mapping", JSON.stringify(mapping))
 
     try {
       const res = await fetch("/api/import/meta-leads", {
@@ -110,7 +157,7 @@ export function ImportLeadsDialog({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-4 h-4" style={{ color: "var(--color-primary)" }} />
@@ -138,6 +185,62 @@ export function ImportLeadsDialog({
                 </button>
               </div>
             </fieldset>
+          )}
+
+          {!result && file && previewing && (
+            <div className="flex items-center justify-center gap-2 rounded-lg border px-3 py-6 text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Reading columns and preparing the mapping…
+            </div>
+          )}
+
+          {!result && file && preview && !previewing && (
+            <div className="space-y-3 rounded-xl border p-3">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold">Confirm column mapping</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {preview.total_rows} rows from {preview.sheet_name}. Unmapped columns are still preserved in the original row data.
+                  </p>
+                </div>
+                <span className="text-[11px] text-muted-foreground">Only Phone is required</span>
+              </div>
+              <div className="max-h-72 overflow-y-auto rounded-lg border">
+                <div className="divide-y">
+                  {preview.fields.map(field => {
+                    const selectedHeader = mapping[field.key] ?? ""
+                    const samples = selectedHeader ? preview.sample_values[selectedHeader] ?? [] : []
+                    return (
+                      <div key={field.key} className="grid gap-2 px-3 py-2 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
+                        <Label className="text-xs">
+                          {field.label}{field.required ? <span className="text-destructive"> *</span> : null}
+                        </Label>
+                        <div className="min-w-0">
+                          <select
+                            value={selectedHeader}
+                            onChange={event => setMapping(current => ({ ...current, [field.key]: event.target.value }))}
+                            className="h-9 w-full rounded-lg border bg-transparent px-2.5 text-xs"
+                            aria-label={`Column for ${field.label}`}
+                          >
+                            <option value="">Do not import</option>
+                            {preview.headers.map(header => <option key={header} value={header}>{header}</option>)}
+                          </select>
+                          {samples.length > 0 && (
+                            <p className="mt-1 truncate text-[10px] text-muted-foreground" title={samples.join(" · ")}>
+                              Example: {samples.join(" · ")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              {mode === "legacy" && (
+                <p className="text-[11px] text-muted-foreground">
+                  Assignment and historical call status remain in the raw source data. Every imported legacy lead starts Unassigned, protected, and Not Attempted.
+                </p>
+              )}
+            </div>
           )}
           {/* Template download */}
           <div className="flex flex-col gap-3 rounded-lg px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
@@ -278,7 +381,7 @@ export function ImportLeadsDialog({
                 <Button
                   className="flex-1 h-9 gold-gradient font-semibold shadow-gold-sm"
                   style={{ color: "var(--color-primary-foreground)" }}
-                  disabled={!file || loading}
+                  disabled={!file || !preview || !mapping.phone || loading || previewing}
                   onClick={handleUpload}
                 >
                   {loading
