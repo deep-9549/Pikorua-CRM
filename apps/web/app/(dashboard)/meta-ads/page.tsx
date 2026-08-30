@@ -61,6 +61,7 @@ interface MetaLead {
   city: string | null
   campaign_name: string | null
   platform: "instagram" | "facebook" | null
+  form_data: Record<string, unknown> | null
   source: "meta_ad" | "website" | "microsite" | "manual" | "migrated" | "legacy_import"
   legacy_import: boolean
   status: "unassigned" | "assigned"
@@ -72,6 +73,13 @@ interface MetaLead {
   crm: {
     call_status: "spoken" | "not_spoken" | "call_back_later" | null
     budget_range?: string | null
+    profession?: string | null
+    company_name?: string | null
+    current_city?: string | null
+    current_area?: string | null
+    preferred_locations?: string[] | null
+    configuration?: string[] | string | null
+    remarks?: string | null
   } | null
 }
 
@@ -116,6 +124,61 @@ function timeAgo(dateStr: string) {
 function initials(name: string | null) {
   if (!name) return "?"
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
+}
+
+function humanizeFieldName(name: string) {
+  return name
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, character => character.toUpperCase())
+}
+
+function formFieldValue(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value)
+  if (Array.isArray(value)) {
+    const values = value.map(formFieldValue).filter((item): item is string => Boolean(item))
+    return values.length ? values.join(", ") : null
+  }
+  if (typeof value === "object") {
+    const values = Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => {
+        const displayValue = formFieldValue(item)
+        return displayValue ? `${humanizeFieldName(key)}: ${displayValue}` : null
+      })
+      .filter((item): item is string => Boolean(item))
+    return values.length ? values.join(" · ") : null
+  }
+  return null
+}
+
+function submittedFormFields(formData: MetaLead["form_data"]) {
+  if (!formData) return []
+
+  const fieldData = formData.field_data
+  const metaFields = Array.isArray(fieldData)
+    ? fieldData.flatMap(field => {
+        if (!field || typeof field !== "object") return []
+        const record = field as Record<string, unknown>
+        const name = typeof record.name === "string" ? record.name : null
+        const value = formFieldValue(record.values)
+        return name && value ? [{ label: humanizeFieldName(name), value }] : []
+      })
+    : []
+
+  const metadataKeys = new Set([
+    "field_data", "id", "created_time", "ad_id", "ad_name", "adset_id", "adset_name",
+    "campaign_id", "campaign_name", "platform", "form_id", "page_id", "page_name",
+  ])
+  const additionalFields = Object.entries(formData).flatMap(([key, value]) => {
+    if (metadataKeys.has(key)) return []
+    const displayValue = formFieldValue(value)
+    return displayValue ? [{ label: humanizeFieldName(key), value: displayValue }] : []
+  })
+
+  return [...metaFields, ...additionalFields]
 }
 
 async function readApiError(res: Response, fallback: string) {
@@ -290,6 +353,92 @@ function AddLeadDialog({
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Lead Row Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
+function LeadDetailsDialog({ lead, onClose }: { lead: MetaLead | null; onClose: () => void }) {
+  const formFields = lead ? submittedFormFields(lead.form_data) : []
+  const crmFields = lead?.crm
+    ? [
+        { label: "Budget", value: lead.crm.budget_range },
+        { label: "Profession", value: lead.crm.profession },
+        { label: "Company", value: lead.crm.company_name },
+        { label: "Current city", value: lead.crm.current_city },
+        { label: "Current area", value: lead.crm.current_area },
+        { label: "Preferred locations", value: formFieldValue(lead.crm.preferred_locations) },
+        { label: "Configuration", value: formFieldValue(lead.crm.configuration) },
+        { label: "Remarks", value: lead.crm.remarks },
+      ].filter((field): field is { label: string; value: string } => Boolean(field.value))
+    : []
+
+  return (
+    <Dialog open={Boolean(lead)} onOpenChange={open => !open && onClose()}>
+      {lead && (
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{lead.full_name ?? "Lead details"}</DialogTitle>
+            <DialogDescription>Contact information and every response submitted in the lead form.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <section>
+              <h3 className="mb-2 text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>Lead information</h3>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  { label: "Name", value: lead.full_name },
+                  { label: "Email", value: lead.email },
+                  { label: "City", value: lead.city },
+                  { label: "Campaign", value: lead.campaign_name },
+                  { label: "Received", value: new Date(lead.received_at).toLocaleString() },
+                  { label: "Assigned to", value: lead.assigned_to_profile?.full_name ?? null },
+                ].filter((field): field is { label: string; value: string } => Boolean(field.value)).map(field => (
+                  <div key={field.label} className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)" }}>
+                    <p className="text-[11px] font-medium uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>{field.label}</p>
+                    <p className="break-words text-sm" style={{ color: "var(--color-foreground)" }}>{field.value}</p>
+                  </div>
+                ))}
+                {lead.phone && (
+                  <div className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)" }}>
+                    <p className="text-[11px] font-medium uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Phone</p>
+                    <ProtectedPhone value={lead.phone} className="break-words text-sm" style={{ color: "var(--color-foreground)" }}>
+                      {formatPhone(lead.phone)}
+                    </ProtectedPhone>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {formFields.length > 0 && (
+              <section>
+                <h3 className="mb-2 text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>Submitted form responses</h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {formFields.map((field, index) => (
+                    <div key={`${field.label}-${index}`} className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)" }}>
+                      <p className="text-[11px] font-medium uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>{field.label}</p>
+                      <p className="break-words text-sm" style={{ color: "var(--color-foreground)" }}>{field.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {crmFields.length > 0 && (
+              <section>
+                <h3 className="mb-2 text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>Recorded requirements</h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {crmFields.map(field => (
+                    <div key={field.label} className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--color-border)" }}>
+                      <p className="text-[11px] font-medium uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>{field.label}</p>
+                      <p className="break-words text-sm" style={{ color: "var(--color-foreground)" }}>{field.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        </DialogContent>
+      )}
+    </Dialog>
+  )
+}
+
 function LeadRow({
   lead,
   employees,
@@ -301,6 +450,7 @@ function LeadRow({
   selectable = false,
   selected = false,
   onToggleSelect,
+  onViewDetails,
 }: {
   lead: MetaLead
   employees: Employee[]
@@ -312,6 +462,7 @@ function LeadRow({
   selectable?: boolean
   selected?: boolean
   onToggleSelect?: (leadId: string) => void
+  onViewDetails: (lead: MetaLead) => void
 }) {
   return (
     <motion.div
@@ -319,7 +470,8 @@ function LeadRow({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors"
+      className="flex cursor-pointer items-center gap-4 rounded-xl px-4 py-3 transition-colors"
+      onClick={() => onViewDetails(lead)}
       style={{
         background: selected ? "rgb(194 65 12 / 0.06)" : "var(--color-card)",
         border: `1px solid ${selected ? "var(--color-primary)" : "var(--color-border)"}`,
@@ -329,22 +481,16 @@ function LeadRow({
       {selectable && (
         <Checkbox
           checked={selected}
+          onClick={event => event.stopPropagation()}
           onCheckedChange={() => onToggleSelect?.(lead.id)}
           className="shrink-0"
         />
       )}
 
-      {/* Avatar */}
-      <Avatar className="h-9 w-9 shrink-0">
-        <AvatarFallback className="text-xs gold-gradient" style={{ color: "var(--color-primary-foreground)" }}>
-          {initials(lead.full_name)}
-        </AvatarFallback>
-      </Avatar>
-
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <p className="text-sm font-medium truncate" style={{ color: "var(--color-foreground)" }}>
+          <p className="min-w-0 break-words text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
             {lead.full_name ?? "Unknown"}
           </p>
           {lead.source === "manual" && (
@@ -408,14 +554,8 @@ function LeadRow({
 
       {/* Assign / assigned */}
       {lead.status === "assigned" && lead.assigned_to_profile ? (
-        <div className="flex items-center gap-2 shrink-0">
-          <Avatar className="h-6 w-6">
-            <AvatarFallback className="text-[9px]"
-              style={{ background: "rgb(21 128 61 / 0.12)", color: "var(--color-success)" }}>
-              {initials(lead.assigned_to_profile.full_name)}
-            </AvatarFallback>
-          </Avatar>
-          <span className="text-xs hidden md:block" style={{ color: "var(--color-success)" }}>
+        <div className="flex min-w-0 items-center gap-2 shrink-0">
+          <span className="max-w-[120px] break-words text-xs" style={{ color: "var(--color-success)" }}>
             {lead.assigned_to_profile.full_name}
           </span>
           {canAssign ? (
@@ -425,7 +565,10 @@ function LeadRow({
               className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary"
               title="Unassign — return to queue"
               disabled={unassigningId === lead.id}
-              onClick={() => onUnassign?.(lead.id)}
+              onClick={event => {
+                event.stopPropagation()
+                onUnassign?.(lead.id)
+              }}
             >
               {unassigningId === lead.id
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -443,6 +586,7 @@ function LeadRow({
               className="shrink-0 h-8 gap-1.5 gold-gradient text-[11px] font-semibold shadow-gold-sm"
               style={{ color: "var(--color-primary-foreground)" }}
               disabled={assigningId === lead.id}
+              onClick={event => event.stopPropagation()}
             >
               {assigningId === lead.id
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -453,7 +597,10 @@ function LeadRow({
             {employees.length === 0
               ? <DropdownMenuItem disabled>No executives found</DropdownMenuItem>
               : employees.map(emp => (
-                <DropdownMenuItem key={emp.id} onClick={() => onAssign(lead.id, emp.id)} className="gap-2">
+                <DropdownMenuItem key={emp.id} onClick={event => {
+                  event.stopPropagation()
+                  onAssign(lead.id, emp.id)
+                }} className="gap-2">
                   <Avatar className="h-5 w-5">
                     <AvatarFallback className="text-[9px]">{initials(emp.full_name)}</AvatarFallback>
                   </Avatar>
@@ -625,6 +772,7 @@ export default function MetaAdsPage() {
   const [activeTab, setActiveTab] = useState<MetaAdsTab>("unassigned")
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [selectedLead, setSelectedLead] = useState<MetaLead | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkExec, setBulkExec] = useState("")
   const [bulkAssigning, setBulkAssigning] = useState(false)
@@ -1335,6 +1483,7 @@ export default function MetaAdsPage() {
                         selectable={selectable}
                         selected={selected.has(lead.id)}
                         onToggleSelect={toggleSelect}
+                        onViewDetails={setSelectedLead}
                       />
                     ))}
                   </div>
@@ -1365,6 +1514,11 @@ export default function MetaAdsPage() {
         employees={employees}
         onClose={() => setSplitOpen(false)}
         onSplit={handleSplitComplete}
+      />
+
+      <LeadDetailsDialog
+        lead={selectedLead}
+        onClose={() => setSelectedLead(null)}
       />
 
       <AlertDialog open={deleteConfirmOpen} onOpenChange={open => !bulkDeleting && setDeleteConfirmOpen(open)}>
