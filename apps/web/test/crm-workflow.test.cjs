@@ -33,7 +33,7 @@ const {
   isAntiBrokerCompatibleStatus,
 } = require('../../../packages/shared/src/lead-crm.ts')
 const { EMPTY_LEAD_FILTERS, filterLeadList } = require('../lib/lead-list-filter.ts')
-const { isFreshlyAssignedLead } = require('../lib/lead-display-order.ts')
+const { getLeadDisplaySections, isFreshlyAssignedLead } = require('../lib/lead-display-order.ts')
 
 test.after(() => {
   if (originalTsLoader) require.extensions['.ts'] = originalTsLoader
@@ -133,4 +133,66 @@ test('dashboard comparison uses IST boundaries and a zero-baseline label', () =>
 
   const zeroBaseline = calculateComparableLeadGrowth(['2026-02-01T00:00:00+05:30'], now)
   assert.equal(comparableLeadGrowthLabel(zeroBaseline), 'New vs 0 in the comparable period last month')
+})
+
+// Lead ordering: the follow-up bucketing and the uncontacted-first rule drive
+// the work queue, so date ordering may only break ties inside those groups.
+const NOW = new Date('2026-09-10T09:00:00Z').getTime()
+const today = (() => {
+  const d = new Date(NOW)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+})()
+const yesterday = (() => {
+  const d = new Date(NOW)
+  d.setDate(d.getDate() - 1)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+})()
+
+function orderLead(id, received_at, crm) {
+  return { id, received_at, crm }
+}
+
+test('lead display sections stay mutually exclusive and ordered dueToday, overdue, rest', () => {
+  const leads = [
+    orderLead('due', '2026-09-01T00:00:00Z', { follow_up_date: today }),
+    orderLead('late', '2026-09-02T00:00:00Z', { follow_up_date: yesterday }),
+    orderLead('none', '2026-09-03T00:00:00Z', null),
+  ]
+  const { dueToday, overdue, rest, ordered } = getLeadDisplaySections(leads, NOW)
+
+  assert.deepEqual(dueToday.map(l => l.id), ['due'])
+  assert.deepEqual(overdue.map(l => l.id), ['late'])
+  assert.deepEqual(rest.map(l => l.id), ['none'])
+  assert.deepEqual(ordered.map(l => l.id), ['due', 'late', 'none'])
+  assert.equal(dueToday.length + overdue.length + rest.length, leads.length)
+})
+
+test('uncontacted leads still outrank contacted ones regardless of date', () => {
+  const leads = [
+    orderLead('contacted-newest', '2026-09-09T00:00:00Z', { call_status: 'spoken' }),
+    orderLead('uncontacted-oldest', '2026-01-01T00:00:00Z', null),
+  ]
+  const { rest } = getLeadDisplaySections(leads, NOW)
+  assert.deepEqual(rest.map(l => l.id), ['uncontacted-oldest', 'contacted-newest'])
+})
+
+test('newest lead comes first among leads with the same contacted status', () => {
+  const leads = [
+    orderLead('old', '2026-09-01T00:00:00Z', null),
+    orderLead('newest', '2026-09-09T00:00:00Z', null),
+    orderLead('middle', '2026-09-05T00:00:00Z', null),
+  ]
+  const { rest } = getLeadDisplaySections(leads, NOW)
+  assert.deepEqual(rest.map(l => l.id), ['newest', 'middle', 'old'])
+})
+
+test('leads missing a received date sort last instead of breaking the order', () => {
+  const leads = [
+    orderLead('undated', null, null),
+    orderLead('dated', '2026-09-05T00:00:00Z', null),
+  ]
+  const { rest } = getLeadDisplaySections(leads, NOW)
+  assert.deepEqual(rest.map(l => l.id), ['dated', 'undated'])
 })

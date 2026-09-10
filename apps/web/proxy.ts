@@ -11,6 +11,8 @@ const PROTECTED = [
   '/dashboard', '/leads', '/meta-ads', '/whatsapp', '/properties',
   '/employees', '/site-visits', '/bookings', '/reports', '/settings',
   '/scripts', '/documents', '/ai-control', '/ai-voice', '/smart-matching', '/hni-clients',
+  // Signed-in only, not admin-only: executives see their own performance here.
+  '/employee-performance-analysis',
 ]
 
 const ADMIN_ONLY = [

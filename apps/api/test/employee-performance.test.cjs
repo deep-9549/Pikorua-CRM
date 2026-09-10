@@ -123,15 +123,90 @@ test('coalesces concurrent identical dashboard requests and caches the result br
     },
   }
   const service = new DashboardService({ db }, { analyze: async () => null })
+  const admin = { id: 'admin-1', role: 'super_admin' }
 
   const [first, second] = await Promise.all([
-    service.getEmployeePerformance(undefined, undefined, undefined, false, 'monthly'),
-    service.getEmployeePerformance(undefined, undefined, undefined, false, 'monthly'),
+    service.getEmployeePerformance(admin, undefined, undefined, undefined, false, 'monthly'),
+    service.getEmployeePerformance(admin, undefined, undefined, undefined, false, 'monthly'),
   ])
-  const third = await service.getEmployeePerformance(undefined, undefined, undefined, false, 'monthly')
+  const third = await service.getEmployeePerformance(admin, undefined, undefined, undefined, false, 'monthly')
 
   assert.strictEqual(first, second)
   assert.strictEqual(second, third)
   assert.equal(employeeQueries, 1)
   assert.equal(activityQueries, 1)
 })
+
+test('scopes a sales executive to their own performance regardless of the requested employee', async () => {
+  const profiles = {
+    'employee-1': {
+      id: 'employee-1',
+      fullName: 'Employee One',
+      email: 'one@example.com',
+      phone: null,
+      role: 'sales_executive',
+      status: 'active',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    },
+    'employee-2': {
+      id: 'employee-2',
+      fullName: 'Employee Two',
+      email: 'two@example.com',
+      phone: null,
+      role: 'sales_executive',
+      status: 'active',
+      createdAt: new Date('2026-01-02T00:00:00.000Z'),
+    },
+  }
+  // The service filters by id for a non-admin caller. Record which id the
+  // generated where-clause actually targets by replaying it over the profiles.
+  const requestedIds = []
+  const db = {
+    query: {
+      userProfiles: {
+        findMany: async ({ where }) => {
+          const matched = Object.values(profiles).filter(p => whereMatchesId(where, p.id))
+          requestedIds.push(matched.map(p => p.id))
+          return matched
+        },
+      },
+      leadActivityEvents: { findMany: async () => [] },
+      metaLeads: { findMany: async () => [] },
+      siteVisits: { findMany: async () => [] },
+    },
+  }
+  const service = new DashboardService({ db }, { analyze: async () => null })
+
+  // Executive One asks for Executive Two's numbers and gets their own.
+  const result = await service.getEmployeePerformance(
+    { id: 'employee-1', role: 'sales_executive' },
+    'employee-2',
+    undefined,
+    undefined,
+    false,
+    'monthly',
+  )
+
+  assert.deepEqual(requestedIds[0], ['employee-1'])
+  assert.equal(result.selectedEmployee.id, 'employee-1')
+  assert.equal(result.employees.length, 1)
+  assert.equal(result.employees[0].id, 'employee-1')
+})
+
+// Drizzle builds an opaque SQL AST. For the assertion above we only need to
+// know which uuid the filter pins, so pull the bound parameters out of it.
+function whereMatchesId(where, id) {
+  const params = []
+  // The AST holds back-references to table objects, so track what we've seen.
+  const seen = new WeakSet()
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return
+    if (seen.has(node)) return
+    seen.add(node)
+    if (Array.isArray(node)) return node.forEach(walk)
+    if (typeof node.value === 'string') params.push(node.value)
+    Object.values(node).forEach(walk)
+  }
+  walk(where)
+  return params.includes(id)
+}

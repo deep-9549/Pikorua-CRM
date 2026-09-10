@@ -48,6 +48,7 @@ import {
   matchingSelectedMetaAdsQueueLeadIds,
   metaAdsBudgetOptions,
   metaAdsQueueLeadIds,
+  toDateInputValue,
 } from "@/lib/meta-ads-queue-filter"
 import type { MetaAdsQueueFilters } from "@/lib/meta-ads-queue-filter"
 
@@ -789,6 +790,7 @@ export default function MetaAdsPage() {
   const [executiveFilter, setExecutiveFilter] = useState("")
   const [clientStatusFilter, setClientStatusFilter] = useState("")
   const [callStatusFilter, setCallStatusFilter] = useState("")
+  const [receivedOnFilter, setReceivedOnFilter] = useState("")
   const [receivedDateFromFilter, setReceivedDateFromFilter] = useState("")
   const [receivedDateToFilter, setReceivedDateToFilter] = useState("")
   const isUnassignedTab = activeTab === "unassigned" || activeTab === "legacy-unassigned"
@@ -1002,11 +1004,12 @@ export default function MetaAdsPage() {
     executive: executiveFilter,
     clientStatus: clientStatusFilter,
     callStatus: callStatusFilter,
+    receivedOn: receivedOnFilter,
     receivedDateFrom: receivedDateFromFilter,
     receivedDateTo: receivedDateToFilter,
     queueStatus: queueStatusForTab(activeTab) ?? "",
     legacyMode: activeTab.startsWith("legacy-") ? "only" : activeTab === "all" ? "all" : "exclude",
-  }), [activeTab, search, sourceFilter, platformFilter, campaignFilter, budgetFilter, executiveFilter, clientStatusFilter, callStatusFilter, receivedDateFromFilter, receivedDateToFilter])
+  }), [activeTab, search, sourceFilter, platformFilter, campaignFilter, budgetFilter, executiveFilter, clientStatusFilter, callStatusFilter, receivedOnFilter, receivedDateFromFilter, receivedDateToFilter])
 
   // Apply search + filters to the loaded queue through a pure, regression-tested helper.
   const filteredLeads = useMemo(
@@ -1014,7 +1017,7 @@ export default function MetaAdsPage() {
     [leads, queueFilters],
   )
 
-  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || budgetFilter || executiveFilter || clientStatusFilter || callStatusFilter || receivedDateFromFilter || receivedDateToFilter)
+  const hasActiveFilter = Boolean(search || sourceFilter || platformFilter || campaignFilter || budgetFilter || executiveFilter || clientStatusFilter || callStatusFilter || receivedOnFilter || receivedDateFromFilter || receivedDateToFilter)
   const shownLeadIds = metaAdsQueueLeadIds(filteredLeads)
   const selectedShownLeadIds = matchingSelectedMetaAdsQueueLeadIds(filteredLeads, selected)
   const splitLeadIds = selectedShownLeadIds.length > 0 ? selectedShownLeadIds : shownLeadIds
@@ -1031,8 +1034,22 @@ export default function MetaAdsPage() {
     setExecutiveFilter("")
     setClientStatusFilter("")
     setCallStatusFilter("")
+    setReceivedOnFilter("")
     setReceivedDateFromFilter("")
     setReceivedDateToFilter("")
+  }
+
+  // "Generated on" and the received range answer the same question two ways,
+  // so setting either one clears the other.
+  function applyReceivedOn(value: string) {
+    setReceivedOnFilter(value)
+    if (value) { setReceivedDateFromFilter(""); setReceivedDateToFilter("") }
+  }
+
+  function applyReceivedRange(bound: "from" | "to", value: string) {
+    if (bound === "from") setReceivedDateFromFilter(value)
+    else setReceivedDateToFilter(value)
+    if (value) setReceivedOnFilter("")
   }
 
   function selectShownLeads() {
@@ -1269,10 +1286,32 @@ export default function MetaAdsPage() {
                     <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--color-muted-foreground)" }} />
                     <Input
                       type="date"
+                      aria-label="Lead generated on date"
+                      value={receivedOnFilter}
+                      onChange={e => applyReceivedOn(e.target.value)}
+                      className="h-9 pl-9 text-xs sm:w-[150px]"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 shrink-0 px-2 text-xs"
+                    onClick={() => applyReceivedOn(toDateInputValue(new Date()))}
+                  >
+                    Today
+                  </Button>
+                </div>
+              )}
+              {isSuperAdmin && (
+                <div className="flex w-full items-center gap-1.5 sm:w-auto">
+                  <div className="relative min-w-0 flex-1 sm:flex-none">
+                    <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--color-muted-foreground)" }} />
+                    <Input
+                      type="date"
                       aria-label="Lead received start date"
                       value={receivedDateFromFilter}
                       max={receivedDateToFilter || undefined}
-                      onChange={e => setReceivedDateFromFilter(e.target.value)}
+                      onChange={e => applyReceivedRange("from", e.target.value)}
                       className="h-9 pl-9 text-xs sm:w-[150px]"
                     />
                   </div>
@@ -1282,7 +1321,7 @@ export default function MetaAdsPage() {
                     aria-label="Lead received end date"
                     value={receivedDateToFilter}
                     min={receivedDateFromFilter || undefined}
-                    onChange={e => setReceivedDateToFilter(e.target.value)}
+                    onChange={e => applyReceivedRange("to", e.target.value)}
                     className="h-9 min-w-0 flex-1 text-xs sm:w-[150px] sm:flex-none"
                   />
                 </div>

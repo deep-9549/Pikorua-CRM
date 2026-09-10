@@ -7,7 +7,7 @@ import {
   Calendar, Clock, Phone, Plus, CheckCircle2,
   AlertCircle, Loader2, RefreshCw, MapPin, User, Search,
   Mail, Briefcase, Building2, DollarSign, MessageSquare, Flame,
-  Thermometer, Snowflake, ExternalLink,
+  Thermometer, Snowflake, ExternalLink, Download, Filter, X, Layers,
 } from "lucide-react"
 import { formatPhone } from "@/lib/utils"
 import { ProtectedPhone } from "@/components/security/protected-phone"
@@ -24,6 +24,17 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { getAuthUser } from "@/lib/auth/cookies"
+import {
+  EMPTY_SITE_VISIT_FILTERS,
+  employeeOptions,
+  filterSiteVisits,
+  isOverdue,
+  isToday,
+  projectOptions,
+  visitDate,
+  type SiteVisitFilters,
+} from "@/lib/site-visits-filter"
+import { exportSiteVisitsToCsv } from "@/lib/export-site-visits"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -121,19 +132,21 @@ function fmtDate(iso: string | null) {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
 }
 
-function isOverdue(v: VisitRow) {
-  if (v.site_visit_status !== "visit_date_confirmed") return false
-  if (!v.visit_date) return false
-  return new Date(v.visit_date).getTime() < Date.now()
-}
-
-function isToday(iso: string | null) {
-  if (!iso) return false
-  const d = new Date(iso)
-  const now = new Date()
-  return d.getFullYear() === now.getFullYear()
-    && d.getMonth() === now.getMonth()
-    && d.getDate() === now.getDate()
+function FilterSelect({ value, onChange, children }: {
+  value: string
+  onChange: (value: string) => void
+  children: React.ReactNode
+}) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="h-9 w-full rounded-lg px-2.5 text-xs bg-transparent cursor-pointer sm:w-auto sm:max-w-[180px]"
+      style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }}
+    >
+      {children}
+    </select>
+  )
 }
 
 function toDateTimeLocal(iso: string | null) {
@@ -658,8 +671,10 @@ function VisitCard({ v, showOwner, onClick }: { v: VisitRow; showOwner: boolean;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type VisitTab = "upcoming" | "past" | "all"
+
 export default function SiteVisitsPage() {
-  const [tab, setTab] = useState<"upcoming" | "past">("upcoming")
+  const [tab, setTab] = useState<VisitTab>("upcoming")
   const [visits, setVisits] = useState<VisitRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -667,6 +682,9 @@ export default function SiteVisitsPage() {
   const [selectedVisit, setSelectedVisit] = useState<VisitRow | null>(null)
   const [outcomeVisit, setOutcomeVisit] = useState<VisitRow | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [search, setSearch] = useState("")
+  const [filters, setFilters] = useState<SiteVisitFilters>({ ...EMPTY_SITE_VISIT_FILTERS })
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -682,10 +700,11 @@ export default function SiteVisitsPage() {
     }
   }, [])
 
-  const fetchVisits = useCallback(async (which: "upcoming" | "past") => {
+  const fetchVisits = useCallback(async (which: VisitTab) => {
     setLoading(true); setError(null)
     try {
-      const res = await fetch(`/api/site-visits?status=${which}`)
+      // The API returns every visit when no status is given — that's the All tab.
+      const res = await fetch(which === "all" ? "/api/site-visits" : `/api/site-visits?status=${which}`)
       if (!res.ok) throw new Error("Failed to load visits")
       const json = await res.json()
       setVisits(json.visits ?? [])
@@ -698,11 +717,39 @@ export default function SiteVisitsPage() {
 
   useEffect(() => { fetchVisits(tab) }, [tab, fetchVisits])
 
+  const projects = useMemo(() => projectOptions(visits), [visits])
+  const employees = useMemo(() => employeeOptions(visits), [visits])
+
+  const visibleVisits = useMemo(
+    () => filterSiteVisits(visits, search, filters),
+    [visits, search, filters],
+  )
+
+  function setFilter<K extends keyof SiteVisitFilters>(key: K, value: SiteVisitFilters[K]) {
+    // "On" and the date range answer the same question two ways, so setting
+    // either one clears the other.
+    setFilters(p => {
+      const next = { ...p, [key]: value }
+      if (value) {
+        if (key === "dateOn") { next.dateFrom = ""; next.dateTo = "" }
+        if (key === "dateFrom" || key === "dateTo") next.dateOn = ""
+      }
+      return next
+    })
+  }
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length
+
+  const handleExport = useCallback(() => {
+    if (!isSuperAdmin) return
+    exportSiteVisitsToCsv(visibleVisits)
+  }, [isSuperAdmin, visibleVisits])
+
   const counts = useMemo(() => ({
-    total: visits.length,
-    today: visits.filter(v => isToday(v.visit_date ?? v.visit_confirmation_date)).length,
-    overdue: visits.filter(isOverdue).length,
-  }), [visits])
+    total: visibleVisits.length,
+    today: visibleVisits.filter(v => isToday(visitDate(v))).length,
+    overdue: visibleVisits.filter(v => isOverdue(v)).length,
+  }), [visibleVisits])
 
   return (
     <div className="space-y-6">
@@ -721,6 +768,12 @@ export default function SiteVisitsPage() {
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Refresh
           </Button>
+          {isSuperAdmin && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleExport} disabled={visibleVisits.length === 0}>
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+          )}
           <Button size="sm"
             className="gap-2 gold-gradient font-semibold shadow-gold-sm"
             style={{ color: "var(--color-primary-foreground)" }}
@@ -734,7 +787,7 @@ export default function SiteVisitsPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {[
-          { label: tab === "upcoming" ? "Upcoming" : "Past",  value: counts.total,   icon: Calendar,     color: "var(--color-primary)" },
+          { label: tab === "upcoming" ? "Upcoming" : tab === "past" ? "Past" : "All Visits", value: counts.total, icon: Calendar, color: "var(--color-primary)" },
           { label: "Today",   value: counts.today,   icon: Clock,        color: "var(--color-warning)" },
           { label: "Overdue", value: counts.overdue, icon: AlertCircle,  color: "var(--color-destructive)" },
         ].map(({ label, value, icon: Icon, color }) => (
@@ -751,7 +804,7 @@ export default function SiteVisitsPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={tab} onValueChange={v => setTab(v as "upcoming" | "past")}>
+      <Tabs value={tab} onValueChange={v => setTab(v as VisitTab)}>
         <TabsList>
           <TabsTrigger value="upcoming" className="gap-1.5">
             <Calendar className="w-3.5 h-3.5" />Upcoming
@@ -759,8 +812,89 @@ export default function SiteVisitsPage() {
           <TabsTrigger value="past" className="gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5" />Past
           </TabsTrigger>
+          <TabsTrigger value="all" className="gap-1.5">
+            <Layers className="w-3.5 h-3.5" />All
+          </TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {/* Search + filter toggle */}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--color-muted-foreground)" }} />
+          <Input placeholder="Search client, project or scheduler..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
+        </div>
+        <Button variant="outline" size="sm" className="w-full gap-2 sm:w-auto sm:shrink-0" onClick={() => setShowFilters(p => !p)}>
+          <Filter className="w-4 h-4" /> Filters
+          {activeFilterCount > 0 && (
+            <span className="text-[10px] font-bold px-1.5 rounded-full"
+              style={{ background: "var(--color-primary)", color: "var(--color-primary-foreground)" }}>
+              {activeFilterCount}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* Filter bar */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+            <div className="grid grid-cols-1 gap-2 rounded-xl p-3 sm:flex sm:flex-wrap sm:items-center"
+              style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
+              <FilterSelect value={filters.status} onChange={v => setFilter("status", v)}>
+                <option value="">All Statuses</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="no_show">No Show</option>
+              </FilterSelect>
+              <FilterSelect value={filters.outcome} onChange={v => setFilter("outcome", v)}>
+                <option value="">All Outcomes</option>
+                <option value="visit_done">Visit Done</option>
+                <option value="visit_rescheduled">Rescheduled</option>
+                <option value="visit_cancelled">Cancelled</option>
+              </FilterSelect>
+              <FilterSelect value={filters.timing} onChange={v => setFilter("timing", v as SiteVisitFilters["timing"])}>
+                <option value="">Any Time</option>
+                <option value="today">Today</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="this_week">Next 7 Days</option>
+                <option value="overdue">Overdue</option>
+              </FilterSelect>
+              {projects.length > 0 && (
+                <FilterSelect value={filters.project} onChange={v => setFilter("project", v)}>
+                  <option value="">All Projects</option>
+                  {projects.map(project => <option key={project} value={project}>{project}</option>)}
+                </FilterSelect>
+              )}
+              {isSuperAdmin && employees.length > 0 && (
+                <FilterSelect value={filters.employee} onChange={v => setFilter("employee", v)}>
+                  <option value="">All Employees</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </FilterSelect>
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] shrink-0" style={{ color: "var(--color-muted-foreground)" }}>On</span>
+                <input type="date" value={filters.dateOn} onChange={e => setFilter("dateOn", e.target.value)}
+                  className="h-9 min-w-0 flex-1 rounded-lg px-2 text-xs bg-transparent" style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
+              </div>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:flex">
+                <span className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>From</span>
+                <input type="date" value={filters.dateFrom} max={filters.dateTo || undefined} onChange={e => setFilter("dateFrom", e.target.value)}
+                  className="h-9 rounded-lg px-2 text-xs bg-transparent" style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
+                <span className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>to</span>
+                <input type="date" value={filters.dateTo} min={filters.dateFrom || undefined} onChange={e => setFilter("dateTo", e.target.value)}
+                  className="h-9 rounded-lg px-2 text-xs bg-transparent" style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
+              </div>
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" className="gap-1 h-9 text-xs" onClick={() => setFilters({ ...EMPTY_SITE_VISIT_FILTERS })}>
+                  <X className="w-3.5 h-3.5" /> Clear
+                </Button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Error */}
       {error && (
@@ -775,13 +909,20 @@ export default function SiteVisitsPage() {
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--color-primary)" }} />
         </div>
-      ) : visits.length === 0 ? (
+      ) : visibleVisits.length === 0 ? (
         <div className="text-center py-20 space-y-3">
           <Calendar className="w-10 h-10 mx-auto opacity-20" />
           <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-            {tab === "upcoming" ? "No upcoming visits" : "No past visits"}
+            {visits.length > 0
+              ? "No visits match these filters"
+              : tab === "upcoming" ? "No upcoming visits" : tab === "past" ? "No past visits" : "No visits yet"}
           </p>
-          {tab === "upcoming" && (
+          {visits.length > 0 ? (
+            <Button size="sm" variant="outline" className="gap-2 mx-auto"
+              onClick={() => { setSearch(""); setFilters({ ...EMPTY_SITE_VISIT_FILTERS }) }}>
+              <X className="w-3.5 h-3.5" />Clear filters
+            </Button>
+          ) : tab === "upcoming" && (
             <Button size="sm" variant="outline" className="gap-2 mx-auto" onClick={() => setDialogOpen(true)}>
               <Plus className="w-3.5 h-3.5" />Schedule one
             </Button>
@@ -790,7 +931,7 @@ export default function SiteVisitsPage() {
       ) : (
         <AnimatePresence initial={false}>
           <div className="space-y-2">
-            {visits.map(v => (
+            {visibleVisits.map(v => (
               <VisitCard
                 key={v.id}
                 v={v}

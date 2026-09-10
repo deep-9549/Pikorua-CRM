@@ -28,6 +28,8 @@ export interface MetaAdsQueueFilters {
   executive: string
   clientStatus: string
   callStatus: string
+  /** Single calendar day (YYYY-MM-DD) the lead was generated on. */
+  receivedOn: string
   receivedDateFrom: string
   receivedDateTo: string
   queueStatus: "" | MetaAdsQueueStatus
@@ -43,6 +45,7 @@ export const EMPTY_META_ADS_QUEUE_FILTERS: MetaAdsQueueFilters = {
   executive: "",
   clientStatus: "",
   callStatus: "",
+  receivedOn: "",
   receivedDateFrom: "",
   receivedDateTo: "",
   queueStatus: "",
@@ -54,7 +57,8 @@ export function metaAdsBudgetOptions(leads: readonly MetaAdsQueueFilterableLead[
   return [...BUDGET_BUCKETS]
 }
 
-function toDateInputValue(dateStr: string) {
+/** Resolve a timestamp to the viewer's local calendar day (YYYY-MM-DD). */
+export function toDateInputValue(dateStr: string | Date) {
   const date = new Date(dateStr)
   if (Number.isNaN(date.getTime())) return ""
 
@@ -97,7 +101,8 @@ export function filterMetaAdsQueueLeads<T extends MetaAdsQueueFilterableLead>(
     if (filters.callStatus && lead.crm?.call_status !== filters.callStatus) return false
 
     const receivedDate = toDateInputValue(lead.received_at)
-    if ((filters.receivedDateFrom || filters.receivedDateTo) && !receivedDate) return false
+    if ((filters.receivedOn || filters.receivedDateFrom || filters.receivedDateTo) && !receivedDate) return false
+    if (filters.receivedOn && receivedDate !== filters.receivedOn) return false
     if (filters.receivedDateFrom && receivedDate < filters.receivedDateFrom) return false
     if (filters.receivedDateTo && receivedDate > filters.receivedDateTo) return false
 

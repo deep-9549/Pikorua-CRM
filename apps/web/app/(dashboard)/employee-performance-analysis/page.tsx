@@ -227,19 +227,23 @@ export default function EmployeePerformanceAnalysisPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string>("")
   const [activePeriod, setActivePeriod] = React.useState<PeriodKey>("monthly")
   const [data, setData] = React.useState<PerformanceResponse | null>(null)
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const employeeCache = React.useRef(new Map<string, PerformanceResponse>())
   const requestSequence = React.useRef(0)
   const initialRequestStarted = React.useRef(false)
 
+  // Any signed-in user may open this page. Super admins can switch between
+  // employees; everyone else is scoped to their own numbers by the API.
   React.useEffect(() => {
     const user = getAuthUser()
     if (!user) {
       router.replace("/login")
       return
     }
-    setAuthorized(user.role === "super_admin")
+    setIsSuperAdmin(user.role === "super_admin")
+    setAuthorized(true)
   }, [router])
 
   const fetchPerformance = React.useCallback(async (employeeId: string, period: PeriodKey, force = false) => {
@@ -345,7 +349,7 @@ export default function EmployeePerformanceAnalysisPage() {
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="gap-1.5">
               <Activity className="h-3.5 w-3.5" />
-              Super Admin
+              {isSuperAdmin ? "Super Admin" : "Your Performance"}
             </Badge>
             {data?.generatedAt && (
               <span className="text-xs text-muted-foreground">
@@ -354,27 +358,31 @@ export default function EmployeePerformanceAnalysisPage() {
             )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]">
-            Employee Performance Analysis
+            {isSuperAdmin ? "Employee Performance Analysis" : "My Performance"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Employee-wise lead, call, conversion, follow-up, and site-visit performance.
+            {isSuperAdmin
+              ? "Employee-wise lead, call, conversion, follow-up, and site-visit performance."
+              : "Your lead, call, conversion, follow-up, and site-visit performance."}
           </p>
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-auto">
-          <SearchableSelect
-            value={selectedEmployeeId}
-            onValueChange={setSelectedEmployeeId}
-            disabled={loading || !hasEmployees}
-            options={(data?.employees ?? []).map(employee => ({
-              value: employee.id,
-              label: employee.full_name ?? employee.email ?? "Unnamed employee",
-              searchText: `${employee.full_name ?? ""} ${employee.email ?? ""}`,
-            }))}
-            placeholder="Select employee"
-            searchPlaceholder="Search employee..."
-            triggerClassName="w-full sm:w-[280px]"
-          />
+          {isSuperAdmin && (
+            <SearchableSelect
+              value={selectedEmployeeId}
+              onValueChange={setSelectedEmployeeId}
+              disabled={loading || !hasEmployees}
+              options={(data?.employees ?? []).map(employee => ({
+                value: employee.id,
+                label: employee.full_name ?? employee.email ?? "Unnamed employee",
+                searchText: `${employee.full_name ?? ""} ${employee.email ?? ""}`,
+              }))}
+              placeholder="Select employee"
+              searchPlaceholder="Search employee..."
+              triggerClassName="w-full sm:w-[280px]"
+            />
+          )}
           <Button
             type="button"
             className="gap-2 gold-gradient font-semibold"

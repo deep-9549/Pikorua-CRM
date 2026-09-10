@@ -205,3 +205,40 @@ test('normal queues exclude legacy leads while legacy queues contain only legacy
     'normal-unassigned', 'legacy-unassigned', 'normal-assigned', 'legacy-assigned',
   ])
 })
+
+test('generated-on filter keeps only leads received on that calendar day', () => {
+  const dated = [
+    lead('day-1', { received_at: '2026-08-01T10:00:00Z' }),
+    lead('day-2', { received_at: '2026-08-02T10:00:00Z' }),
+    lead('day-3', { received_at: '2026-08-03T10:00:00Z' }),
+  ]
+  const filtered = filterMetaAdsQueueLeads(dated, {
+    ...EMPTY_META_ADS_QUEUE_FILTERS,
+    receivedOn: '2026-08-02',
+  })
+  assert.deepEqual(metaAdsQueueLeadIds(filtered), ['day-2'])
+})
+
+test('generated-on filter drops leads with an unparseable received date', () => {
+  const filtered = filterMetaAdsQueueLeads([lead('broken', { received_at: 'not-a-date' })], {
+    ...EMPTY_META_ADS_QUEUE_FILTERS,
+    receivedOn: '2026-08-01',
+  })
+  assert.deepEqual(metaAdsQueueLeadIds(filtered), [])
+})
+
+test('generated-on filter composes with the queue status filter', () => {
+  const filtered = filterMetaAdsQueueLeads(leads, {
+    ...EMPTY_META_ADS_QUEUE_FILTERS,
+    queueStatus: 'unassigned',
+    receivedOn: '2026-08-01',
+  })
+  assert.deepEqual(metaAdsQueueLeadIds(filtered), ['unassigned-spoken', 'unassigned-manual'])
+})
+
+test('an empty generated-on filter leaves the queue untouched', () => {
+  assert.equal(
+    filterMetaAdsQueueLeads(leads, { ...EMPTY_META_ADS_QUEUE_FILTERS }).length,
+    leads.length,
+  )
+})

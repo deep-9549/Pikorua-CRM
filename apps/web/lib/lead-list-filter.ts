@@ -5,6 +5,8 @@ export interface LeadListFilters {
   budget: string
   source: string
   assignedTo: string
+  /** Single calendar day (YYYY-MM-DD) the lead was generated on. */
+  receivedOn: string
   dateFrom: string
   dateTo: string
 }
@@ -31,6 +33,7 @@ export const EMPTY_LEAD_FILTERS: LeadListFilters = {
   budget: "",
   source: "",
   assignedTo: "",
+  receivedOn: "",
   dateFrom: "",
   dateTo: "",
 }
@@ -81,9 +84,13 @@ export function filterLeadList<T extends FilterableLead>(
     if (filters.budget && !budgetMatchesBucket(lead.crm?.budget_range, filters.budget)) return false
     if (filters.source && lead.source !== filters.source) return false
     if (filters.assignedTo && lead.assigned_to_profile?.id !== filters.assignedTo) return false
-    if (filters.dateFrom && lead.received_at < filters.dateFrom) return false
-    if (filters.dateTo && lead.received_at > `${filters.dateTo}T23:59:59`) return false
+    // dateKey resolves the stored UTC timestamp to the viewer's calendar day,
+    // so "generated on the 3rd" means the 3rd in local (IST) time.
+    if (filters.receivedOn && dateKey(lead.received_at) !== filters.receivedOn) return false
+    if (filters.dateFrom && dateKey(lead.received_at) < filters.dateFrom) return false
+    if (filters.dateTo && dateKey(lead.received_at) > filters.dateTo) return false
     return true
   })
 }
 import { BUDGET_BUCKETS, budgetMatchesBucket } from './budget-buckets'
+import { dateKey } from './lead-display-order'

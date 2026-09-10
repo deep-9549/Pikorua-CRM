@@ -78,7 +78,9 @@ export class SiteVisitsService {
         property: true,
         employee: true,
       },
-      orderBy: [desc(siteVisits.scheduledDate)],
+      // Upcoming visits ascend so the soonest one is first; every other view
+      // keeps the most recent visit on top.
+      orderBy: [status === 'upcoming' ? asc(siteVisits.scheduledDate) : desc(siteVisits.scheduledDate)],
     })
 
     const now = Date.now()

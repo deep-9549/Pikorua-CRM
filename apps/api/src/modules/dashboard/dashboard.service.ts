@@ -880,14 +880,21 @@ export class DashboardService {
   }
 
   getEmployeePerformance(
+    caller: { id: string; role: string },
     employeeId?: string,
     startDate?: string,
     endDate?: string,
     listOnly = false,
     requestedPeriod?: string,
   ): Promise<unknown> {
+    // Super admins may inspect any executive. Everyone else is pinned to their
+    // own record regardless of the employeeId they ask for, so the response is
+    // scoped before it ever reaches the cache.
+    const isAdmin = caller.role === 'super_admin'
+    const scopedEmployeeId = isAdmin ? employeeId : caller.id
     const cacheKey = JSON.stringify([
-      employeeId ?? null,
+      isAdmin,
+      scopedEmployeeId ?? null,
       startDate ?? null,
       endDate ?? null,
       listOnly,
@@ -902,7 +909,8 @@ export class DashboardService {
     if (inFlight) return inFlight
 
     const request = this.calculateEmployeePerformance(
-      employeeId,
+      isAdmin,
+      scopedEmployeeId,
       startDate,
       endDate,
       listOnly,
@@ -926,6 +934,7 @@ export class DashboardService {
   }
 
   private async calculateEmployeePerformance(
+    isAdmin: boolean,
     employeeId?: string,
     startDate?: string,
     endDate?: string,
@@ -943,11 +952,19 @@ export class DashboardService {
       throw new BadRequestException(`period must be one of: ${validPeriods.join(', ')}.`)
     }
     const selectedPeriod = (requestedPeriod ?? 'monthly') as PeriodKey
+    // A super admin picks from the whole sales team. A non-admin caller has
+    // already been pinned to their own id upstream, so their "team" is just
+    // themselves — which also keeps the selection logic below unchanged.
     const employees = await this.db.query.userProfiles.findMany({
-      where: and(
-        eq(userProfiles.role, 'sales_executive'),
-        isNull(userProfiles.deletedAt),
-      ),
+      where: isAdmin
+        ? and(
+            eq(userProfiles.role, 'sales_executive'),
+            isNull(userProfiles.deletedAt),
+          )
+        : and(
+            eq(userProfiles.id, employeeId!),
+            isNull(userProfiles.deletedAt),
+          ),
       orderBy: [desc(userProfiles.createdAt)],
     })
 
