@@ -127,3 +127,34 @@ test('Construction Business Owner filters independently from primary status', ()
   })
   assert.deepEqual(filtered.map(lead => lead.full_name), ['Asha'])
 })
+
+test('generated-on filter keeps only leads received on that calendar day', () => {
+  const filters = { ...EMPTY_LEAD_FILTERS, receivedOn: '2026-07-11' }
+  assert.deepEqual(filterLeadList(leads, '', filters).map(lead => lead.full_name), ['Ravi'])
+})
+
+test('generated-on filter resolves the timestamp in local time, not UTC', () => {
+  // 20:00 UTC on the 10th is already the 11th in IST. dateKey follows the
+  // viewer's clock, so the lead belongs to whichever day they see it as.
+  const lateLead = { ...leads[0], full_name: 'Late', received_at: '2026-07-10T20:00:00Z' }
+  const localDay = new Date('2026-07-10T20:00:00Z')
+  const pad = n => String(n).padStart(2, '0')
+  const expectedDay = `${localDay.getFullYear()}-${pad(localDay.getMonth() + 1)}-${pad(localDay.getDate())}`
+
+  const filters = { ...EMPTY_LEAD_FILTERS, receivedOn: expectedDay }
+  assert.deepEqual(filterLeadList([lateLead], '', filters).map(lead => lead.full_name), ['Late'])
+})
+
+test('generated-on filter composes with the other lead filters', () => {
+  const filters = { ...EMPTY_LEAD_FILTERS, receivedOn: '2026-07-10', clientStatus: 'warm' }
+  assert.deepEqual(filterLeadList(leads, '', filters), [])
+})
+
+test('received range filter matches on calendar days inclusive of both bounds', () => {
+  const filters = { ...EMPTY_LEAD_FILTERS, dateFrom: '2026-07-11', dateTo: '2026-07-12' }
+  assert.deepEqual(filterLeadList(leads, '', filters).map(lead => lead.full_name), ['Ravi', 'Mira'])
+})
+
+test('an empty generated-on filter matches every lead', () => {
+  assert.equal(filterLeadList(leads, '', { ...EMPTY_LEAD_FILTERS }).length, leads.length)
+})

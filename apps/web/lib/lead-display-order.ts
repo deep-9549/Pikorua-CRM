@@ -5,6 +5,7 @@ export interface LeadOrderCrm {
 
 export interface LeadForDisplayOrder {
   id: string
+  received_at?: string | null
   assigned_at?: string | null
   assignment_viewed_at?: string | null
   crm?: LeadOrderCrm | null
@@ -32,6 +33,18 @@ export function followUpTimestamp(value: string | null | undefined) {
   return new Date(normalized).getTime()
 }
 
+/** Epoch ms for a lead's generation date. Missing/unparseable sorts last. */
+export function receivedTime(lead: LeadForDisplayOrder) {
+  if (!lead.received_at) return 0
+  const time = new Date(lead.received_at).getTime()
+  return Number.isNaN(time) ? 0 : time
+}
+
+/** Newest generated lead first. Use as a comparator or a tiebreaker. */
+export function byReceivedDesc(a: LeadForDisplayOrder, b: LeadForDisplayOrder) {
+  return receivedTime(b) - receivedTime(a)
+}
+
 export function isFreshLead(lead: LeadForDisplayOrder) {
   return lead.crm?.call_status !== "spoken"
 }
@@ -53,9 +66,13 @@ export function getLeadDisplaySections<T extends LeadForDisplayOrder>(
   now: number,
 ): LeadDisplaySections<T> {
   const today = dateKey(new Date(now))
+  // Never-contacted leads stay ahead of contacted ones — that ranking drives
+  // the work queue. Within either group the newest lead comes first.
   const interactionSorted = [...leads].sort((a, b) => {
     const contacted = (lead: T) => (lead.crm?.call_status ? 1 : 0)
-    return contacted(a) - contacted(b)
+    const byContact = contacted(a) - contacted(b)
+    if (byContact !== 0) return byContact
+    return byReceivedDesc(a, b)
   })
 
   const overdue = interactionSorted.filter(lead => {

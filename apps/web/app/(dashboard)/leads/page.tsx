@@ -28,6 +28,7 @@ import { AddLeadDialog } from "@/components/add-lead-dialog"
 import { exportLeadsToExcel } from "@/lib/export-leads"
 import { budgetOptions, campaignOptions, EMPTY_LEAD_FILTERS, filterLeadList } from "@/lib/lead-list-filter"
 import {
+  byReceivedDesc,
   dateKey,
   getLeadDisplaySections,
   isFreshLead,
@@ -246,8 +247,17 @@ export default function LeadsPage() {
   const campaigns = useMemo(() => campaignOptions(leads), [leads])
   const budgets = useMemo(() => budgetOptions(leads), [leads])
 
+  // "Generated on" and the received range answer the same question two ways,
+  // so setting either one clears the other.
   function setFilter(key: keyof typeof EMPTY_LEAD_FILTERS, value: string) {
-    setFilters(p => ({ ...p, [key]: value }))
+    setFilters(p => {
+      const next = { ...p, [key]: value }
+      if (value) {
+        if (key === "receivedOn") { next.dateFrom = ""; next.dateTo = "" }
+        if (key === "dateFrom" || key === "dateTo") next.receivedOn = ""
+      }
+      return next
+    })
   }
   const activeFilterCount = Object.values(filters).filter(Boolean).length
 
@@ -344,10 +354,15 @@ export default function LeadsPage() {
     () => filtered.filter(lead => !lead.legacy_transfer_protected),
     [filtered],
   )
+  // Most recent assignment first. Bulk assignments share one assigned_at, so
+  // the newest lead wins the tie.
   const freshlyAssigned = useMemo(
     () => normalFiltered
       .filter(isFreshlyAssignedLead)
-      .sort((a, b) => new Date(b.assigned_at ?? 0).getTime() - new Date(a.assigned_at ?? 0).getTime()),
+      .sort((a, b) => {
+        const byAssigned = new Date(b.assigned_at ?? 0).getTime() - new Date(a.assigned_at ?? 0).getTime()
+        return byAssigned !== 0 ? byAssigned : byReceivedDesc(a, b)
+      }),
     [normalFiltered],
   )
   const workedLeads = useMemo(
@@ -574,6 +589,15 @@ export default function LeadsPage() {
                   {execs.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </FilterSelect>
               )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] shrink-0" style={{ color: "var(--color-muted-foreground)" }}>Generated on</span>
+                <input type="date" value={filters.receivedOn} onChange={e => setFilter("receivedOn", e.target.value)}
+                  className="h-9 min-w-0 flex-1 rounded-lg px-2 text-xs bg-transparent" style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)" }} />
+                <Button variant="ghost" size="sm" className="h-9 shrink-0 px-2 text-[11px]"
+                  onClick={() => setFilter("receivedOn", dateKey(new Date()))}>
+                  Today
+                </Button>
+              </div>
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:flex">
                 <span className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>Received</span>
                 <input type="date" value={filters.dateFrom} onChange={e => setFilter("dateFrom", e.target.value)}

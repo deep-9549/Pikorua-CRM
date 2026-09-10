@@ -55,7 +55,8 @@ const navGroups: NavGroup[] = [
     title: "Analytics",
     items: [
       { title: "Meta Ads", href: "/meta-ads", icon: BarChart3, adminOnly: true },
-      { title: "Employee Performance Analysis", href: "/employee-performance-analysis", icon: Activity, adminOnly: true },
+      // Open to everyone: executives see only their own numbers.
+      { title: "Employee Performance Analysis", href: "/employee-performance-analysis", icon: Activity },
       { title: "Reports", href: "/reports", icon: PieChart, adminOnly: true },
       { title: "Bookings", href: "/bookings", icon: CreditCard },
     ]

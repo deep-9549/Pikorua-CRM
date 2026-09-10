@@ -12,6 +12,7 @@
         "lint": "eslint .",
         "test:leads-filter": "node --test test/leads-filter-export.test.cjs",
         "test:meta-ads-queue-filter": "node --test test/meta-ads-queue-filter.test.cjs",
+    "test:site-visits-filter": "node --test test/site-visits-filter-export.test.cjs",
         "test:crm-workflow": "node --test test/crm-workflow.test.cjs"
     },
     "dependencies": {
