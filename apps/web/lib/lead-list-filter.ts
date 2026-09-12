@@ -1,6 +1,8 @@
 export interface LeadListFilters {
   clientStatus: string
   callStatus: string
+  /** "" | "called_today" | "not_called_today" */
+  callActivity: string
   campaign: string
   budget: string
   source: string
@@ -23,12 +25,19 @@ export interface FilterableLead {
   client_anti_broker?: boolean
   client_construction_business_owner?: boolean
   assigned_to_profile?: { id: string } | null
-  crm?: { call_status?: string | null; budget_range?: string | null } | null
+  crm?: {
+    call_status?: string | null
+    budget_range?: string | null
+    first_call_date?: string | null
+    last_call_date?: string | null
+  } | null
+  today_follow_up_calls?: Array<{ call_status?: string | null }> | null
 }
 
 export const EMPTY_LEAD_FILTERS: LeadListFilters = {
   clientStatus: "",
   callStatus: "",
+  callActivity: "",
   campaign: "",
   budget: "",
   source: "",
@@ -51,12 +60,27 @@ export function budgetOptions(leads: FilterableLead[]) {
   return [...BUDGET_BUCKETS]
 }
 
+/**
+ * A lead counts as called today when a follow-up attempt was completed today
+ * (its own durable log) or when the CRM's first/last call date lands on today.
+ * `today` is a local calendar day key (YYYY-MM-DD).
+ */
+export function wasCalledToday(lead: FilterableLead, today: string) {
+  if (!today) return false
+  if ((lead.today_follow_up_calls ?? []).length > 0) return true
+  const crm = lead.crm
+  if (!crm?.call_status) return false
+  return [crm.first_call_date, crm.last_call_date].some(date => dateKey(date) === today)
+}
+
 export function filterLeadList<T extends FilterableLead>(
   leads: T[],
   search: string,
   filters: LeadListFilters,
+  now: number = Date.now(),
 ) {
   const query = search.trim().toLowerCase()
+  const today = dateKey(new Date(now))
 
   return leads.filter(lead => {
     if (query) {
@@ -79,6 +103,11 @@ export function filterLeadList<T extends FilterableLead>(
       const callStatus = lead.crm?.call_status ?? ""
       if (filters.callStatus === "fresh" && callStatus === "spoken") return false
       if (filters.callStatus !== "fresh" && callStatus !== filters.callStatus) return false
+    }
+    if (filters.callActivity) {
+      const calledToday = wasCalledToday(lead, today)
+      if (filters.callActivity === "called_today" && !calledToday) return false
+      if (filters.callActivity === "not_called_today" && calledToday) return false
     }
     if (filters.campaign && lead.campaign_name?.trim() !== filters.campaign) return false
     if (filters.budget && !budgetMatchesBucket(lead.crm?.budget_range, filters.budget)) return false
