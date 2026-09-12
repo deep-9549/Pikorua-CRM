@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-  LayoutDashboard, Users, MessageSquare, Building2, Sparkles,
+  LayoutDashboard, Users, MessageSquare, MessageCircle, Building2, Sparkles,
   CalendarCheck, BarChart3, Bot, CreditCard, UserCog, Crown,
   FileText, Settings, ChevronLeft, Trash2,
   PieChart, FileSpreadsheet, LogOut, Activity
@@ -45,6 +45,7 @@ const navGroups: NavGroup[] = [
       { title: "Leads", href: "/leads", icon: Users },
       { title: "Trash", href: "/trash", icon: Trash2 },
       { title: "AI Voice", href: "/ai-voice", icon: Bot, adminOnly: true },
+      { title: "WhatsApp Message", href: "/whatsapp-message", icon: MessageCircle },
       { title: "WhatsApp Hub", href: "/whatsapp", icon: MessageSquare, comingSoon: true },
       { title: "Properties", href: "/properties", icon: Building2 },
       { title: "Smart Matching", href: "/smart-matching", icon: Sparkles },
