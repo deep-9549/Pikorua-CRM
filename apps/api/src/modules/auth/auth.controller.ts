@@ -1,10 +1,11 @@
-import { Controller, Post, Get, Patch, Body, UseGuards } from '@nestjs/common'
+import { Controller, Post, Get, Patch, Put, Body, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { Throttle } from '@nestjs/throttler'
 import { AuthService } from './auth.service'
 import { LoginDto } from './dto/login.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
 import { ChangePasswordDto } from './dto/change-password.dto'
+import { UpdateWhatsappTemplateDto } from './dto/update-whatsapp-template.dto'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { ForgotPasswordDto } from './dto/forgot-password.dto'
@@ -55,6 +56,25 @@ export class AuthController {
     @Body() dto: UpdateProfileDto,
   ) {
     return this.authService.updateProfile(user.id, dto)
+  }
+
+  @Get('whatsapp-template')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get the current user WhatsApp thank-you template' })
+  getWhatsappTemplate(@CurrentUser() user: { id: string }) {
+    return this.authService.getWhatsappTemplate(user.id)
+  }
+
+  @Put('whatsapp-template')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Update the current user WhatsApp thank-you template' })
+  updateWhatsappTemplate(
+    @CurrentUser() user: { id: string },
+    @Body() dto: UpdateWhatsappTemplateDto,
+  ) {
+    return this.authService.updateWhatsappTemplate(user.id, dto)
   }
 
   @Post('change-password')

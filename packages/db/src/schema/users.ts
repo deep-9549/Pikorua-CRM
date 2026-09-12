@@ -11,6 +11,9 @@ export const userProfiles = pgTable('user_profiles', {
   role: userRoleEnum('role').default('sales_executive').notNull(),
   passwordHash: text('password_hash'),
   avatarUrl: text('avatar_url'),
+  // Personal WhatsApp thank-you message, pre-filled into WhatsApp Web by the
+  // per-lead send button. Null until the user writes one.
+  whatsappTemplate: text('whatsapp_template'),
   status: text('status').default('active'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

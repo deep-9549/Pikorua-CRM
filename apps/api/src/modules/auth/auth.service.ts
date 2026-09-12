@@ -8,6 +8,7 @@ import { passwordResetTokens, userProfiles } from '@pikorua/db'
 import { LoginDto } from './dto/login.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
 import { ChangePasswordDto } from './dto/change-password.dto'
+import { UpdateWhatsappTemplateDto } from './dto/update-whatsapp-template.dto'
 import { ForgotPasswordDto } from './dto/forgot-password.dto'
 import { ResetPasswordDto } from './dto/reset-password.dto'
 import { PasswordResetMailerService } from './password-reset-mailer.service'
@@ -76,6 +77,79 @@ export class AuthService {
       email: user.email,
       phone: user.phone,
       role: user.role,
+    }
+  }
+
+  /**
+   * Starting point for a user who has never written their own thank-you note.
+   * The placeholders are filled in from the user's own profile, so a brand-new
+   * executive gets a signed, usable message without editing anything.
+   */
+  private defaultWhatsappTemplate() {
+    return [
+      'Hi, this is {{my_name}}.',
+      '',
+      'It was a pleasure talking to you.',
+      '',
+      'Also pls save my number. You will be able to see videos / pics / details / updates about our ongoing and upcoming luxury projects in the city on my WhatsApp Status when you save this number 🙂',
+      '',
+      'Thanks',
+      '',
+      'Regards,',
+      '{{my_name}}',
+      '{{my_phone}}',
+    ].join('\n')
+  }
+
+  private async requireActiveUser(userId: string) {
+    const user = await this.db.query.userProfiles.findFirst({
+      where: and(
+        eq(userProfiles.id, userId),
+        eq(userProfiles.status, 'active'),
+        isNull(userProfiles.deletedAt),
+      ),
+    })
+    if (!user) throw new UnauthorizedException()
+    return user
+  }
+
+  async getWhatsappTemplate(userId: string) {
+    const user = await this.requireActiveUser(userId)
+    return {
+      // `is_default` lets the editor show "you haven't personalised this yet"
+      // without duplicating the default text on the client.
+      template: user.whatsappTemplate ?? this.defaultWhatsappTemplate(),
+      is_default: user.whatsappTemplate === null,
+      sender_name: user.fullName,
+      sender_phone: user.phone,
+    }
+  }
+
+  async updateWhatsappTemplate(userId: string, dto: UpdateWhatsappTemplateDto) {
+    await this.requireActiveUser(userId)
+
+    // Blank input is a deliberate "reset me to the default", not a way to send
+    // an empty WhatsApp message.
+    const trimmed = dto.template.trim()
+    const template = trimmed.length === 0 ? null : trimmed
+
+    const [user] = await this.db
+      .update(userProfiles)
+      .set({ whatsappTemplate: template, updatedAt: new Date() })
+      .where(and(
+        eq(userProfiles.id, userId),
+        eq(userProfiles.status, 'active'),
+        isNull(userProfiles.deletedAt),
+      ))
+      .returning()
+
+    if (!user) throw new UnauthorizedException()
+
+    return {
+      template: user.whatsappTemplate ?? this.defaultWhatsappTemplate(),
+      is_default: user.whatsappTemplate === null,
+      sender_name: user.fullName,
+      sender_phone: user.phone,
     }
   }
 

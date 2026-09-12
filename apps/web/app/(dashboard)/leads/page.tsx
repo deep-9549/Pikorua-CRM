@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ProtectedPhone } from "@/components/security/protected-phone"
+import { WhatsappSendButton } from "@/components/leads/whatsapp-send-button"
 import { AddLeadDialog } from "@/components/add-lead-dialog"
 import { exportLeadsToExcel } from "@/lib/export-leads"
 import { budgetOptions, campaignOptions, EMPTY_LEAD_FILTERS, filterLeadList } from "@/lib/lead-list-filter"
@@ -774,6 +775,7 @@ function CallListDialog({ status, entries, onClose }: {
                   </ProtectedPhone>
                   {!entry.lead.phone && <p className="mt-0.5 text-xs text-muted-foreground">No contact number</p>}
                 </div>
+                <WhatsappSendButton phone={entry.lead.phone} leadName={entry.lead.full_name} />
                 <Button asChild size="sm">
                   <Link href={`/leads/${entry.lead.id}`} onClick={openLead}>Open Lead</Link>
                 </Button>
@@ -866,6 +868,8 @@ function Section({ leads, onOpenLead }: { leads: MetaLead[]; onOpenLead: () => v
                     </p>
                   )}
                 </div>
+
+                <WhatsappSendButton phone={lead.phone} leadName={lead.full_name} className="shrink-0" />
 
                 <ChevronRight className="hidden w-4 h-4 shrink-0 sm:block" style={{ color: "var(--color-muted-foreground)" }} />
               </div>

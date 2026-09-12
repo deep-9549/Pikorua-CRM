@@ -29,6 +29,7 @@ import {
 import { formatPhone, phoneHref } from "@/lib/utils"
 import { getAuthUser } from "@/lib/auth/cookies"
 import { ProtectedPhone } from "@/components/security/protected-phone"
+import { WhatsappSendButton } from "@/components/leads/whatsapp-send-button"
 import { getLeadDisplaySections } from "@/lib/lead-display-order"
 import { readLeadQueueSnapshot } from "@/lib/lead-list-state"
 import {
@@ -1370,6 +1371,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   <Badge variant="secondary" className="text-sm mt-1 px-2.5 py-0.5">{lead.campaign_name}</Badge>
                 )}
               </div>
+              <WhatsappSendButton
+                phone={lead.phone}
+                leadName={lead.full_name}
+                variant="labelled"
+                className="shrink-0"
+              />
             </div>
           </CardHeader>
 
