@@ -97,6 +97,7 @@ const STATUS_META: Record<VisitRow["site_visit_status"], { label: string; color:
 }
 
 const HWC_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  super_hot: { label: "Super Hot", icon: Flame, color: "oklch(0.65 0.22 25)" },
   hot:  { label: "Hot",  icon: Flame,       color: "oklch(0.75 0.18 35)" },
   warm: { label: "Warm", icon: Thermometer, color: "oklch(0.78 0.15 65)" },
   cold: { label: "Cold", icon: Snowflake,   color: "oklch(0.65 0.15 250)" },

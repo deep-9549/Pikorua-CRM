@@ -1,4 +1,5 @@
-import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { metaLeads } from './leads'
 
 /**
  * Durable progress for Meta Lead Ads bulk reads. A row is also the discovered
@@ -31,3 +32,28 @@ export const integrationSyncLocks = pgTable('integration_sync_locks', {
   lockedUntil: timestamp('locked_until', { withTimezone: true }).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
+
+/**
+ * Durable, idempotent CRM feedback waiting to be delivered to Meta CAPI.
+ * No access tokens or raw customer identifiers are stored here.
+ */
+export const metaConversionOutbox = pgTable('meta_conversion_outbox', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  leadId: uuid('lead_id').references(() => metaLeads.id, { onDelete: 'cascade' }).notNull(),
+  eventName: text('event_name').notNull(),
+  clientStatus: text('client_status').notNull(),
+  eventTime: timestamp('event_time', { withTimezone: true }).notNull(),
+  status: text('status').default('pending').notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
+  lockedAt: timestamp('locked_at', { withTimezone: true }),
+  lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  metaTraceId: text('meta_trace_id'),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('meta_conversion_outbox_lead_event_uidx').on(t.leadId, t.eventName),
+  index('meta_conversion_outbox_delivery_idx').on(t.status, t.nextAttemptAt),
+])

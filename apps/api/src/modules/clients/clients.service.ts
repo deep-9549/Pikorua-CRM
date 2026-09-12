@@ -12,6 +12,7 @@ import {
   META_LEAD_QUEUE_MANAGED_STATUSES,
   poolStatusForClientStatus,
 } from '../leads/lead-pools'
+import { MetaConversionService } from '../meta-conversion/meta-conversion.service'
 
 function serializeClient(client: any) {
   const legacyConstructionOwner = client.status === 'construction_biz_owner'
@@ -46,6 +47,7 @@ export class ClientsService {
   constructor(
     private readonly database: DatabaseService,
     private readonly leadActivityService: LeadActivityService,
+    private readonly metaConversionService: MetaConversionService,
   ) {}
 
   private get db() { return this.database.db }
@@ -101,6 +103,7 @@ export class ClientsService {
       status_note?: string
       anti_broker?: boolean
       construction_business_owner?: boolean
+      origin_lead_id?: string
     },
   ) {
     const client = await this.db.query.clients.findFirst({
@@ -119,7 +122,7 @@ export class ClientsService {
         : input.status
     const statusNote = input.status_note === undefined ? client.statusNote ?? null : input.status_note
     if (input.anti_broker === true && !isAntiBrokerCompatibleStatus(status)) {
-      throw new BadRequestException('Anti-Broker can only be combined with Hot, Warm, or Cold')
+      throw new BadRequestException('Anti-Broker can only be combined with Super Hot, Hot, Warm, or Cold')
     }
     const antiBroker = isAntiBrokerCompatibleStatus(status)
       ? input.anti_broker ?? Boolean(client.antiBroker)
@@ -127,18 +130,7 @@ export class ClientsService {
     const constructionBusinessOwner = input.construction_business_owner
       ?? (Boolean(client.constructionBusinessOwner) || legacyConstructionOwner)
 
-    await this.db
-      .update(clients)
-      .set({
-        status: status ?? null,
-        statusNote: statusNote ?? null,
-        antiBroker,
-        constructionBusinessOwner,
-        statusUpdatedBy: updatedBy,
-        statusUpdatedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(clients.id, id))
+    const statusUpdatedAt = new Date()
 
     const changes = this.leadActivityService.diff(
       {
@@ -161,42 +153,65 @@ export class ClientsService {
       },
     )
 
-    const previousPoolStatus = poolStatusForClientStatus(client.status)
-    const nextPoolStatus = poolStatusForClientStatus(status)
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(clients)
+        .set({
+          status: status ?? null,
+          statusNote: statusNote ?? null,
+          antiBroker,
+          constructionBusinessOwner,
+          statusUpdatedBy: updatedBy,
+          statusUpdatedAt,
+          updatedAt: statusUpdatedAt,
+        })
+        .where(eq(clients.id, id))
 
-    // Sync queue pool status on linked meta leads. Converted/rejected rows stay
-    // terminal; active queue rows move in/out of pools with the client status.
-    if (nextPoolStatus) {
-      await this.db
-        .update(metaLeads)
-        .set({ status: nextPoolStatus as never, updatedAt: new Date() })
-        .where(and(
-          eq(metaLeads.clientId, id),
-          inArray(metaLeads.status, META_LEAD_QUEUE_MANAGED_STATUSES as never),
-        ))
-    } else if (previousPoolStatus || input.status !== undefined) {
-      const statusesToRestore = [
-        ...META_LEAD_POOL_STATUSES,
-        ...LEGACY_ACTIVE_META_LEAD_POOL_STATUSES,
-      ]
-      await this.db
-        .update(metaLeads)
-        .set({ status: 'assigned' as never, updatedAt: new Date() })
-        .where(and(
-          eq(metaLeads.clientId, id),
-          inArray(metaLeads.status, statusesToRestore as never),
-          isNotNull(metaLeads.assignedTo),
-        ))
+      const previousPoolStatus = poolStatusForClientStatus(client.status)
+      const nextPoolStatus = poolStatusForClientStatus(status)
 
-      await this.db
-        .update(metaLeads)
-        .set({ status: 'unassigned' as never, updatedAt: new Date() })
-        .where(and(
-          eq(metaLeads.clientId, id),
-          inArray(metaLeads.status, statusesToRestore as never),
-          isNull(metaLeads.assignedTo),
-        ))
-    }
+      // Sync queue pool status on linked meta leads. Converted/rejected rows stay
+      // terminal; active queue rows move in/out of pools with the client status.
+      if (nextPoolStatus) {
+        await tx
+          .update(metaLeads)
+          .set({ status: nextPoolStatus as never, updatedAt: statusUpdatedAt })
+          .where(and(
+            eq(metaLeads.clientId, id),
+            inArray(metaLeads.status, META_LEAD_QUEUE_MANAGED_STATUSES as never),
+          ))
+      } else if (previousPoolStatus || input.status !== undefined) {
+        const statusesToRestore = [
+          ...META_LEAD_POOL_STATUSES,
+          ...LEGACY_ACTIVE_META_LEAD_POOL_STATUSES,
+        ]
+        await tx
+          .update(metaLeads)
+          .set({ status: 'assigned' as never, updatedAt: statusUpdatedAt })
+          .where(and(
+            eq(metaLeads.clientId, id),
+            inArray(metaLeads.status, statusesToRestore as never),
+            isNotNull(metaLeads.assignedTo),
+          ))
+
+        await tx
+          .update(metaLeads)
+          .set({ status: 'unassigned' as never, updatedAt: statusUpdatedAt })
+          .where(and(
+            eq(metaLeads.clientId, id),
+            inArray(metaLeads.status, statusesToRestore as never),
+            isNull(metaLeads.assignedTo),
+          ))
+      }
+
+      await this.metaConversionService.enqueueStatusTransition(tx, {
+        clientId: id,
+        originLeadId: input.origin_lead_id,
+        previousStatus: currentStatus,
+        nextStatus: status,
+        eventTime: statusUpdatedAt,
+      })
+    })
 
     this.logger.log(`Client ${id} status changed to '${status ?? 'none'}' by ${updatedBy}`)
 

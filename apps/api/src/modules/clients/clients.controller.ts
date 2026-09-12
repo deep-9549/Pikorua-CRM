@@ -1,6 +1,6 @@
 import { Controller, Get, Patch, Put, Param, Body, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
-import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator'
+import { IsBoolean, IsIn, IsOptional, IsString, IsUUID } from 'class-validator'
 import { CLIENT_STATUS_INPUT_VALUES } from '@pikorua/shared'
 import { ClientsService } from './clients.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
@@ -12,6 +12,7 @@ class UpdateStatusDto {
   @IsString() @IsOptional() status_note?: string
   @IsBoolean() @IsOptional() anti_broker?: boolean
   @IsBoolean() @IsOptional() construction_business_owner?: boolean
+  @IsUUID() @IsOptional() origin_lead_id?: string
 }
 
 @ApiTags('Clients')

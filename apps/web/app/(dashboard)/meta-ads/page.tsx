@@ -99,6 +99,7 @@ interface Employee {
 }
 
 const CLIENT_STATUS_OPTIONS = [
+  { value: "super_hot", label: "Super Hot" },
   { value: "hot", label: "Hot" },
   { value: "warm", label: "Warm" },
   { value: "cold", label: "Cold" },

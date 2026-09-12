@@ -191,6 +191,7 @@ const BUYING_STATUS_OPTIONS = [
 ]
 
 const CLIENT_STATUSES = [
+  { value: "super_hot", label: "Super Hot", icon: Sparkles, color: "oklch(0.65 0.22 25)", bg: "oklch(0.65 0.22 25 / 0.18)" },
   { value: "hot",   label: "Hot",   icon: Flame,         color: "oklch(0.75 0.18 35)",  bg: "oklch(0.75 0.18 35 / 0.15)"  },
   { value: "warm",  label: "Warm",  icon: Thermometer,   color: "oklch(0.78 0.15 65)",  bg: "oklch(0.78 0.15 65 / 0.15)"  },
   { value: "cold",  label: "Cold",  icon: Snowflake,     color: "oklch(0.65 0.15 250)", bg: "oklch(0.65 0.15 250 / 0.15)" },
@@ -1037,6 +1038,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 status_note: clientNote,
                 anti_broker: clientAntiBroker,
                 construction_business_owner: clientConstructionBusinessOwner,
+                origin_lead_id: id,
               }),
             })
           : Promise.resolve(null),
@@ -1264,7 +1266,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         <Building className="h-3 w-3" />Construction Business Owner
       </button>
       <p className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>
-        Anti-Broker can only be combined with Hot, Warm, or Cold.
+        Anti-Broker can only be combined with Super Hot, Hot, Warm, or Cold.
       </p>
       <div className="flex gap-2">
         <input type="text" placeholder="Optional note..."

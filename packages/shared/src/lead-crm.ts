@@ -1,6 +1,7 @@
 export const NOT_PROVIDED_BY_CLIENT = 'Not provided by client' as const
 
 export const CLIENT_STATUS_VALUES = [
+  'super_hot',
   'hot',
   'warm',
   'cold',
@@ -21,7 +22,7 @@ export const CLIENT_STATUS_INPUT_VALUES = [
 
 export type ClientStatus = (typeof CLIENT_STATUS_VALUES)[number]
 
-export const ANTI_BROKER_COMPATIBLE_STATUSES = ['hot', 'warm', 'cold'] as const
+export const ANTI_BROKER_COMPATIBLE_STATUSES = ['super_hot', 'hot', 'warm', 'cold'] as const
 
 export type SpokenRequiredField =
   | 'budget_range'
