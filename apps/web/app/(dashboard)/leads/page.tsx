@@ -27,7 +27,7 @@ import { ProtectedPhone } from "@/components/security/protected-phone"
 import { WhatsappSendButton } from "@/components/leads/whatsapp-send-button"
 import { AddLeadDialog } from "@/components/add-lead-dialog"
 import { exportLeadsToExcel } from "@/lib/export-leads"
-import { budgetOptions, campaignOptions, EMPTY_LEAD_FILTERS, filterLeadList } from "@/lib/lead-list-filter"
+import { budgetOptions, campaignOptions, EMPTY_LEAD_FILTERS, filterLeadList, wasCalledToday } from "@/lib/lead-list-filter"
 import {
   byReceivedDesc,
   dateKey,
@@ -263,7 +263,7 @@ export default function LeadsPage() {
   }
   const activeFilterCount = Object.values(filters).filter(Boolean).length
 
-  const filtered = useMemo(() => filterLeadList(leads, search, filters), [leads, search, filters])
+  const filtered = useMemo(() => filterLeadList(leads, search, filters, now), [leads, search, filters, now])
 
   const handleExport = useCallback(() => {
     if (!isSuperAdmin) return
@@ -283,13 +283,6 @@ export default function LeadsPage() {
   // Completed follow-ups are counted from their durable per-attempt log. For a
   // lead with no completed follow-up today, retain the normal CRM call path.
   const todayCallStats = useMemo(() => {
-    function calledToday(lead: MetaLead) {
-      const crm = lead.crm
-      if (!crm?.call_status) return false
-      return [crm.first_call_date, crm.last_call_date]
-        .some(date => dateKey(date) === today)
-    }
-
     const byExec = new Map<string, { id: string; name: string; spoken: number; notSpoken: number; callBack: number }>()
     const callsByStatus: Record<CallListStatus, CallListEntry[]> = {
       spoken: [],
@@ -331,7 +324,7 @@ export default function LeadsPage() {
         ))
         return
       }
-      if (!calledToday(lead)) return
+      if (!wasCalledToday(lead, today)) return
       recordCall(lead.crm?.call_status, lead.assigned_to_profile, lead, "crm")
     })
 
@@ -571,6 +564,11 @@ export default function LeadsPage() {
                 <option value="spoken">Spoken</option>
                 <option value="not_spoken">Not Spoken</option>
                 <option value="call_back_later">Call Back Later</option>
+              </FilterSelect>
+              <FilterSelect value={filters.callActivity} onChange={v => setFilter("callActivity", v)}>
+                <option value="">All Call Activity</option>
+                <option value="called_today">Called Today</option>
+                <option value="not_called_today">Not Called Today</option>
               </FilterSelect>
               <FilterSelect value={filters.campaign} onChange={v => setFilter("campaign", v)}>
                 <option value="">All Campaigns</option>

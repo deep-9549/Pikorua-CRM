@@ -158,3 +158,46 @@ test('received range filter matches on calendar days inclusive of both bounds', 
 test('an empty generated-on filter matches every lead', () => {
   assert.equal(filterLeadList(leads, '', { ...EMPTY_LEAD_FILTERS }).length, leads.length)
 })
+
+const CALL_ACTIVITY_NOW = new Date('2026-07-20T09:00:00').getTime()
+const callActivityLeads = [
+  // Called today through the CRM's own call dates.
+  { ...leads[0], full_name: 'Crm today', crm: { call_status: 'spoken', last_call_date: '2026-07-20' } },
+  // Called today through a completed follow-up attempt, whatever the CRM says.
+  { ...leads[1], full_name: 'Follow-up today', crm: { call_status: 'spoken', last_call_date: '2026-07-18' }, today_follow_up_calls: [{ call_status: 'not_spoken' }] },
+  // Spoken to, but not today.
+  { ...leads[2], full_name: 'Called earlier', crm: { call_status: 'spoken', first_call_date: '2026-07-18', last_call_date: '2026-07-19' } },
+  // Never called at all.
+  { ...leads[2], full_name: 'Never called', crm: { budget_range: '5 Cr' }, today_follow_up_calls: [] },
+]
+
+test('called-today filter keeps CRM call dates and completed follow-ups from today', () => {
+  const filters = { ...EMPTY_LEAD_FILTERS, callActivity: 'called_today' }
+  assert.deepEqual(
+    filterLeadList(callActivityLeads, '', filters, CALL_ACTIVITY_NOW).map(lead => lead.full_name),
+    ['Crm today', 'Follow-up today'],
+  )
+})
+
+test('not-called-today filter keeps leads called earlier and never called', () => {
+  const filters = { ...EMPTY_LEAD_FILTERS, callActivity: 'not_called_today' }
+  assert.deepEqual(
+    filterLeadList(callActivityLeads, '', filters, CALL_ACTIVITY_NOW).map(lead => lead.full_name),
+    ['Called earlier', 'Never called'],
+  )
+})
+
+test('call activity filter composes with search and the other lead filters', () => {
+  const filters = { ...EMPTY_LEAD_FILTERS, callActivity: 'not_called_today', clientStatus: 'hot' }
+  assert.deepEqual(
+    filterLeadList(callActivityLeads, 'never', filters, CALL_ACTIVITY_NOW).map(lead => lead.full_name),
+    ['Never called'],
+  )
+})
+
+test('an empty call activity filter matches every lead', () => {
+  assert.equal(
+    filterLeadList(callActivityLeads, '', { ...EMPTY_LEAD_FILTERS }, CALL_ACTIVITY_NOW).length,
+    callActivityLeads.length,
+  )
+})
