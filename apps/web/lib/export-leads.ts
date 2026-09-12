@@ -38,6 +38,7 @@ function pretty(v: string | null | undefined) {
 }
 
 const CLIENT_DETAIL_STATUSES = new Set([
+  "super_hot",
   "hot",
   "warm",
   "cold",

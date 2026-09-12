@@ -110,6 +110,26 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     parseMetaPages(config.META_PAGES)
   }
 
+  if (String(config.META_CAPI_ENABLED).toLowerCase() === 'true') {
+    const capiMissing = [
+      'META_CAPI_DATASET_ID',
+      'META_CAPI_ACCESS_TOKEN',
+      'META_CAPI_API_VERSION',
+    ].filter((key) => !config[key])
+    if (capiMissing.length > 0) {
+      throw new Error(
+        `Meta CRM feedback is enabled but missing: ${capiMissing.join(', ')}.`,
+      )
+    }
+
+    if (!/^\d+$/.test(String(config.META_CAPI_DATASET_ID))) {
+      throw new Error('META_CAPI_DATASET_ID must contain digits only.')
+    }
+    if (!/^v\d+\.\d+$/.test(String(config.META_CAPI_API_VERSION))) {
+      throw new Error('META_CAPI_API_VERSION must look like v25.0.')
+    }
+  }
+
   // A short secret is a weakness, not a hard stop — warn rather than refuse to
   // boot, so this validation can never take down a running deployment whose
   // secret happens to be shorter than recommended.

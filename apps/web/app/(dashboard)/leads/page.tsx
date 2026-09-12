@@ -111,6 +111,7 @@ function isFresh(lead: MetaLead) {
 }
 
 const CLIENT_STATUS_MAP: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  super_hot:              { label: "Super Hot",         icon: Flame,        color: "oklch(0.65 0.22 25)"  },
   hot:                    { label: "Hot",               icon: Flame,        color: "oklch(0.75 0.18 35)"  },
   warm:                   { label: "Warm",              icon: Thermometer,  color: "oklch(0.78 0.15 65)"  },
   cold:                   { label: "Cold",              icon: Snowflake,    color: "oklch(0.65 0.15 250)" },
@@ -555,6 +556,7 @@ export default function LeadsPage() {
               style={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}>
               <FilterSelect value={filters.clientStatus} onChange={v => setFilter("clientStatus", v)}>
                 <option value="">All Client Status</option>
+                <option value="super_hot">Super Hot</option>
                 <option value="hot">Hot</option>
                 <option value="warm">Warm</option>
                 <option value="cold">Cold</option>

@@ -96,6 +96,7 @@ test('spoken leads require four client qualification fields', () => {
 })
 
 test('Anti-Broker is compatible only with heat statuses and filters independently', () => {
+  assert.equal(isAntiBrokerCompatibleStatus('super_hot'), true)
   assert.equal(isAntiBrokerCompatibleStatus('hot'), true)
   assert.equal(isAntiBrokerCompatibleStatus('cold'), true)
   assert.equal(isAntiBrokerCompatibleStatus('postponed'), false)
@@ -108,6 +109,7 @@ test('Anti-Broker is compatible only with heat statuses and filters independentl
 })
 
 test('Construction Business Owner is no longer a primary client status', () => {
+  assert.equal(CLIENT_STATUS_VALUES.includes('super_hot'), true)
   assert.equal(CLIENT_STATUS_VALUES.includes('construction_biz_owner'), false)
   assert.equal(CLIENT_STATUS_INPUT_VALUES.includes('construction_biz_owner'), true)
 })

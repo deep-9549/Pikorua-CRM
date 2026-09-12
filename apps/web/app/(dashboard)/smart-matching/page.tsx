@@ -153,6 +153,7 @@ type Preferences = {
 }
 
 const STATUS_LABELS: Record<string, string> = {
+  super_hot: "Super Hot",
   hot: "Hot",
   warm: "Warm",
   cold: "Cold",
