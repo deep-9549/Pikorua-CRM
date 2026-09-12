@@ -26,3 +26,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS meta_conversion_outbox_lead_event_uidx
 
 CREATE INDEX IF NOT EXISTS meta_conversion_outbox_delivery_idx
   ON public.meta_conversion_outbox (status, next_attempt_at);
+
+-- Production uses a restricted application role. Keep local/test databases
+-- portable by granting access only when that role exists.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'pikorua_app') THEN
+    EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.meta_conversion_outbox TO pikorua_app';
+  END IF;
+END
+$$;
